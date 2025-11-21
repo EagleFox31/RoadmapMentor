@@ -1,0 +1,192 @@
+🧩 Fonctionnalités obligatoires
+
+Rôles :
+- **Mentor**
+  - Créer / modifier / supprimer :
+    - les semaines
+    - les objectifs d’une semaine
+    - les tâches dans chaque objectif
+    - les livrables attendus
+    - les ressources recommandées
+  - Voir la progression de l’apprenant (par semaine + globale)
+  - Marquer une semaine comme « validée »
+
+- **Apprenant**
+  - Voir la feuille de route structurée par semaine
+  - Cocher/décocher les tâches (progression)
+  - Laisser un message d’avancement / commentaire par semaine
+
+---
+
+📊 Modèle de données (à implémenter)
+
+Propose et implémente un modèle cohérent du type :
+
+- `User`
+  - id, full_name, email, role (`MENTOR` / `LEARNER`), hashed_password, created_at
+
+- `Week`
+  - id, number, title, start_date, end_date, description, is_validated_by_mentor
+
+- `Objective`
+  - id, week_id (FK), type (`CONCEPT`, `ALGO`, `PROJECT`, `OTHER`), title, description, order_index
+
+- `Task`
+  - id, objective_id (FK), label, order_index, is_optional (bool)
+
+- `Deliverable`
+  - id, week_id (FK), title, description
+
+- `Resource`
+  - id, week_id (FK), label, url, resource_type (`DOC`, `VIDEO`, `COURSE`, `ARTICLE`, `OTHER`)
+
+- `TaskProgress`
+  - id, task_id (FK), learner_id (FK User), is_done, done_at
+
+- `WeekComment`
+  - id, week_id, learner_id, content, created_at
+
+Tu peux ajuster les champs si nécessaire, mais garde cette granularité : semaine → objectifs → tâches, + livrables, + ressources, + progression.
+
+---
+
+🛠️ API REST à fournir
+
+Implémente des endpoints structurés par router :
+
+**Auth**
+- `POST /auth/register` (mentor crée les comptes ou auto-register selon ton choix)
+- `POST /auth/login` (retourne un JWT)
+- `GET /auth/me`
+
+**Weeks**
+- `GET /weeks` : liste de toutes les semaines avec objectifs, tâches, livrables, ressources, et progression pour l’apprenant connecté
+- `GET /weeks/{id}`
+- `POST /weeks` (mentor)
+- `PUT /weeks/{id}` (mentor)
+- `DELETE /weeks/{id}` (mentor)
+- `POST /weeks/{id}/validate` (mentor valide la semaine)
+
+**Objectives**
+- `POST /weeks/{week_id}/objectives` (mentor)
+- `PUT /objectives/{id}` (mentor)
+- `DELETE /objectives/{id}` (mentor)
+
+**Tasks**
+- `POST /objectives/{objective_id}/tasks` (mentor)
+- `PUT /tasks/{id}` (mentor)
+- `DELETE /tasks/{id}` (mentor)
+
+**Deliverables**
+- `POST /weeks/{week_id}/deliverables` (mentor)
+- `PUT /deliverables/{id}`
+- `DELETE /deliverables/{id}`
+
+**Resources**
+- `POST /weeks/{week_id}/resources` (mentor)
+- `PUT /resources/{id}`
+- `DELETE /resources/{id}`
+
+**Progression**
+- `POST /tasks/{task_id}/toggle-progress` (apprenant)
+  - Le backend détecte si la progression existe :
+    - si oui : bascule `is_done`
+    - si non : crée la progression `is_done = true`
+- `GET /progress/summary` (pour l’utilisateur connecté)
+  - retourne :
+    - % de tâches réalisées par semaine
+    - % global
+    - nombre de tâches réalisées / total
+
+**Commentaires**
+- `POST /weeks/{week_id}/comments` (apprenant)
+- `GET /weeks/{week_id}/comments`
+
+---
+
+🎨 UX / UI – exigences de design
+
+Je veux un **frontend premium** avec :
+
+1. **Layout principal**
+   - Top bar fixe avec :
+     - logo / titre « Pavel Roadmap »
+     - avatar utilisateur + rôle
+   - Une page principale `Roadmap` avec :
+     - colonne de gauche : liste des semaines (timeline verticale ou cards cliquables)
+     - zone centrale : détail de la semaine sélectionnée
+     - colonne de droite : panel « Progression & Notes » (stats + commentaire)
+
+2. **Style glassmorphism**
+   - Background : gradient sombre + image de fond floue thème dev (code, terminal, nuage, etc.).
+   - Les blocs (cartes) :
+     - `bg-white/10`
+     - `border border-white/20`
+     - `backdrop-blur-xl`
+     - `shadow-xl`
+     - coins arrondis (`rounded-2xl`)
+     - effets de hover : légère translation et augmentation de l’ombre
+   - Boutons :
+     - arrondis
+     - avec gradients (`from-sky-500 to-indigo-500`)
+     - `transition`, `hover:scale-105`, `hover:shadow-2xl`
+
+3. **Composants à créer**
+   - `WeekSelector` : liste des semaines à gauche
+   - `WeekDetail` : bloc central avec :
+     - titre de la semaine, dates, état (validée ou non)
+     - sections :
+       - « Concepts à maîtriser »
+       - « Exercices Algo »
+       - « Projet ShopFlow »
+       - « Livrables attendus »
+       - « Ressources recommandées »
+   - `TaskList` : liste des tâches avec checkbox stylée
+   - `ProgressBar` : barre de progression globale + par semaine (glassmorphism aussi)
+   - `EditorPanel` (mentor uniquement) :
+     - boutons « Ajouter objectif », « Ajouter tâche », « Ajouter livrable », « Ajouter ressource »
+     - formulaires dans des modals glassmorphism (dialogues centrés)
+
+4. **Logique front**
+   - Utiliser React Query ou un simple système avec `fetch` + `useState` (tu peux choisir).
+   - Gestion du JWT dans `localStorage` ou `sessionStorage`.
+   - Gérer les rôles :
+     - si `role = MENTOR` → afficher les boutons d’édition
+     - si `role = LEARNER` → vue lecture + cases à cocher + champ commentaire
+
+---
+
+📄 Maquette actuelle à réutiliser
+
+Voici ma feuille de route actuelle en HTML/CSS.  
+Tu dois t’en inspirer pour le contenu (texte, structure des semaines, objectifs, livrables, ressources), mais la présenter dans le nouveau design React/Tailwind décrit plus haut.  
+Tu peux transformer chaque « week-section » en données provenant de l’API.
+
+[COLLER ICI la feuille de route HTML/CSS complète actuelle]
+
+---
+
+🧠 Attendu de ta réponse
+
+Donne-moi :
+
+1. L’**arborescence complète** du projet backend + frontend.
+2. Le **code backend FastAPI** prêt à l’emploi :
+   - `main.py`
+   - config DB
+   - modèles SQLModel
+   - schémas Pydantic
+   - routes avec dépendances d’auth
+   - un exemple de migration Alembic
+3. Le **code frontend React + Tailwind** :
+   - `main.tsx`, `App.tsx`
+   - les principaux composants (RoadmapPage, WeekSelector, WeekDetail, TaskList, ProgressBar, EditorPanel, Login/Register)
+   - les appels API (auth, weeks, progress)
+4. Un `docker-compose.yml` fonctionnel.
+5. Un `README.md` avec :
+   - comment installer
+   - comment lancer backend + frontend
+   - comment créer un mentor + un apprenant test
+   - comment se connecter et utiliser l’app.
+
+Je veux du code concret, exécutable, pas seulement de l’architecture théorique.
