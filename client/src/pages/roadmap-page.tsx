@@ -302,9 +302,9 @@ export default function RoadmapPage() {
       <div className="min-h-screen w-full bg-background">
         <TopBar />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)] pt-20">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-border border-t-primary rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-foreground text-lg font-medium">Chargement de la feuille de route...</p>
+          <div className="text-center glass-card p-12 rounded-3xl">
+            <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-6 glow" />
+            <p className="text-foreground text-lg font-semibold gradient-text">Chargement de la feuille de route...</p>
           </div>
         </div>
       </div>
@@ -315,20 +315,20 @@ export default function RoadmapPage() {
     <div className="min-h-screen w-full bg-background">
       <TopBar />
 
-      <main className="container max-w-[1400px] mx-auto px-6 py-8 pt-24">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <aside className="lg:col-span-3 lg:sticky lg:top-24 lg:self-start">
+      <main className="container max-w-[1600px] mx-auto px-8 py-12 pt-28">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <aside className="lg:col-span-3 lg:sticky lg:top-28 lg:self-start space-y-6">
             {isMentor() && (
               <Button
                 onClick={() => openModal("week")}
-                className="w-full mb-4 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 font-medium"
+                className="w-full bg-gradient-to-br from-primary to-accent text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 glow"
                 data-testid="button-add-week"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 Nouvelle Semaine
               </Button>
             )}
-            <div className="bg-white rounded-lg shadow-sm border border-[#dadce0] overflow-hidden">
+            <div className="glass-card rounded-3xl overflow-hidden">
               <WeekSelector
                 weeks={weeks}
                 selectedWeekId={selectedWeekId}
@@ -339,7 +339,7 @@ export default function RoadmapPage() {
           </aside>
 
           <section className="lg:col-span-6">
-            <div className="bg-white rounded-lg shadow-sm border border-[#dadce0] p-6">
+            <div className="glass-card rounded-3xl p-8">
               <WeekDetail
                 week={selectedWeek}
                 onToggleTask={(taskId) => toggleTaskMutation.mutate(taskId)}
@@ -365,8 +365,8 @@ export default function RoadmapPage() {
             </div>
           </section>
 
-          <aside className="lg:col-span-3 lg:sticky lg:top-24 lg:self-start">
-            <div className="bg-white rounded-lg shadow-sm border border-[#dadce0] p-5">
+          <aside className="lg:col-span-3 lg:sticky lg:top-28 lg:self-start">
+            <div className="glass-card rounded-3xl p-6">
               <ProgressPanel stats={globalStats} />
             </div>
           </aside>
