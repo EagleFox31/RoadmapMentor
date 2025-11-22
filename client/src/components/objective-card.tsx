@@ -23,11 +23,11 @@ const objectiveIcons = {
   OTHER: FileText,
 };
 
-const objectiveColorClasses = {
-  CONCEPT: "bg-primary",
-  ALGO: "bg-accent",
-  PROJECT: "bg-destructive",
-  OTHER: "bg-muted",
+const objectiveGradientClasses = {
+  CONCEPT: "bg-gradient-to-br from-primary to-accent",
+  ALGO: "bg-gradient-to-br from-accent to-pink-500",
+  PROJECT: "bg-gradient-to-br from-destructive to-orange-500",
+  OTHER: "bg-gradient-to-br from-muted-foreground to-gray-500",
 };
 
 const objectiveTypeLabels = {
@@ -47,31 +47,31 @@ export function ObjectiveCard({
   onDeleteTask,
 }: ObjectiveCardProps) {
   const Icon = objectiveIcons[objective.type as keyof typeof objectiveIcons] || FileText;
-  const colorClass = objectiveColorClasses[objective.type as keyof typeof objectiveColorClasses];
+  const gradientClass = objectiveGradientClasses[objective.type as keyof typeof objectiveGradientClasses];
   const typeLabel = objectiveTypeLabels[objective.type as keyof typeof objectiveTypeLabels];
 
   return (
-    <Card className="bg-card rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow group">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-lg flex items-center justify-center shadow-sm ${colorClass}`}>
-            <Icon className="w-6 h-6 text-white" />
+    <Card className="glass-card rounded-2xl p-7 hover:shadow-2xl hover-elevate transition-all duration-400 group gradient-border">
+      <div className="flex items-start justify-between mb-5">
+        <div className="flex items-center gap-4">
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl glow ${gradientClass}`}>
+            <Icon className="w-7 h-7 text-white" />
           </div>
           <div>
-            <Badge className="mb-1 text-xs bg-muted border-0">
+            <Badge className="mb-2 text-xs glass border-white/20 font-semibold shadow-md">
               {typeLabel}
             </Badge>
-            <h3 className="text-foreground font-bold text-base">{objective.title}</h3>
+            <h3 className="text-foreground font-bold text-lg leading-tight">{objective.title}</h3>
           </div>
         </div>
 
         {isMentor() && (
-          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
             <Button
               size="icon"
               variant="ghost"
               onClick={() => onEditObjective?.(objective)}
-              className="h-8 w-8"
+              className="glass border-white/20 hover:border-white/30 shadow-lg"
               data-testid={`button-edit-objective-${objective.id}`}
             >
               <Pencil className="w-4 h-4" />
@@ -80,7 +80,7 @@ export function ObjectiveCard({
               size="icon"
               variant="ghost"
               onClick={() => onDeleteObjective?.(objective.id)}
-              className="bg-destructive/10 text-destructive h-8 w-8"
+              className="glass border-destructive/30 text-destructive hover:border-destructive/50 shadow-lg"
               data-testid={`button-delete-objective-${objective.id}`}
             >
               <Trash2 className="w-4 h-4" />
@@ -90,7 +90,7 @@ export function ObjectiveCard({
       </div>
 
       {objective.description && (
-        <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
+        <p className="text-muted-foreground text-sm mb-5 leading-relaxed font-medium">
           {objective.description}
         </p>
       )}

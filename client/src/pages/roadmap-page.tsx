@@ -99,9 +99,11 @@ export default function RoadmapPage() {
   };
 
   // Auto-select first week if none selected
-  if (!selectedWeekId && weeks.length > 0) {
-    setSelectedWeekId(weeks[0].id);
-  }
+  useEffect(() => {
+    if (!selectedWeekId && weeks.length > 0) {
+      setSelectedWeekId(weeks[0].id);
+    }
+  }, [selectedWeekId, weeks]);
 
   // Helper to open modals
   const openModal = (modal: keyof ModalState) => {
@@ -321,7 +323,7 @@ export default function RoadmapPage() {
             {isMentor() && (
               <Button
                 onClick={() => openModal("week")}
-                className="w-full bg-gradient-to-br from-primary to-accent text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300 glow"
+                className="w-full bg-gradient-to-br from-primary to-accent text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl hover-elevate transition-all duration-300 glow"
                 data-testid="button-add-week"
               >
                 <Plus className="w-5 h-5 mr-2" />

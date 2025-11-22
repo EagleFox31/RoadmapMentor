@@ -21,39 +21,39 @@ interface ProgressPanelProps {
 
 export function ProgressPanel({ stats }: ProgressPanelProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Global Progress */}
-      <Card className="bg-card rounded-xl p-6 shadow-md">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-lg bg-success flex items-center justify-center shadow-sm">
-            <TrendingUp className="w-6 h-6 text-white" />
+      <Card className="glass-card rounded-2xl p-7 gradient-border">
+        <div className="flex items-center gap-4 mb-5">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-success to-cyan-500 flex items-center justify-center shadow-xl glow">
+            <TrendingUp className="w-7 h-7 text-white" />
           </div>
           <div>
-            <h3 className="text-foreground font-bold text-base">Progression Globale</h3>
-            <p className="text-muted-foreground text-xs">Toutes semaines confondues</p>
+            <h3 className="text-foreground font-bold text-lg gradient-text">Progression Globale</h3>
+            <p className="text-muted-foreground text-xs font-medium">Toutes semaines confondues</p>
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div className="flex items-baseline justify-between">
-            <span className="text-muted-foreground text-sm">Tâches complétées</span>
-            <span className="text-foreground font-bold text-2xl" data-testid="text-global-percentage">
+            <span className="text-muted-foreground text-sm font-semibold">Tâches complétées</span>
+            <span className="text-foreground font-bold text-3xl gradient-text" data-testid="text-global-percentage">
               {stats.globalPercentage}%
             </span>
           </div>
 
-          <div className="h-3 bg-muted rounded-full overflow-hidden">
+          <div className="h-4 glass rounded-full overflow-hidden">
             <div
-              className="h-full bg-success transition-all duration-500 rounded-full"
+              className="h-full bg-gradient-to-r from-success to-cyan-500 transition-all duration-700 rounded-full shadow-lg pulse-glow"
               style={{ width: `${stats.globalPercentage}%` }}
             />
           </div>
 
           <div className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">
+            <span className="text-muted-foreground font-semibold">
               {stats.totalCompleted} / {stats.totalTasks} tâches
             </span>
-            <Badge className="bg-success/10 text-success border-0">
+            <Badge className="glass border-success/30 text-success font-bold shadow-md">
               {stats.totalTasks - stats.totalCompleted} restantes
             </Badge>
           </div>
@@ -61,45 +61,45 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
       </Card>
 
       {/* Weekly Breakdown */}
-      <Card className="bg-card rounded-xl p-6 shadow-md">
-        <div className="flex items-center gap-2 mb-4">
-          <Target className="w-5 h-5 text-foreground" />
-          <h3 className="text-foreground font-bold text-base">Par Semaine</h3>
+      <Card className="glass-card rounded-2xl p-7">
+        <div className="flex items-center gap-3 mb-5">
+          <Target className="w-6 h-6 text-primary" />
+          <h3 className="text-foreground font-bold text-lg">Par Semaine</h3>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           {stats.weeklyProgress.length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-4">
+            <p className="text-muted-foreground text-sm text-center py-6 font-medium">
               Aucune donnée de progression
             </p>
           ) : (
             stats.weeklyProgress.map((week) => (
-              <div key={week.weekNumber} className="space-y-2" data-testid={`progress-week-${week.weekNumber}`}>
+              <div key={week.weekNumber} className="space-y-2 glass p-4 rounded-xl" data-testid={`progress-week-${week.weekNumber}`}>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-xs font-bold shadow-lg">
                       S{week.weekNumber}
                     </div>
-                    <span className="text-foreground text-sm font-medium truncate max-w-[150px]">
+                    <span className="text-foreground text-sm font-semibold truncate max-w-[140px]">
                       {week.weekTitle}
                     </span>
                   </div>
-                  <span className="text-foreground font-semibold text-sm">
+                  <span className="text-foreground font-bold text-sm gradient-text">
                     {week.percentage}%
                   </span>
                 </div>
 
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div className="h-2.5 glass rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-primary transition-all duration-300 rounded-full"
+                    className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500 rounded-full shadow-md"
                     style={{ width: `${week.percentage}%` }}
                   />
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
                   <span>{week.completed}/{week.total}</span>
                   {week.percentage === 100 && (
-                    <CheckCircle2 className="w-4 h-4 text-[#34A853]" />
+                    <CheckCircle2 className="w-5 h-5 text-success drop-shadow-lg" />
                   )}
                 </div>
               </div>
@@ -109,7 +109,7 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
       </Card>
 
       {/* Motivation Badge */}
-      <Card className="bg-card rounded-xl p-6 shadow-md text-center border-2 border-primary/20">
+      <Card className="glass-card rounded-2xl p-7 text-center gradient-border">
         <div className="mb-3">
           {stats.globalPercentage === 100 ? (
             <CheckCircle2 className="w-12 h-12 text-success mx-auto" />

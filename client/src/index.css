@@ -1,8 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 /* PREMIUM GLASSMORPHISM DESIGN SYSTEM */
 :root {
@@ -250,25 +250,24 @@
 
   /* Premium Glassmorphism Utilities */
   .glass {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1px solid var(--glass-border) !important;
   }
   
   .glass-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1.5px solid var(--glass-border);
-    box-shadow: var(--shadow-depth-2);
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(24px) !important;
+    -webkit-backdrop-filter: blur(24px) !important;
+    border: 1.5px solid var(--glass-border) !important;
+    box-shadow: var(--shadow-depth-2) !important;
     transition: all 0.4s var(--ease-smooth);
   }
   
   .glass-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-depth-3), var(--shadow-glow-sm);
-    background: var(--glass-hover);
+    box-shadow: var(--shadow-depth-3), var(--shadow-glow-sm) !important;
+    background: var(--glass-hover) !important;
   }
   
   /* Gradient Text */
@@ -282,8 +281,10 @@
   /* Gradient Borders */
   .gradient-border {
     position: relative;
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
+    background: var(--glass-bg) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    box-shadow: var(--shadow-depth-2) !important;
   }
   
   .gradient-border::before {

@@ -28,6 +28,9 @@ function Router() {
       <Route path="/">
         <PublicRoute component={AuthPage} />
       </Route>
+      <Route path="/login">
+        <PublicRoute component={AuthPage} />
+      </Route>
       <Route path="/roadmap">
         <ProtectedRoute component={RoadmapPage} />
       </Route>
