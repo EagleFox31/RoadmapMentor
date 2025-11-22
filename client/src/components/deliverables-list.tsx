@@ -1,8 +1,16 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Package, Pencil, Trash2 } from "lucide-react";
+import { Package, Pencil, Trash2, BookOpen } from "lucide-react";
 import type { Deliverable } from "@shared/schema";
 import { isMentor } from "@/lib/auth";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface DeliverablesListProps {
   deliverables: Deliverable[];
@@ -11,6 +19,8 @@ interface DeliverablesListProps {
 }
 
 export function DeliverablesList({ deliverables, onEdit, onDelete }: DeliverablesListProps) {
+  const [selectedDeliverable, setSelectedDeliverable] = useState<Deliverable | null>(null);
+
   if (deliverables.length === 0) {
     return (
       <Card className="bg-card rounded-xl p-6 shadow-sm text-center">
@@ -21,7 +31,8 @@ export function DeliverablesList({ deliverables, onEdit, onDelete }: Deliverable
   }
 
   return (
-    <div className="space-y-3">
+    <>
+      <div className="space-y-3">
       {deliverables.map((deliverable) => (
         <Card
           key={deliverable.id}
@@ -41,6 +52,18 @@ export function DeliverablesList({ deliverables, onEdit, onDelete }: Deliverable
                   <p className="text-muted-foreground text-sm leading-relaxed">
                     {deliverable.description}
                   </p>
+                )}
+                {deliverable.instructions && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setSelectedDeliverable(deliverable)}
+                    className="mt-2 h-8"
+                    data-testid={`button-instructions-${deliverable.id}`}
+                  >
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Voir comment faire
+                  </Button>
                 )}
               </div>
             </div>
@@ -70,6 +93,26 @@ export function DeliverablesList({ deliverables, onEdit, onDelete }: Deliverable
           </div>
         </Card>
       ))}
-    </div>
+      </div>
+
+      <Dialog open={!!selectedDeliverable} onOpenChange={() => setSelectedDeliverable(null)}>
+        <DialogContent className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border-white/20 text-white shadow-2xl max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+              <BookOpen className="w-6 h-6" />
+              Comment faire : {selectedDeliverable?.title}
+            </DialogTitle>
+            <DialogDescription className="text-white/60">
+              Instructions pour réaliser ce livrable
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 p-4 bg-white/5 rounded-lg border border-white/10">
+            <p className="text-white/90 whitespace-pre-wrap leading-relaxed">
+              {selectedDeliverable?.instructions}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

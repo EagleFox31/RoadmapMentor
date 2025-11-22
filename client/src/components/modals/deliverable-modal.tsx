@@ -26,6 +26,7 @@ export function DeliverableModal({ isOpen, onClose, onSubmit, weekId, deliverabl
   const [formData, setFormData] = useState({
     title: "",
     description: "",
+    instructions: "",
   });
 
   useEffect(() => {
@@ -33,11 +34,13 @@ export function DeliverableModal({ isOpen, onClose, onSubmit, weekId, deliverabl
       setFormData({
         title: deliverable.title,
         description: deliverable.description || "",
+        instructions: deliverable.instructions || "",
       });
     } else {
       setFormData({
         title: "",
         description: "",
+        instructions: "",
       });
     }
   }, [deliverable, isOpen]);
@@ -90,6 +93,20 @@ export function DeliverableModal({ isOpen, onClose, onSubmit, weekId, deliverabl
               placeholder="Description détaillée du livrable..."
               className="bg-white/10 border-white/20 text-white placeholder:text-white/50 resize-none min-h-[100px]"
               data-testid="textarea-deliverable-description"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="instructions" className="text-white text-sm">
+              Instructions (optionnel)
+            </Label>
+            <Textarea
+              id="instructions"
+              value={formData.instructions}
+              onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+              placeholder="Instructions pour réaliser ce livrable..."
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/50 resize-none min-h-[100px]"
+              data-testid="textarea-deliverable-instructions"
             />
           </div>
 

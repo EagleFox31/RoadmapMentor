@@ -57,6 +57,7 @@ export const deliverables = pgTable("deliverables", {
   weekId: integer("week_id").notNull().references(() => weeks.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
+  instructions: text("instructions"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
