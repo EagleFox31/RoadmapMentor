@@ -147,6 +147,7 @@ export function WeekModal({ isOpen, onClose, onSubmit, week, isLoading }: WeekMo
                     onSelect={setStartDate}
                     initialFocus
                     locale={fr}
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                     data-testid="calendar-week-start-date"
                   />
                 </PopoverContent>
@@ -175,7 +176,12 @@ export function WeekModal({ isOpen, onClose, onSubmit, week, isLoading }: WeekMo
                     onSelect={setEndDate}
                     initialFocus
                     locale={fr}
-                    disabled={(date) => startDate ? date < startDate : false}
+                    disabled={(date) => {
+                      const today = new Date(new Date().setHours(0, 0, 0, 0));
+                      if (date < today) return true;
+                      if (startDate && date < startDate) return true;
+                      return false;
+                    }}
                     data-testid="calendar-week-end-date"
                   />
                 </PopoverContent>
