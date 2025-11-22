@@ -1,4 +1,4 @@
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Code, Wrench, FileText, Pencil, Trash2 } from "lucide-react";
@@ -52,8 +52,9 @@ export function ObjectiveCard({
 
   return (
     <Card 
-      className="glass-card rounded-2xl p-8 min-w-full glow-on-hover hover-elevate transition-all duration-400 group gradient-border parallax-sm"
+      className="glass-card rounded-2xl glow-on-hover hover-elevate transition-all duration-400 group gradient-border parallax-sm"
     >
+      <div className="p-8">
       <div className="flex items-start justify-between mb-5">
         <div className="flex items-center gap-4">
           <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl pulse-glow ${gradientClass}`}>
@@ -114,6 +115,7 @@ export function ObjectiveCard({
           + Ajouter une tâche
         </Button>
       )}
+      </div>
     </Card>
   );
 }
