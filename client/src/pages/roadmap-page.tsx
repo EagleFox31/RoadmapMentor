@@ -159,6 +159,18 @@ export default function RoadmapPage() {
     },
   });
 
+  const cloneWeekMutation = useMutation({
+    mutationFn: async (weekId: number) => {
+      const weeks = await apiRequest("GET", "/api/weeks", {}) as WeekWithDetails[];
+      const maxNumber = Math.max(...weeks.map(w => w.number), 0);
+      return await apiRequest("POST", `/api/weeks/${weekId}/clone`, { newNumber: maxNumber + 1 });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      toast({ title: "Semaine dupliquée", description: "La semaine a été clonée avec succès." });
+    },
+  });
+
   const validateWeekMutation = useMutation({
     mutationFn: async (weekId: number) => await apiRequest("POST", `/api/weeks/${weekId}/validate`, {}),
     onSuccess: () => {
@@ -328,6 +340,7 @@ export default function RoadmapPage() {
               onAddComment={(content) => selectedWeekId && addCommentMutation.mutate({ weekId: selectedWeekId, content })}
               onEditWeek={() => { setEditingWeek(selectedWeek); openModal("week"); }}
               onDeleteWeek={() => selectedWeekId && confirm("Êtes-vous sûr de vouloir supprimer cette semaine ?") && deleteWeekMutation.mutate(selectedWeekId)}
+              onCloneWeek={() => selectedWeekId && cloneWeekMutation.mutate(selectedWeekId)}
               onValidateWeek={() => selectedWeekId && validateWeekMutation.mutate(selectedWeekId)}
               onAddObjective={() => openModal("objective")}
               onEditObjective={(obj) => { setEditingObjective(obj); openModal("objective"); }}

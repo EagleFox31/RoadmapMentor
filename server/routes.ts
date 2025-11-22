@@ -200,6 +200,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/weeks/:id/clone", authMiddleware, requireMentor, async (req, res) => {
+    try {
+      const { newNumber } = req.body;
+      if (typeof newNumber !== "number") {
+        return res.status(400).json({ error: "newNumber is required and must be a number" });
+      }
+      const clonedWeek = await storage.cloneWeek(parseInt(req.params.id), newNumber);
+      if (!clonedWeek) {
+        return res.status(404).json({ error: "Week not found" });
+      }
+      // Invalidate cache and return with full details
+      const weeks = await storage.getAllWeeks();
+      res.status(201).json(clonedWeek);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   // ========== OBJECTIVE ROUTES ==========
 
   app.post("/api/weeks/:weekId/objectives", authMiddleware, requireMentor, async (req, res) => {

@@ -41,6 +41,7 @@ export interface IStorage {
   updateWeek(id: number, week: Partial<InsertWeek>): Promise<Week | undefined>;
   deleteWeek(id: number): Promise<boolean>;
   validateWeek(id: number): Promise<Week | undefined>;
+  cloneWeek(id: number, newNumber: number): Promise<Week | undefined>;
 
   // Objective methods
   getObjectivesByWeek(weekId: number): Promise<Objective[]>;
@@ -129,6 +130,74 @@ export class DatabaseStorage implements IStorage {
       .where(eq(weeks.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  async cloneWeek(id: number, newNumber: number): Promise<Week | undefined> {
+    // Get the original week
+    const originalWeek = await this.getWeek(id);
+    if (!originalWeek) return undefined;
+
+    // Create new week
+    const [newWeek] = await db
+      .insert(weeks)
+      .values({
+        number: newNumber,
+        title: `${originalWeek.title} (Copie)`,
+        startDate: originalWeek.startDate,
+        endDate: originalWeek.endDate,
+        description: originalWeek.description,
+        isValidatedByMentor: false,
+      })
+      .returning();
+
+    // Clone objectives and their tasks
+    const objectives = await this.getObjectivesByWeek(id);
+    for (const objective of objectives) {
+      const [newObjective] = await db
+        .insert(objectives as any)
+        .values({
+          weekId: newWeek.id,
+          type: objective.type,
+          title: objective.title,
+          description: objective.description,
+          orderIndex: objective.orderIndex,
+        })
+        .returning();
+
+      // Clone tasks for this objective
+      const taskList = await this.getTasksByObjective(objective.id);
+      for (const task of taskList) {
+        await db.insert(tasks).values({
+          objectiveId: newObjective.id,
+          label: task.label,
+          orderIndex: task.orderIndex,
+          isOptional: task.isOptional,
+        });
+      }
+    }
+
+    // Clone deliverables
+    const deliverablesList = await this.getDeliverablesByWeek(id);
+    for (const deliverable of deliverablesList) {
+      await db.insert(deliverables).values({
+        weekId: newWeek.id,
+        title: deliverable.title,
+        description: deliverable.description,
+      });
+    }
+
+    // Clone resources
+    const resourcesList = await this.getResourcesByWeek(id);
+    for (const resource of resourcesList) {
+      await db.insert(resources).values({
+        weekId: newWeek.id,
+        label: resource.label,
+        url: resource.url,
+        resourceType: resource.resourceType,
+      });
+    }
+
+    return newWeek;
   }
 
   // Objective methods

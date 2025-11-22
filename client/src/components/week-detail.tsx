@@ -15,6 +15,7 @@ interface WeekDetailProps {
   onAddComment?: (content: string) => void;
   onEditWeek?: () => void;
   onDeleteWeek?: () => void;
+  onCloneWeek?: () => void;
   onValidateWeek?: () => void;
   onAddObjective?: () => void;
   onEditObjective?: (objective: ObjectiveWithTasks) => void;
@@ -37,6 +38,7 @@ export function WeekDetail({
   onAddComment,
   onEditWeek,
   onDeleteWeek,
+  onCloneWeek,
   onValidateWeek,
   onAddObjective,
   onEditObjective,
@@ -100,6 +102,16 @@ export function WeekDetail({
 
           {isMentor() && (
             <div className="flex gap-2 ml-4">
+              <Button
+                onClick={onCloneWeek}
+                size="sm"
+                variant="outline"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                data-testid="button-clone-week"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Dupliquer
+              </Button>
               {!week.isValidatedByMentor && (
                 <Button
                   onClick={onValidateWeek}
