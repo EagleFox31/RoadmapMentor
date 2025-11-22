@@ -552,8 +552,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await emailService.sendProgressUpdate(
                 mentor.id,
                 mentor.email,
-                mentor.name,
-                learner.name,
+                mentor.fullName,
+                learner.fullName,
                 week.number,
                 completionPercentage
               );
@@ -631,8 +631,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await emailService.sendCommentNotification(
             mentor.id,
             mentor.email,
-            mentor.name,
-            learner.name,
+            mentor.fullName,
+            learner.fullName,
             week.number,
             comment.content
           );
@@ -661,6 +661,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { testEmailNotifications } = await import("./jobs/emailNotifications");
       await testEmailNotifications();
       res.json({ message: "Email notifications test completed. Check server logs for details." });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Route pour envoyer manuellement les rappels de tâches
+  app.post("/api/jobs/send-task-reminders", authMiddleware, requireMentor, async (req, res) => {
+    try {
+      const { emailService } = await import("./services/emailService");
+      const learners = await emailService.getAllLearners();
+      const weeks = await storage.getAllWeeks();
+      
+      let sentCount = 0;
+      let skippedCount = 0;
+
+      for (const learner of learners) {
+        // Calculer les tâches en attente pour chaque semaine
+        for (const week of weeks) {
+          const objectives = await storage.getObjectivesByWeek(week.id);
+          let pendingTasksCount = 0;
+
+          for (const objective of objectives) {
+            const tasks = await storage.getTasksByObjective(objective.id);
+            for (const task of tasks) {
+              const progress = await storage.getTaskProgress(task.id, learner.id);
+              if (!progress || !progress.isDone) {
+                pendingTasksCount++;
+              }
+            }
+          }
+
+          // Envoyer le rappel si des tâches sont en attente
+          if (pendingTasksCount > 0) {
+            const sent = await emailService.sendTaskReminder(
+              learner.id,
+              learner.email,
+              learner.fullName,
+              week.number,
+              pendingTasksCount
+            );
+            
+            if (sent) {
+              sentCount++;
+            } else {
+              skippedCount++;
+            }
+          }
+        }
+      }
+
+      res.json({ 
+        message: `Task reminders sent successfully.`,
+        sent: sentCount,
+        skipped: skippedCount,
+        learners: learners.length
+      });
     } catch (error) {
       handleError(res, error);
     }
