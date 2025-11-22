@@ -49,6 +49,7 @@ export interface IStorage {
   createObjective(objective: InsertObjective): Promise<Objective>;
   updateObjective(id: number, objective: Partial<InsertObjective>): Promise<Objective | undefined>;
   deleteObjective(id: number): Promise<boolean>;
+  cloneObjective(id: number, targetWeekId?: number): Promise<Objective | undefined>;
 
   // Task methods
   getTasksByObjective(objectiveId: number): Promise<Task[]>;
