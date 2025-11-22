@@ -25,7 +25,7 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
       {/* Global Progress */}
       <Card className="bg-card rounded-xl p-6 shadow-md">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-lg bg-[#34A853] flex items-center justify-center shadow-sm">
+          <div className="w-12 h-12 rounded-lg bg-success flex items-center justify-center shadow-sm">
             <TrendingUp className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -44,7 +44,7 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
 
           <div className="h-3 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#34A853] transition-all duration-500 rounded-full"
+              className="h-full bg-success transition-all duration-500 rounded-full"
               style={{ width: `${stats.globalPercentage}%` }}
             />
           </div>
@@ -53,7 +53,7 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
             <span className="text-muted-foreground">
               {stats.totalCompleted} / {stats.totalTasks} tâches
             </span>
-            <Badge className="bg-[#34A853]/10 text-[#34A853] border-0">
+            <Badge className="bg-success/10 text-success border-0">
               {stats.totalTasks - stats.totalCompleted} restantes
             </Badge>
           </div>
@@ -110,8 +110,18 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
 
       {/* Motivation Badge */}
       <Card className="bg-card rounded-xl p-6 shadow-md text-center border-2 border-primary/20">
-        <div className="text-4xl mb-3">
-          {stats.globalPercentage === 100 ? "🎉" : stats.globalPercentage >= 75 ? "🔥" : stats.globalPercentage >= 50 ? "💪" : stats.globalPercentage >= 25 ? "🚀" : "💡"}
+        <div className="mb-3">
+          {stats.globalPercentage === 100 ? (
+            <CheckCircle2 className="w-12 h-12 text-success mx-auto" />
+          ) : stats.globalPercentage >= 75 ? (
+            <TrendingUp className="w-12 h-12 text-primary mx-auto" />
+          ) : stats.globalPercentage >= 50 ? (
+            <Target className="w-12 h-12 text-warning mx-auto" />
+          ) : stats.globalPercentage >= 25 ? (
+            <Circle className="w-12 h-12 text-destructive mx-auto" />
+          ) : (
+            <Circle className="w-12 h-12 text-muted-foreground mx-auto" />
+          )}
         </div>
         <p className="text-foreground font-semibold text-sm">
           {stats.globalPercentage === 100

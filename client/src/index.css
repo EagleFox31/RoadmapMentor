@@ -42,6 +42,10 @@
   --accent-foreground: 210 11% 15%;
   --destructive: 4 90% 58%;       /* Google Red */
   --destructive-foreground: 0 0% 100%;
+  --success: 142 69% 49%;         /* Google Green */
+  --success-foreground: 0 0% 100%;
+  --warning: 45 98% 64%;          /* Google Yellow */
+  --warning-foreground: 0 0% 100%;
   --input: 220 13% 86%;
   --ring: 217 89% 61%;
   --chart-1: 217 89% 61%;         /* Blue */
@@ -127,6 +131,10 @@
   --accent-foreground: 240 4% 92%;
   --destructive: 0 72% 42%;
   --destructive-foreground: 0 0% 100%;
+  --success: 142 69% 49%;
+  --success-foreground: 0 0% 100%;
+  --warning: 45 98% 64%;
+  --warning-foreground: 0 0% 100%;
   --input: 240 6% 22%;
   --ring: 237 84% 58%;
   --chart-1: 237 84% 65%;

@@ -51,7 +51,7 @@ export function WeekSelector({ weeks, selectedWeekId, onSelectWeek, progressByWe
                     {week.title}
                   </h3>
                   {week.isValidatedByMentor && (
-                    <CheckCircle2 className="w-5 h-5 text-[#34A853] flex-shrink-0 ml-2" data-testid={`icon-validated-${week.id}`} />
+                    <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0 ml-2" data-testid={`icon-validated-${week.id}`} />
                   )}
                 </div>
 
@@ -68,7 +68,7 @@ export function WeekSelector({ weeks, selectedWeekId, onSelectWeek, progressByWe
                     </div>
                     <div className="h-2 bg-muted rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-[#34A853] transition-all duration-300 rounded-full"
+                        className="h-full bg-success transition-all duration-300 rounded-full"
                         style={{ width: `${progress.percentage}%` }}
                       />
                     </div>

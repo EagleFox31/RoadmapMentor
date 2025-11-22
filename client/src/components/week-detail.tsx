@@ -57,7 +57,7 @@ export function WeekDetail({
   if (!week) {
     return (
       <Card className="bg-card rounded-xl p-12 shadow-md text-center">
-        <div className="text-6xl mb-4">📅</div>
+        <Calendar className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
         <h3 className="text-foreground text-xl font-bold mb-2">Sélectionnez une semaine</h3>
         <p className="text-muted-foreground">
           Choisissez une semaine dans la liste de gauche pour voir les détails
@@ -84,7 +84,7 @@ export function WeekDetail({
                 Semaine {week.number}
               </Badge>
               {week.isValidatedByMentor && (
-                <Badge className="bg-[#34A853]/10 text-[#34A853] border-0">
+                <Badge className="bg-success/10 text-success border-0">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
                   Validée
                 </Badge>
@@ -114,7 +114,7 @@ export function WeekDetail({
               {!week.isValidatedByMentor && (
                 <Button
                   onClick={onValidateWeek}
-                  className="bg-[#34A853] hover:bg-[#2D9348] text-white"
+                  className="bg-success text-success-foreground"
                   data-testid="button-validate-week"
                 >
                   <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -133,7 +133,7 @@ export function WeekDetail({
                 size="icon"
                 variant="outline"
                 onClick={onDeleteWeek}
-                className="bg-red-500/20 border-red-400/20 text-red-200 hover:bg-red-500/30"
+                className="bg-destructive/10 border-destructive/30 text-destructive"
                 data-testid="button-delete-week"
               >
                 <Trash2 className="w-4 h-4" />
@@ -144,13 +144,13 @@ export function WeekDetail({
       </Card>
 
       {/* Objectives */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold text-white">Objectifs</h3>
+          <h3 className="text-xl font-bold text-foreground">Objectifs</h3>
           {isMentor() && (
             <Button
               onClick={onAddObjective}
-              className="bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+              className="bg-primary text-white"
               data-testid="button-add-objective"
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -160,8 +160,8 @@ export function WeekDetail({
         </div>
 
         {week.objectives.length === 0 ? (
-          <Card className="bg-white/5 backdrop-blur-xl border border-white/20 rounded-2xl p-8 text-center">
-            <p className="text-white/50">Aucun objectif défini pour cette semaine</p>
+          <Card className="bg-card rounded-xl p-8 shadow-sm text-center">
+            <p className="text-muted-foreground">Aucun objectif défini pour cette semaine</p>
           </Card>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -182,13 +182,13 @@ export function WeekDetail({
       </div>
 
       {/* Deliverables */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold text-white">Livrables Attendus</h3>
+          <h3 className="text-xl font-bold text-foreground">Livrables Attendus</h3>
           {isMentor() && (
             <Button
               onClick={onAddDeliverable}
-              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+              className="bg-success text-success-foreground"
               data-testid="button-add-deliverable"
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -204,13 +204,13 @@ export function WeekDetail({
       </div>
 
       {/* Resources */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold text-white">Ressources Recommandées</h3>
+          <h3 className="text-xl font-bold text-foreground">Ressources Recommandées</h3>
           {isMentor() && (
             <Button
               onClick={onAddResource}
-              className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+              className="bg-warning text-warning-foreground"
               data-testid="button-add-resource"
             >
               <Plus className="w-4 h-4 mr-2" />

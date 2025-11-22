@@ -23,11 +23,11 @@ const objectiveIcons = {
   OTHER: FileText,
 };
 
-const objectiveColors = {
-  CONCEPT: "from-blue-500 to-indigo-500",
-  ALGO: "from-purple-500 to-pink-500",
-  PROJECT: "from-orange-500 to-red-500",
-  OTHER: "from-gray-500 to-slate-500",
+const objectiveColorClasses = {
+  CONCEPT: "bg-primary",
+  ALGO: "bg-accent",
+  PROJECT: "bg-destructive",
+  OTHER: "bg-muted",
 };
 
 const objectiveTypeLabels = {
@@ -47,21 +47,21 @@ export function ObjectiveCard({
   onDeleteTask,
 }: ObjectiveCardProps) {
   const Icon = objectiveIcons[objective.type as keyof typeof objectiveIcons] || FileText;
-  const gradientClass = objectiveColors[objective.type as keyof typeof objectiveColors];
+  const colorClass = objectiveColorClasses[objective.type as keyof typeof objectiveColorClasses];
   const typeLabel = objectiveTypeLabels[objective.type as keyof typeof objectiveTypeLabels];
 
   return (
-    <Card className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all duration-200 group">
+    <Card className="bg-card rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow group">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradientClass} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
+          <div className={`w-12 h-12 rounded-lg flex items-center justify-center shadow-sm ${colorClass}`}>
             <Icon className="w-6 h-6 text-white" />
           </div>
           <div>
-            <Badge variant="secondary" className="mb-1 bg-white/10 text-white border-white/20 text-xs">
+            <Badge className="mb-1 text-xs bg-muted border-0">
               {typeLabel}
             </Badge>
-            <h3 className="text-white font-bold text-lg">{objective.title}</h3>
+            <h3 className="text-foreground font-bold text-base">{objective.title}</h3>
           </div>
         </div>
 
@@ -71,7 +71,7 @@ export function ObjectiveCard({
               size="icon"
               variant="ghost"
               onClick={() => onEditObjective?.(objective)}
-              className="bg-white/10 hover:bg-white/20 text-white border border-white/20 h-8 w-8"
+              className="h-8 w-8"
               data-testid={`button-edit-objective-${objective.id}`}
             >
               <Pencil className="w-4 h-4" />
@@ -80,7 +80,7 @@ export function ObjectiveCard({
               size="icon"
               variant="ghost"
               onClick={() => onDeleteObjective?.(objective.id)}
-              className="bg-red-500/20 hover:bg-red-500/30 text-red-200 border border-red-400/20 h-8 w-8"
+              className="bg-destructive/10 text-destructive h-8 w-8"
               data-testid={`button-delete-objective-${objective.id}`}
             >
               <Trash2 className="w-4 h-4" />
@@ -90,7 +90,7 @@ export function ObjectiveCard({
       </div>
 
       {objective.description && (
-        <p className="text-white/80 text-sm mb-4 leading-relaxed">
+        <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
           {objective.description}
         </p>
       )}
@@ -106,7 +106,7 @@ export function ObjectiveCard({
         <Button
           onClick={() => onAddTask?.(objective.id)}
           variant="outline"
-          className="w-full mt-4 bg-white/5 border-white/20 text-white hover:bg-white/10 transition-all"
+          className="w-full mt-4"
           data-testid={`button-add-task-${objective.id}`}
         >
           + Ajouter une tâche

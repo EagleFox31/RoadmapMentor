@@ -27,7 +27,7 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
   if (tasks.length === 0) {
     return (
       <div className="text-center py-4">
-        <p className="text-white/50 text-sm">Aucune tâche pour le moment</p>
+        <p className="text-muted-foreground text-sm">Aucune tâche pour le moment</p>
       </div>
     );
   }
@@ -42,7 +42,7 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
             key={task.id}
             className={`
               flex items-start gap-3 py-3 group
-              ${index !== tasks.length - 1 ? "border-b border-white/10" : ""}
+              ${index !== tasks.length - 1 ? "border-b border-border" : ""}
             `}
             data-testid={`task-item-${task.id}`}
           >
@@ -50,14 +50,14 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
               <Checkbox
                 checked={isCompleted}
                 onCheckedChange={() => onToggleTask?.(task.id)}
-                className="mt-0.5 border-white/40 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-green-500 data-[state=checked]:to-emerald-600 data-[state=checked]:border-green-400"
+                className="mt-0.5 data-[state=checked]:bg-success data-[state=checked]:border-success"
                 data-testid={`checkbox-task-${task.id}`}
               />
             ) : (
               <div className={`w-5 h-5 rounded border-2 mt-0.5 flex-shrink-0 ${
                 isCompleted 
-                  ? "bg-gradient-to-br from-green-500 to-emerald-600 border-green-400" 
-                  : "border-white/40 bg-white/5"
+                  ? "bg-success border-success" 
+                  : "border-border bg-muted"
               }`} />
             )}
 
@@ -65,14 +65,14 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
               className={`
                 flex-1 text-sm leading-relaxed transition-all
                 ${isCompleted 
-                  ? "text-white/50 line-through" 
-                  : "text-white"
+                  ? "text-muted-foreground line-through" 
+                  : "text-foreground"
                 }
               `}
             >
               {task.label}
               {task.isOptional && (
-                <span className="ml-2 text-xs text-white/40 italic">(optionnel)</span>
+                <span className="ml-2 text-xs text-muted-foreground italic">(optionnel)</span>
               )}
             </span>
 
@@ -82,7 +82,7 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
                   size="icon"
                   variant="ghost"
                   onClick={() => onEditTask?.(task.id)}
-                  className="bg-white/10 hover:bg-white/20 text-white h-7 w-7"
+                  className="h-7 w-7"
                   data-testid={`button-edit-task-${task.id}`}
                 >
                   <Pencil className="w-3 h-3" />
@@ -91,7 +91,7 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
                   size="icon"
                   variant="ghost"
                   onClick={() => onDeleteTask?.(task.id)}
-                  className="bg-red-500/20 hover:bg-red-500/30 text-red-200 h-7 w-7"
+                  className="bg-destructive/10 text-destructive h-7 w-7"
                   data-testid={`button-delete-task-${task.id}`}
                 >
                   <Trash2 className="w-3 h-3" />

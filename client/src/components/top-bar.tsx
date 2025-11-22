@@ -49,8 +49,8 @@ export function TopBar() {
           <Badge 
             className={`${
               isMentor() 
-                ? "bg-[#34A853] hover:bg-[#2D9348] text-white border-0" 
-                : "bg-[#4285F4] hover:bg-[#3367D6] text-white border-0"
+                ? "bg-success text-white border-0" 
+                : "bg-primary text-white border-0"
             } px-3 py-1`}
             data-testid="badge-user-role"
           >
