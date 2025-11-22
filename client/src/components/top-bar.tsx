@@ -35,7 +35,7 @@ export function TopBar() {
             <Rocket className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white">Pavel Roadmap</h1>
+            <h1 className="text-lg font-bold text-white">Roadmap Mentor</h1>
             <p className="text-xs text-white/70">Backend Python Mentorat</p>
           </div>
         </div>

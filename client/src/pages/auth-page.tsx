@@ -79,7 +79,7 @@ export default function AuthPage() {
               <Rocket className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">
-              Pavel Roadmap
+              Roadmap Mentor
             </h1>
             <p className="text-white/80 text-sm">
               Suivi de Mentorat Backend Python

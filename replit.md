@@ -1,8 +1,8 @@
-# Pavel Roadmap - Backend Python Mentorship Application
+# Roadmap Mentor - Backend Python Mentorship Application
 
 ## Overview
 
-Pavel Roadmap is a mentorship tracking application designed for backend Python learning journeys. The application provides a structured week-by-week roadmap system where mentors can create and manage learning content while learners track their progress through tasks, objectives, and deliverables.
+Roadmap Mentor is a mentorship tracking application designed for backend Python learning journeys. The application provides a structured week-by-week roadmap system where mentors can create and manage learning content while learners track their progress through tasks, objectives, and deliverables.
 
 The application features two distinct user roles:
 - **Mentors**: Create and manage weeks, objectives, tasks, deliverables, and resources

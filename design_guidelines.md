@@ -1,4 +1,4 @@
-# Design Guidelines - Pavel Roadmap Application
+# Design Guidelines - Roadmap Mentor Application
 
 ## Design System Approach
 **Glassmorphism** with developer/backend/code theme - premium, modern aesthetic focusing on transparency, blur effects, and technical visual language.
