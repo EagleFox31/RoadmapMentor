@@ -195,8 +195,8 @@ export default function RoadmapPage() {
   const createObjectiveMutation = useMutation({
     mutationFn: async (data: any) => await apiRequest("POST", `/api/weeks/${data.weekId}/objectives`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       closeModal("objective");
+      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       toast({ title: "Objectif créé", description: "L'objectif a été ajouté avec succès." });
     },
   });
@@ -204,8 +204,8 @@ export default function RoadmapPage() {
   const updateObjectiveMutation = useMutation({
     mutationFn: async (data: any) => await apiRequest("PUT", `/api/objectives/${editingObjective?.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       closeModal("objective");
+      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       toast({ title: "Objectif mis à jour", description: "Les modifications ont été enregistrées." });
     },
   });
@@ -222,8 +222,8 @@ export default function RoadmapPage() {
   const createTaskMutation = useMutation({
     mutationFn: async (data: any) => await apiRequest("POST", `/api/objectives/${data.objectiveId}/tasks`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       closeModal("task");
+      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       toast({ title: "Tâche créée", description: "La tâche a été ajoutée avec succès." });
     },
   });
@@ -231,8 +231,8 @@ export default function RoadmapPage() {
   const updateTaskMutation = useMutation({
     mutationFn: async (data: any) => await apiRequest("PUT", `/api/tasks/${editingTask?.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       closeModal("task");
+      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       toast({ title: "Tâche mise à jour", description: "Les modifications ont été enregistrées." });
     },
   });
@@ -249,8 +249,8 @@ export default function RoadmapPage() {
   const createDeliverableMutation = useMutation({
     mutationFn: async (data: any) => await apiRequest("POST", `/api/weeks/${data.weekId}/deliverables`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       closeModal("deliverable");
+      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       toast({ title: "Livrable créé", description: "Le livrable a été ajouté avec succès." });
     },
   });
@@ -258,8 +258,8 @@ export default function RoadmapPage() {
   const updateDeliverableMutation = useMutation({
     mutationFn: async (data: any) => await apiRequest("PUT", `/api/deliverables/${editingDeliverable?.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       closeModal("deliverable");
+      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       toast({ title: "Livrable mis à jour", description: "Les modifications ont été enregistrées." });
     },
   });
@@ -276,8 +276,8 @@ export default function RoadmapPage() {
   const createResourceMutation = useMutation({
     mutationFn: async (data: any) => await apiRequest("POST", `/api/weeks/${data.weekId}/resources`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       closeModal("resource");
+      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       toast({ title: "Ressource créée", description: "La ressource a été ajoutée avec succès." });
     },
   });
@@ -285,8 +285,8 @@ export default function RoadmapPage() {
   const updateResourceMutation = useMutation({
     mutationFn: async (data: any) => await apiRequest("PUT", `/api/resources/${editingResource?.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       closeModal("resource");
+      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
       toast({ title: "Ressource mise à jour", description: "Les modifications ont été enregistrées." });
     },
   });
