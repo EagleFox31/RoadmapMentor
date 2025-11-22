@@ -33,26 +33,30 @@ export function WeekSelector({ weeks, selectedWeekId, onSelectWeek, progressByWe
           const backgroundImage = weekBackgrounds[(week.number - 1) % weekBackgrounds.length];
 
           return (
-            <Card
+            <div
               key={week.id}
-              onClick={() => onSelectWeek(week.id)}
-              className={`
-                relative cursor-pointer transition-all duration-400 hover-elevate parallax-sm overflow-hidden
-                ${isSelected 
-                  ? "glass-card border-primary/50 shadow-lg ring-2 ring-primary/20 glow" 
-                  : "glass border-white/10 shadow-md glow-on-hover"
-                }
-                rounded-2xl p-5 group
-              `}
+              className="relative rounded-2xl overflow-hidden"
               style={{
                 backgroundImage: `url(${backgroundImage})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
               }}
-              data-testid={`card-week-${week.id}`}
             >
-              {/* Dark overlay for better text readability */}
-              <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/50 to-black/70 rounded-2xl" />
+              {/* Subtle dark overlay for text readability while keeping images visible */}
+              <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/25 to-black/40 backdrop-blur-[2px]" />
+              
+              <Card
+                onClick={() => onSelectWeek(week.id)}
+                className={`
+                  relative cursor-pointer transition-all duration-400 hover-elevate parallax-sm bg-transparent
+                  ${isSelected 
+                    ? "border-primary/50 shadow-lg ring-2 ring-primary/20 glow" 
+                    : "border-white/10 shadow-md glow-on-hover"
+                  }
+                  rounded-2xl p-5 group
+                `}
+                data-testid={`card-week-${week.id}`}
+              >
               
               {/* Week number badge */}
               <div className="relative z-10 absolute -top-3 -left-3 w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-xl pulse-glow transition-all duration-300">
@@ -90,6 +94,7 @@ export function WeekSelector({ weeks, selectedWeekId, onSelectWeek, progressByWe
                 )}
               </div>
             </Card>
+            </div>
           );
         })
       )}
