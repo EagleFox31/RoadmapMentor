@@ -126,3 +126,54 @@ Preferred communication style: Simple, everyday language.
 - esbuild for backend bundling in production
 - Separate development (`index-dev.ts`) and production (`index-prod.ts`) entry points
 - Static file serving in production mode
+
+**Email Notification System:**
+- Resend integration for email delivery
+- Four notification types:
+  - Task reminders: Sent to learners with pending tasks
+  - Week preparation reminders: Sent to learners about upcoming weeks
+  - Progress updates: Sent to mentors when learners complete tasks
+  - Comment notifications: Sent to mentors when learners add comments
+- User consent management via preferences page
+- All emails respect user notification preferences before sending
+- Manual trigger endpoint: `POST /api/jobs/send-task-reminders` (mentor-only)
+
+### Email Notification Features
+
+**Notification Types:**
+1. **Task Reminders** - Notifies learners about pending tasks for a specific week
+2. **Week Preparation Reminders** - Notifies learners about upcoming week content
+3. **Progress Updates** - Notifies mentors when learners complete tasks (includes completion percentage)
+4. **Comment Notifications** - Notifies mentors when learners add comments to weeks
+
+**User Preferences:**
+- Accessible via Settings button (⚙️) in TopBar
+- Users can enable/disable each notification type independently
+- Default: All notifications enabled for new users
+- Preferences stored in `emailPreferences` table
+
+**Manual Task Reminder System:**
+- Endpoint: `POST /api/jobs/send-task-reminders`
+- Access: Mentor-only (requires authentication)
+- Functionality:
+  - Scans all learners in the system
+  - For each learner, checks all weeks for incomplete tasks
+  - Sends reminder emails only if pending tasks exist
+  - Respects user notification preferences
+  - Returns summary: `{ sent, skipped, learners }`
+- Example usage:
+  ```bash
+  curl -X POST https://your-app.replit.app/api/jobs/send-task-reminders \
+    -H "Authorization: Bearer YOUR_MENTOR_TOKEN"
+  ```
+
+**Automation Options:**
+1. **Manual Trigger**: Mentors can call the endpoint via API client or browser
+2. **External Cron**: Configure external services (e.g., Replit Deployments cron, GitHub Actions) to hit the endpoint
+3. **Recommended Schedule**:
+   - Mid-week (Wednesday): Check progress and send reminders
+   - End-of-week (Sunday): Final reminder before new week
+
+**Testing Learner Email:**
+- Current learner email: `justsmilewithme242@gmail.com`
+- Use this email to receive test notifications
