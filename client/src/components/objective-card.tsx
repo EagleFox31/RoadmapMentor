@@ -58,7 +58,7 @@ export function ObjectiveCard({
             <Icon className="w-7 h-7 text-white icon-hover" />
           </div>
           <div>
-            <Badge className="mb-2 text-xs glass border-white/20 font-semibold shadow-md">
+            <Badge className="mb-2 text-xs glass border-white/20 font-semibold shadow-md text-black dark:text-white bg-white/60 dark:bg-black/60">
               {typeLabel}
             </Badge>
             <h3 className="text-foreground font-bold text-lg leading-tight">{objective.title}</h3>
