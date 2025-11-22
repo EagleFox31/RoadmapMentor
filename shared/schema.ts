@@ -225,8 +225,16 @@ export type WeekComment = typeof weekComments.$inferSelect;
 export type InsertWeekComment = z.infer<typeof insertWeekCommentSchema>;
 
 // Extended types for frontend (with relations)
+export type TaskProgressWithLearner = TaskProgress & {
+  learner: {
+    id: number;
+    fullName: string;
+    email: string;
+  };
+};
+
 export type ObjectiveWithTasks = Objective & {
-  tasks: (Task & { progress?: TaskProgress[] })[];
+  tasks: (Task & { progress?: TaskProgressWithLearner[] })[];
 };
 
 export type WeekWithDetails = Week & {

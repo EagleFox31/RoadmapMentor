@@ -2,13 +2,14 @@ import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Pencil, Trash2, Image as ImageIcon } from "lucide-react";
-import type { Task, TaskProgress } from "@shared/schema";
+import { Badge } from "@/components/ui/badge";
+import { Pencil, Trash2, Image as ImageIcon, Users } from "lucide-react";
+import type { Task, TaskProgressWithLearner } from "@shared/schema";
 import { isMentor, isLearner, getCurrentUser } from "@/lib/auth";
 import { ScreenshotUploader } from "./ScreenshotUploader";
 
 interface TaskWithProgress extends Task {
-  progress?: TaskProgress[];
+  progress?: TaskProgressWithLearner[];
 }
 
 interface TaskListProps {
@@ -24,13 +25,25 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
 
   const isTaskCompleted = (task: TaskWithProgress): boolean => {
     if (!task.progress || task.progress.length === 0) return false;
-    const userProgress = task.progress.find(p => p.learnerId === currentUser?.id);
-    return userProgress?.isDone || false;
+    
+    if (isMentor()) {
+      // For mentors, show as completed if ANY learner has completed it
+      return task.progress.some(p => p.isDone);
+    } else {
+      // For learners, check their own progress
+      const userProgress = task.progress.find(p => p.learnerId === currentUser?.id);
+      return userProgress?.isDone || false;
+    }
   };
 
-  const getTaskProgress = (task: TaskWithProgress): TaskProgress | undefined => {
+  const getTaskProgress = (task: TaskWithProgress): TaskProgressWithLearner | undefined => {
     if (!task.progress || task.progress.length === 0) return undefined;
     return task.progress.find(p => p.learnerId === currentUser?.id);
+  };
+
+  const getCompletedLearners = (task: TaskWithProgress): TaskProgressWithLearner[] => {
+    if (!task.progress) return [];
+    return task.progress.filter(p => p.isDone);
   };
 
   const handleScreenshotUpload = (taskId: number, url: string) => {
@@ -132,17 +145,36 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
                 </div>
               )}
 
-              {isMentor() && isCompleted && getTaskProgress(task)?.screenshotUrl && (
-                <a 
-                  href={getTaskProgress(task)!.screenshotUrl!} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-xs text-primary hover:underline"
-                  data-testid={`link-screenshot-${task.id}`}
-                >
-                  <ImageIcon className="w-3 h-3" />
-                  Voir la capture
-                </a>
+              {isMentor() && (
+                <div className="flex flex-col gap-2">
+                  {getCompletedLearners(task).length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">
+                        <Users className="w-3 h-3 mr-1" />
+                        {getCompletedLearners(task).length} complété{getCompletedLearners(task).length > 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+                  )}
+                  {getCompletedLearners(task).map((progress) => (
+                    <div key={progress.id} className="flex items-center gap-2 text-xs">
+                      <span className="text-muted-foreground font-medium">
+                        {progress.learner?.fullName || `Apprenant #${progress.learnerId}`}:
+                      </span>
+                      {progress.screenshotUrl && (
+                        <a 
+                          href={progress.screenshotUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-primary hover:underline"
+                          data-testid={`link-screenshot-${task.id}-${progress.learnerId}`}
+                        >
+                          <ImageIcon className="w-3 h-3" />
+                          Voir la capture
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 

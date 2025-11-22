@@ -23,6 +23,7 @@ import {
   type Resource,
   type InsertResource,
   type TaskProgress,
+  type TaskProgressWithLearner,
   type InsertTaskProgress,
   type WeekComment,
   type InsertWeekComment,
@@ -74,7 +75,7 @@ export interface IStorage {
 
   // Task Progress methods
   getTaskProgress(taskId: number, learnerId: number): Promise<TaskProgress | undefined>;
-  getAllTaskProgress(taskId: number): Promise<TaskProgress[]>;
+  getAllTaskProgress(taskId: number): Promise<TaskProgressWithLearner[]>;
   getProgressByLearner(learnerId: number): Promise<TaskProgress[]>;
   toggleTaskProgress(taskId: number, learnerId: number, screenshotUrl?: string): Promise<TaskProgress>;
 
@@ -351,8 +352,27 @@ export class DatabaseStorage implements IStorage {
     return progress || undefined;
   }
 
-  async getAllTaskProgress(taskId: number): Promise<TaskProgress[]> {
-    return await db.select().from(taskProgress).where(eq(taskProgress.taskId, taskId));
+  async getAllTaskProgress(taskId: number): Promise<TaskProgressWithLearner[]> {
+    const results = await db
+      .select({
+        id: taskProgress.id,
+        taskId: taskProgress.taskId,
+        learnerId: taskProgress.learnerId,
+        isDone: taskProgress.isDone,
+        screenshotUrl: taskProgress.screenshotUrl,
+        doneAt: taskProgress.doneAt,
+        createdAt: taskProgress.createdAt,
+        learner: {
+          id: users.id,
+          fullName: users.fullName,
+          email: users.email,
+        },
+      })
+      .from(taskProgress)
+      .innerJoin(users, eq(taskProgress.learnerId, users.id))
+      .where(eq(taskProgress.taskId, taskId));
+
+    return results;
   }
 
   async getProgressByLearner(learnerId: number): Promise<TaskProgress[]> {
