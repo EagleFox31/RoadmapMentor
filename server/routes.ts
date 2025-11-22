@@ -1,10 +1,13 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import jwt from "jsonwebtoken";
 import { storage } from "./storage";
 import { authMiddleware, requireMentor, requireLearner, generateToken, hashPassword, comparePassword, type AuthRequest } from "./auth";
 import { insertUserSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
+
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Helper to send errors
@@ -127,20 +130,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Serve uploaded screenshots
-  app.get("/objects/:objectPath(*)", authMiddleware, async (req: AuthRequest, res) => {
-    const userId = req.user!.id.toString();
+  // Serve uploaded screenshots (public and private)
+  app.get("/objects/:objectPath(*)", async (req, res) => {
+    // Try to get user ID from token if provided, but don't require it
+    const authHeader = req.headers.authorization;
+    let userId: string | null = null;
+    
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.substring(7);
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+        userId = decoded.userId.toString();
+      } catch (error) {
+        // Token invalid or expired, but that's ok for public files
+      }
+    }
+    
     const objectStorageService = new ObjectStorageService();
     try {
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      
+      // Check if file is public or if user has access
       const canAccess = await objectStorageService.canAccessObjectEntity({
         objectFile,
-        userId,
+        userId: userId || "anonymous",
         requestedPermission: ObjectPermission.READ,
       });
+      
       if (!canAccess) {
-        return res.sendStatus(401);
+        return res.sendStatus(userId ? 403 : 401);
       }
+      
       objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
       console.error("Error accessing object:", error);
