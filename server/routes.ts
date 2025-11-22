@@ -78,6 +78,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Development: Create test users
+  app.post("/api/auth/create-test-users", async (req, res) => {
+    try {
+      const testUsers = [
+        { fullName: "Mentor Test", email: "mentor@test.com", password: "Test123!", role: "MENTOR" },
+        { fullName: "Apprenant Test", email: "learner@test.com", password: "Test123!", role: "LEARNER" },
+      ];
+
+      const createdUsers = [];
+      for (const testUser of testUsers) {
+        // Check if user already exists
+        const existing = await storage.getUserByEmail(testUser.email);
+        if (existing) {
+          createdUsers.push({ email: testUser.email, message: "Already exists" });
+          continue;
+        }
+
+        const hashedPassword = await hashPassword(testUser.password);
+        const user = await storage.createUser({
+          fullName: testUser.fullName,
+          email: testUser.email,
+          password: hashedPassword,
+          role: testUser.role as "MENTOR" | "LEARNER",
+        });
+        createdUsers.push({ email: user.email, role: user.role, fullName: user.fullName });
+      }
+
+      res.json({ message: "Test users created", users: createdUsers });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   // ========== WEEK ROUTES ==========
 
   app.get("/api/weeks", authMiddleware, async (req: AuthRequest, res) => {
