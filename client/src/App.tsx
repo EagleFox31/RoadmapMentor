@@ -1,4 +1,5 @@
 import { Switch, Route, Redirect } from "wouter";
+import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,6 +8,7 @@ import AuthPage from "@/pages/auth-page";
 import RoadmapPage from "@/pages/roadmap-page";
 import NotFound from "@/pages/not-found";
 import { isAuthenticated } from "@/lib/auth";
+import mentorBg from "@/assets/mentor-bg.jpg";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   if (!isAuthenticated()) {
@@ -40,6 +42,10 @@ function Router() {
 }
 
 function App() {
+  useEffect(() => {
+    document.documentElement.style.setProperty('--bg-image', `url(${mentorBg})`);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

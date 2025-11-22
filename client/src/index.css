@@ -205,7 +205,7 @@
     right: 0;
     bottom: 0;
     z-index: -2;
-    background-image: url('/mentor-bg.jpg');
+    background-image: var(--bg-image);
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
