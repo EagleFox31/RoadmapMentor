@@ -11,6 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format, parse } from "date-fns";
+import { fr } from "date-fns/locale";
 import type { Week } from "@shared/schema";
 
 interface WeekModalProps {
@@ -25,36 +30,52 @@ export function WeekModal({ isOpen, onClose, onSubmit, week, isLoading }: WeekMo
   const [formData, setFormData] = useState({
     number: "",
     title: "",
-    startDate: "",
-    endDate: "",
     description: "",
   });
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+
+  // Helper to parse date string like "24 Nov" to Date
+  const parseDateString = (dateStr: string): Date | undefined => {
+    try {
+      const currentYear = new Date().getFullYear();
+      const parsed = parse(`${dateStr} ${currentYear}`, "d MMM yyyy", new Date(), { locale: fr });
+      return isNaN(parsed.getTime()) ? undefined : parsed;
+    } catch {
+      return undefined;
+    }
+  };
 
   useEffect(() => {
     if (week) {
       setFormData({
         number: week.number.toString(),
         title: week.title,
-        startDate: week.startDate,
-        endDate: week.endDate,
         description: week.description || "",
       });
+      setStartDate(parseDateString(week.startDate));
+      setEndDate(parseDateString(week.endDate));
     } else {
       setFormData({
         number: "",
         title: "",
-        startDate: "",
-        endDate: "",
         description: "",
       });
+      setStartDate(undefined);
+      setEndDate(undefined);
     }
   }, [week, isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!startDate || !endDate) {
+      return; // Validation: both dates are required
+    }
     onSubmit({
       ...formData,
       number: parseInt(formData.number),
+      startDate: format(startDate, "d MMM", { locale: fr }),
+      endDate: format(endDate, "d MMM", { locale: fr }),
     });
   };
 
@@ -105,35 +126,60 @@ export function WeekModal({ isOpen, onClose, onSubmit, week, isLoading }: WeekMo
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="startDate" className="text-white text-sm">
+              <Label className="text-white text-sm">
                 Date de début
               </Label>
-              <Input
-                id="startDate"
-                type="text"
-                value={formData.startDate}
-                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                required
-                placeholder="24 Nov"
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                data-testid="input-week-start-date"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    data-testid="button-week-start-date"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "d MMM yyyy", { locale: fr }) : "Choisir une date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={setStartDate}
+                    initialFocus
+                    locale={fr}
+                    data-testid="calendar-week-start-date"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="endDate" className="text-white text-sm">
+              <Label className="text-white text-sm">
                 Date de fin
               </Label>
-              <Input
-                id="endDate"
-                type="text"
-                value={formData.endDate}
-                onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                required
-                placeholder="30 Nov"
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
-                data-testid="input-week-end-date"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    data-testid="button-week-end-date"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "d MMM yyyy", { locale: fr }) : "Choisir une date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={setEndDate}
+                    initialFocus
+                    locale={fr}
+                    disabled={(date) => startDate ? date < startDate : false}
+                    data-testid="calendar-week-end-date"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
