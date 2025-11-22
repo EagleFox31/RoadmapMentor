@@ -328,6 +328,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/objectives/:id/clone", authMiddleware, requireMentor, async (req, res) => {
+    try {
+      const { targetWeekId } = req.body;
+      const clonedObjective = await storage.cloneObjective(
+        parseInt(req.params.id), 
+        targetWeekId ? parseInt(targetWeekId) : undefined
+      );
+      if (!clonedObjective) {
+        return res.status(404).json({ error: "Objective not found" });
+      }
+      res.status(201).json(clonedObjective);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   // ========== TASK ROUTES ==========
 
   app.post("/api/objectives/:objectiveId/tasks", authMiddleware, requireMentor, async (req, res) => {

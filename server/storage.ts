@@ -226,6 +226,46 @@ export class DatabaseStorage implements IStorage {
     return true;
   }
 
+  async cloneObjective(id: number, targetWeekId?: number): Promise<Objective | undefined> {
+    // Get the original objective
+    const originalObjective = await this.getObjective(id);
+    if (!originalObjective) return undefined;
+
+    // Use the same week if targetWeekId is not provided
+    const weekId = targetWeekId ?? originalObjective.weekId;
+
+    // Get all objectives in the target week to determine the next orderIndex
+    const existingObjectives = await this.getObjectivesByWeek(weekId);
+    const maxOrderIndex = existingObjectives.length > 0 
+      ? Math.max(...existingObjectives.map(o => o.orderIndex ?? 0))
+      : 0;
+
+    // Create new objective
+    const [newObjective] = await db
+      .insert(objectives)
+      .values({
+        weekId,
+        type: originalObjective.type,
+        title: `${originalObjective.title} (Copie)`,
+        description: originalObjective.description,
+        orderIndex: maxOrderIndex + 1,
+      })
+      .returning();
+
+    // Clone all tasks for this objective
+    const taskList = await this.getTasksByObjective(id);
+    for (const task of taskList) {
+      await db.insert(tasks).values({
+        objectiveId: newObjective.id,
+        label: task.label,
+        orderIndex: task.orderIndex,
+        isOptional: task.isOptional,
+      });
+    }
+
+    return newObjective;
+  }
+
   // Task methods
   async getTasksByObjective(objectiveId: number): Promise<Task[]> {
     return await db.select().from(tasks).where(eq(tasks.objectiveId, objectiveId)).orderBy(tasks.orderIndex);
