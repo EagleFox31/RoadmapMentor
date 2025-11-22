@@ -302,16 +302,17 @@ export default function RoadmapPage() {
       <div className="min-h-screen w-full bg-gradient-to-br from-[#667eea] via-[#764ba2] to-[#1e3a8a] relative overflow-hidden">
         {/* Parallax Background Image */}
         <div
-          className="fixed inset-0 opacity-20 bg-cover bg-center"
+          className="fixed inset-0 z-0 bg-cover bg-center"
           style={{
             backgroundImage: `url('/parallax-bg.png')`,
             transform: `translateY(${scrollY * 0.5}px)`,
             willChange: 'transform',
+            opacity: 0.7,
           }}
         />
         
         {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#667eea]/80 via-[#764ba2]/80 to-[#1e3a8a]/80" />
+        <div className="absolute inset-0 z-[1] bg-gradient-to-br from-[#667eea]/40 via-[#764ba2]/40 to-[#1e3a8a]/50" />
         
         <TopBar />
         <div className="relative z-10 flex items-center justify-center h-[calc(100vh-4rem)] pt-20">
@@ -328,16 +329,17 @@ export default function RoadmapPage() {
     <div className="min-h-screen w-full bg-gradient-to-br from-[#667eea] via-[#764ba2] to-[#1e3a8a] relative overflow-hidden">
       {/* Parallax Background Image */}
       <div
-        className="fixed inset-0 opacity-20 bg-cover bg-center"
+        className="fixed inset-0 z-0 bg-cover bg-center"
         style={{
           backgroundImage: `url('/parallax-bg.png')`,
           transform: `translateY(${scrollY * 0.5}px)`,
           willChange: 'transform',
+          opacity: 0.7,
         }}
       />
       
       {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#667eea]/80 via-[#764ba2]/80 to-[#1e3a8a]/80" />
+      <div className="absolute inset-0 z-[1] bg-gradient-to-br from-[#667eea]/40 via-[#764ba2]/40 to-[#1e3a8a]/50" />
 
       <TopBar />
 
