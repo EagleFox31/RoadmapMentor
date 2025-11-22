@@ -63,8 +63,14 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
             {isLearner() ? (
               <Checkbox
                 checked={isCompleted}
-                onCheckedChange={() => onToggleTask?.(task.id)}
-                className="mt-0.5 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-success data-[state=checked]:to-cyan-500 data-[state=checked]:border-success shadow-md"
+                disabled={!isCompleted}
+                onCheckedChange={() => {
+                  if (isCompleted) {
+                    // Allow unchecking a completed task
+                    onToggleTask?.(task.id);
+                  }
+                }}
+                className="mt-0.5 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-success data-[state=checked]:to-cyan-500 data-[state=checked]:border-success shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                 data-testid={`checkbox-task-${task.id}`}
               />
             ) : (
