@@ -164,7 +164,7 @@ export function WeekDetail({
             <p className="text-muted-foreground">Aucun objectif défini pour cette semaine</p>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-[repeat(auto-fit,minmax(22rem,1fr))] gap-6">
             {week.objectives.map((objective) => (
               <ObjectiveCard
                 key={objective.id}
