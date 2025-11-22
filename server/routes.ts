@@ -37,6 +37,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: role || "LEARNER",
       });
 
+      // Create default email notification preferences
+      await storage.createEmailPreferences({
+        userId: user.id,
+        taskReminders: true,
+        weekPreparation: true,
+        progressUpdates: true,
+        commentNotifications: true,
+      });
+
       const token = generateToken(user);
       const { password: _, ...userWithoutPassword } = user;
       
@@ -543,8 +552,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await emailService.sendProgressUpdate(
                 mentor.id,
                 mentor.email,
-                mentor.fullName,
-                learner.fullName,
+                mentor.name,
+                learner.name,
                 week.number,
                 completionPercentage
               );
@@ -622,8 +631,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await emailService.sendCommentNotification(
             mentor.id,
             mentor.email,
-            mentor.fullName,
-            learner.fullName,
+            mentor.name,
+            learner.name,
             week.number,
             comment.content
           );

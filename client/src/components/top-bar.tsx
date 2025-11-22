@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, Rocket } from "lucide-react";
+import { LogOut, Rocket, Settings } from "lucide-react";
 import { useLocation } from "wouter";
 import { getCurrentUser, logout as performLogout, isMentor } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 export function TopBar() {
   const { toast } = useToast();
   const user = getCurrentUser();
+  const [, setLocation] = useLocation();
 
   const handleLogout = () => {
     toast({
@@ -16,6 +17,10 @@ export function TopBar() {
       description: "À bientôt !",
     });
     performLogout();
+  };
+
+  const handleSettings = () => {
+    setLocation("/preferences");
   };
 
   const getInitials = (name: string) => {
@@ -62,6 +67,16 @@ export function TopBar() {
               {user ? getInitials(user.fullName) : "U"}
             </AvatarFallback>
           </Avatar>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleSettings}
+            className="glass border-white/20 glow-on-hover"
+            data-testid="button-settings"
+          >
+            <Settings className="w-4 h-4 icon-hover" />
+          </Button>
 
           <Button
             variant="outline"

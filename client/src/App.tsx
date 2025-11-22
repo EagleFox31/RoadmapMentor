@@ -1,11 +1,11 @@
 import { Switch, Route, Redirect } from "wouter";
-import { useEffect } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AuthPage from "@/pages/auth-page";
 import RoadmapPage from "@/pages/roadmap-page";
+import PreferencesPage from "@/pages/preferences";
 import NotFound from "@/pages/not-found";
 import { isAuthenticated } from "@/lib/auth";
 import mentorBg from "./assets/mentor-bg.jpg";
@@ -35,6 +35,9 @@ function Router() {
       </Route>
       <Route path="/roadmap">
         <ProtectedRoute component={RoadmapPage} />
+      </Route>
+      <Route path="/preferences">
+        <ProtectedRoute component={PreferencesPage} />
       </Route>
       <Route component={NotFound} />
     </Switch>
