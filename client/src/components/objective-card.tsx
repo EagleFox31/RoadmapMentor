@@ -51,7 +51,9 @@ export function ObjectiveCard({
   const typeLabel = objectiveTypeLabels[objective.type as keyof typeof objectiveTypeLabels];
 
   return (
-    <Card className="glass-card rounded-2xl p-7 glow-on-hover hover-elevate transition-all duration-400 group gradient-border parallax-sm">
+    <Card 
+      className="glass-card rounded-2xl p-8 min-w-full glow-on-hover hover-elevate transition-all duration-400 group gradient-border parallax-sm"
+    >
       <div className="flex items-start justify-between mb-5">
         <div className="flex items-center gap-4">
           <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl pulse-glow ${gradientClass}`}>
