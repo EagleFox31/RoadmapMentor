@@ -74,6 +74,7 @@ export interface IStorage {
 
   // Task Progress methods
   getTaskProgress(taskId: number, learnerId: number): Promise<TaskProgress | undefined>;
+  getAllTaskProgress(taskId: number): Promise<TaskProgress[]>;
   getProgressByLearner(learnerId: number): Promise<TaskProgress[]>;
   toggleTaskProgress(taskId: number, learnerId: number, screenshotUrl?: string): Promise<TaskProgress>;
 
@@ -348,6 +349,10 @@ export class DatabaseStorage implements IStorage {
       .from(taskProgress)
       .where(and(eq(taskProgress.taskId, taskId), eq(taskProgress.learnerId, learnerId)));
     return progress || undefined;
+  }
+
+  async getAllTaskProgress(taskId: number): Promise<TaskProgress[]> {
+    return await db.select().from(taskProgress).where(eq(taskProgress.taskId, taskId));
   }
 
   async getProgressByLearner(learnerId: number): Promise<TaskProgress[]> {

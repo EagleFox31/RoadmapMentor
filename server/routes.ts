@@ -175,7 +175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             objectives.map(async (objective) => {
               const taskList = await storage.getTasksByObjective(objective.id);
               
-              // SECURITY: Only return progress for the CURRENT authenticated learner
+              // SECURITY: Learners see only their own progress, Mentors see all learners' progress
               // Storage.getTaskProgress filters by BOTH taskId AND learnerId
               const tasksWithProgress = await Promise.all(
                 taskList.map(async (task) => {
@@ -183,9 +183,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     // CRITICAL: Use req.user.id (from JWT) - never from request body
                     const progress = await storage.getTaskProgress(task.id, currentUserId);
                     return { ...task, progress: progress ? [progress] : [] };
+                  } else {
+                    // Mentors see progress from ALL learners
+                    const allProgress = await storage.getAllTaskProgress(task.id);
+                    return { ...task, progress: allProgress };
                   }
-                  // Mentors see no progress data
-                  return { ...task, progress: [] };
                 })
               );
 
