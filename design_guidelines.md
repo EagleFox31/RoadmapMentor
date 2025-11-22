@@ -1,118 +1,164 @@
-# Design Guidelines - Roadmap Mentor Application
+# Design Guidelines - Roadmap Mentor (Google Material Design 3 Style)
 
-## Design System Approach
-**Glassmorphism** with developer/backend/code theme - premium, modern aesthetic focusing on transparency, blur effects, and technical visual language.
-
-## Core Design Elements
-
-### A. Typography
-- **Primary Font**: Inter (sans-serif via Google Fonts)
-- **Hierarchy**:
-  - H1 (Page titles): 3em, bold
-  - H2 (Section headers): 2em, bold, color: #1e3a8a (deep blue)
-  - H3 (Component titles): 1.8em, semi-bold
-  - Body: 1.1em, regular weight
-  - Labels/metadata: 1em, medium weight
-
-### B. Layout System
-**Tailwind spacing units**: Use units of 4, 6, 8, 12, 16, 20, 24, 30, 32 for consistent rhythm
-
-**Main Layout Structure** (Desktop):
-- **3-column grid layout**:
-  - Left column (25%): Week selector/timeline - sticky position
-  - Center column (50%): Week detail view - scrollable main content
-  - Right column (25%): Progress panel & notes - sticky position
-- **Top bar**: Fixed header with logo, user avatar, role indicator
-- **Mobile**: Stack columns vertically, full-width cards
-
-### C. Component Library
-
-**Glassmorphism Card Base**:
-- Background: `bg-white/10`
-- Backdrop filter: `backdrop-blur-xl`
-- Border: `border border-white/20`
-- Border radius: `rounded-2xl` (larger cards), `rounded-xl` (smaller cards)
-- Shadow: `shadow-xl`
-- Padding: `p-6` to `p-8`
-
-**Buttons**:
-- Primary: Gradient `from-sky-500 to-indigo-500`, rounded-full or rounded-lg
-- Hover: `hover:scale-105`, `hover:shadow-2xl`
-- Transitions: `transition-all duration-200`
-- Padding: `px-6 py-3`
-- Font weight: semi-bold
-
-**Interactive Elements**:
-- Checkboxes: Custom styled, 20px × 20px, with smooth check animation
-- Task items: `border-bottom border-white/10`, padding `py-3`, flex layout
-- Hover effects on cards: `hover:translate-y-[-5px]`, `hover:shadow-2xl`
-
-**Week Cards** (Left sidebar):
-- Vertical timeline or stacked cards
-- Active state: enhanced glow/border
-- Number badge: circular, gradient background, positioned top-left
-
-**Progress Bars**:
-- Container: `bg-white/10`, height 40px, rounded-full
-- Fill: Gradient `from-green-500 to-green-600`
-- Percentage text: white, bold, positioned right
-
-**Modals** (for Mentor editing):
-- Centered overlay with glassmorphism
-- Backdrop: dark semi-transparent
-- Form inputs: glassmorphism style with white/20 backgrounds
+## Design Philosophy
+Clean, modern, professional Google-inspired design with Material Design 3 principles. Bright, airy interface with white cards, generous spacing, and Google's signature color palette.
 
 ## Color Palette
 
-### Primary Colors
-- **Blue gradient**: #667eea → #764ba2 (page background)
-- **Deep blue**: #1e3a8a, #1e40af (headers, titles)
-- **Sky-Indigo gradient**: sky-500 → indigo-500 (buttons)
+### Primary Colors (Google Brand)
+- **Google Blue**: #4285F4 (Primary actions, links)
+- **Google Red**: #EA4335 (Errors, delete actions)
+- **Google Yellow**: #FBBC04 (Warnings, highlights)
+- **Google Green**: #34A853 (Success, validation)
 
-### Accent Colors
-- **Success/Progress**: #10b981, #059669 (green gradient)
-- **Warning/Status**: #f59e0b, #d97706 (orange gradient)
-- **Cyan**: For tech/code accents
-- **Violet**: Secondary accent
+### Neutral Colors
+- **White**: #FFFFFF (Card backgrounds, surfaces)
+- **Light Gray**: #F8F9FA (Background)
+- **Gray 100**: #F1F3F4 (Subtle borders)
+- **Gray 300**: #DADCE0 (Borders)
+- **Gray 500**: #9AA0A6 (Secondary text)
+- **Gray 700**: #5F6368 (Primary text)
+- **Gray 900**: #202124 (Headings)
 
-### Neutral Glassmorphism
-- Card backgrounds: white/10 to white/20
-- Borders: white/20 to white/30
-- Text on glass: white or very dark (#1e3a8a)
+### Surface Colors
+- **Background**: #F8F9FA (Page background - light gray)
+- **Card Surface**: #FFFFFF (White cards with shadow)
+- **Hover**: #F1F3F4 (Subtle hover states)
 
-## Background Treatment
+## Typography
 
-**Full-page background**:
-- Primary: Linear gradient (135deg, deep blue to purple)
-- Overlay: Semi-transparent image of code/terminal/backend infrastructure (blurred, 20-30% opacity)
-- Effect: Creates depth while maintaining readability of glassmorphism elements
+### Font Family
+- Primary: 'Google Sans', 'Product Sans', system-ui, -apple-system, sans-serif
+- Fallback: 'Roboto', 'Helvetica Neue', Arial, sans-serif
+- Code: 'Roboto Mono', 'Consolas', monospace
 
-## Images
+### Font Sizes
+- Heading 1: 32px (2rem) - Bold
+- Heading 2: 24px (1.5rem) - Semibold
+- Heading 3: 20px (1.25rem) - Medium
+- Body Large: 16px (1rem) - Regular
+- Body: 14px (0.875rem) - Regular
+- Small: 12px (0.75rem) - Regular
 
-**Hero/Header Section**:
-- Large decorative rocket emoji (🚀) or code-themed graphic at 200px, positioned absolutely with low opacity (0.1)
-- Background image: Developer workspace, code editor, terminal, or cloud infrastructure - heavily blurred
+### Text Colors
+- Primary: #202124 (Gray 900)
+- Secondary: #5F6368 (Gray 700)
+- Tertiary: #9AA0A6 (Gray 500)
 
-**No additional images required** - design relies on glassmorphism, gradients, and iconography
+## Components
 
-## Component-Specific Design
+### Cards
+- **Background**: Pure white (#FFFFFF)
+- **Border Radius**: 12px (rounded-xl)
+- **Shadow**: Soft, elevated shadows
+  - Default: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)
+  - Hover: 0 4px 12px rgba(0,0,0,0.15)
+- **Padding**: 24px (p-6)
+- **Border**: None (shadow only)
 
-**WeekSelector**: Vertical cards with week numbers, glassmorphism, click to expand
-**WeekDetail**: Central panel with sections for Concepts/Algo/Project/Deliverables/Resources
-**TaskList**: Checkbox + label rows, strikethrough on completion
-**ProgressBar**: Glassmorphism container with animated gradient fill
-**EditorPanel** (Mentor only): Floating action buttons, modal forms with glass cards
+### Buttons
+- **Primary (Google Blue)**: 
+  - Background: #4285F4
+  - Text: White
+  - Hover: #3367D6
+  - Shadow: 0 1px 3px rgba(66,133,244,0.3)
+  
+- **Success (Google Green)**:
+  - Background: #34A853
+  - Text: White
+  - Hover: #2D9348
 
-## Interaction Patterns
+- **Danger (Google Red)**:
+  - Background: #EA4335
+  - Text: White
+  - Hover: #D93025
 
-- **Hover states**: Subtle scale (1.05), enhanced shadow, no color changes
-- **Active states**: Slight press effect (scale 0.98)
-- **Transitions**: 200ms for buttons, 300ms for cards
-- **Loading states**: Pulse animation on glassmorphism cards
-- **Form validation**: Red accent (#ef4444) for errors, green for success
+- **Outlined**:
+  - Border: 1px solid #DADCE0
+  - Text: #5F6368
+  - Background: White
+  - Hover: #F8F9FA
 
-## Accessibility
-- Maintain 4.5:1 contrast ratio minimum
-- Focus states: outline with cyan/sky color
-- Keyboard navigation support for all interactive elements
-- ARIA labels on custom checkboxes and icon buttons
+- **Border Radius**: 8px (rounded-lg)
+- **Padding**: 10px 24px
+- **Font Weight**: 500 (Medium)
+- **Height**: 40px (min-h-10)
+
+### Badges
+- **Border Radius**: 16px (fully rounded pill)
+- **Padding**: 4px 12px
+- **Font Size**: 12px
+- **Font Weight**: 500
+- **Colors**: Use Google palette (Blue, Green, Yellow, Red)
+
+### Inputs
+- **Background**: White
+- **Border**: 1px solid #DADCE0
+- **Border Radius**: 8px
+- **Padding**: 12px 16px
+- **Focus**: 2px border in Google Blue (#4285F4)
+- **Shadow on focus**: 0 0 0 3px rgba(66,133,244,0.1)
+
+### Header
+- **Background**: White
+- **Height**: 64px
+- **Shadow**: 0 1px 2px rgba(0,0,0,0.1)
+- **Border**: None
+- **Position**: Fixed sticky
+
+## Layout
+
+### Spacing Scale
+- xs: 4px
+- sm: 8px
+- md: 16px
+- lg: 24px
+- xl: 32px
+- 2xl: 48px
+
+### Container
+- Max Width: 1400px
+- Padding: 24px
+
+### Grid
+- Gap: 24px
+- Responsive breakpoints standard
+
+## Interactions
+
+### Hover States
+- **Cards**: Subtle shadow elevation
+- **Buttons**: Slightly darker background (-10% lightness)
+- **Links**: Underline appears
+- **Background change**: Transition to #F8F9FA
+
+### Active States
+- **Buttons**: Even darker (-15% lightness)
+- **Scale**: None (keep original size)
+
+### Transitions
+- **Duration**: 200ms
+- **Easing**: ease-in-out
+- **Properties**: background-color, box-shadow, transform
+
+## Icons
+- Use lucide-react icons
+- Size: 20px (default), 24px (large)
+- Color: Inherit from parent or #5F6368 for neutral
+
+## Shadows
+
+### Elevation Levels
+- Level 1: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)
+- Level 2: 0 4px 6px rgba(0,0,0,0.1)
+- Level 3: 0 10px 20px rgba(0,0,0,0.15)
+
+## Best Practices
+
+1. **Generous white space** - Don't crowd elements
+2. **Clear hierarchy** - Use size, weight, and color to establish importance
+3. **Consistent spacing** - Use the spacing scale
+4. **Minimal borders** - Rely on shadows for separation
+5. **Subtle interactions** - No aggressive animations
+6. **Accessibility** - Maintain WCAG AA contrast ratios
+7. **Clean and simple** - Less is more
