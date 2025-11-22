@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Code, Wrench, FileText, Pencil, Trash2 } from "lucide-react";
+import { BookOpen, Code, Wrench, FileText, Pencil, Trash2, Copy } from "lucide-react";
 import { TaskList } from "./task-list";
 import type { ObjectiveWithTasks } from "@shared/schema";
 import { isMentor } from "@/lib/auth";
@@ -11,6 +11,7 @@ interface ObjectiveCardProps {
   onToggleTask?: (taskId: number, screenshotUrl?: string) => void;
   onEditObjective?: (objective: ObjectiveWithTasks) => void;
   onDeleteObjective?: (objectiveId: number) => void;
+  onCloneObjective?: (objectiveId: number) => void;
   onAddTask?: (objectiveId: number) => void;
   onEditTask?: (taskId: number) => void;
   onDeleteTask?: (taskId: number) => void;
@@ -42,6 +43,7 @@ export function ObjectiveCard({
   onToggleTask,
   onEditObjective,
   onDeleteObjective,
+  onCloneObjective,
   onAddTask,
   onEditTask,
   onDeleteTask,
@@ -70,6 +72,15 @@ export function ObjectiveCard({
 
         {isMentor() && (
           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => onCloneObjective?.(objective.id)}
+              className="glass border-white/20 glow-on-hover"
+              data-testid={`button-clone-objective-${objective.id}`}
+            >
+              <Copy className="w-4 h-4 icon-hover" />
+            </Button>
             <Button
               size="icon"
               variant="ghost"
