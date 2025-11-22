@@ -28,7 +28,7 @@ export function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/10 backdrop-blur-xl border-b border-white/20 shadow-lg">
+    <header className="fixed top-0 left-0 right-0 z-[9999] w-full bg-white/10 backdrop-blur-xl border-b border-white/20 shadow-lg">
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 shadow-md">
