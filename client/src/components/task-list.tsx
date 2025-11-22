@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Pencil, Trash2, Image as ImageIcon } from "lucide-react";
 import type { Task, TaskProgress } from "@shared/schema";
 import { isMentor, isLearner, getCurrentUser } from "@/lib/auth";
@@ -61,18 +62,29 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
             data-testid={`task-item-${task.id}`}
           >
             {isLearner() ? (
-              <Checkbox
-                checked={isCompleted}
-                disabled={!isCompleted}
-                onCheckedChange={() => {
-                  if (isCompleted) {
-                    // Allow unchecking a completed task
-                    onToggleTask?.(task.id);
-                  }
-                }}
-                className="mt-0.5 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-success data-[state=checked]:to-cyan-500 data-[state=checked]:border-success shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                data-testid={`checkbox-task-${task.id}`}
-              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <Checkbox
+                      checked={isCompleted}
+                      disabled={!isCompleted}
+                      onCheckedChange={() => {
+                        if (isCompleted) {
+                          // Allow unchecking a completed task
+                          onToggleTask?.(task.id);
+                        }
+                      }}
+                      className="mt-0.5 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-success data-[state=checked]:to-cyan-500 data-[state=checked]:border-success shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                      data-testid={`checkbox-task-${task.id}`}
+                    />
+                  </div>
+                </TooltipTrigger>
+                {!isCompleted && (
+                  <TooltipContent>
+                    <p>Joignez la capture d'écran de réussite de l'exercice</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
             ) : (
               <div className={`w-5 h-5 rounded-lg border-2 mt-0.5 flex-shrink-0 shadow-md ${
                 isCompleted 
