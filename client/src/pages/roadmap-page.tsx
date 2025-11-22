@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { TopBar } from "@/components/top-bar";
 import { WeekSelector } from "@/components/week-selector";
@@ -28,6 +28,16 @@ export default function RoadmapPage() {
   const { toast } = useToast();
   const [selectedWeekId, setSelectedWeekId] = useState<number | null>(null);
   const currentUser = getCurrentUser();
+  const [scrollY, setScrollY] = useState(0);
+  
+  // Parallax effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
   
   // Modal states
   const [modals, setModals] = useState<ModalState>({
@@ -289,9 +299,22 @@ export default function RoadmapPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-[#667eea] via-[#764ba2] to-[#1e3a8a]">
+      <div className="min-h-screen w-full bg-gradient-to-br from-[#667eea] via-[#764ba2] to-[#1e3a8a] relative overflow-hidden">
+        {/* Parallax Background Image */}
+        <div
+          className="fixed inset-0 opacity-20 bg-cover bg-center"
+          style={{
+            backgroundImage: `url('/parallax-bg.png')`,
+            transform: `translateY(${scrollY * 0.5}px)`,
+            willChange: 'transform',
+          }}
+        />
+        
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#667eea]/80 via-[#764ba2]/80 to-[#1e3a8a]/80" />
+        
         <TopBar />
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)] pt-20">
+        <div className="relative z-10 flex items-center justify-center h-[calc(100vh-4rem)] pt-20">
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4" />
             <p className="text-white text-lg">Chargement de la feuille de route...</p>
@@ -303,12 +326,18 @@ export default function RoadmapPage() {
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[#667eea] via-[#764ba2] to-[#1e3a8a] relative overflow-hidden">
+      {/* Parallax Background Image */}
       <div
-        className="absolute inset-0 opacity-5"
+        className="fixed inset-0 opacity-20 bg-cover bg-center"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          backgroundImage: `url('/parallax-bg.png')`,
+          transform: `translateY(${scrollY * 0.5}px)`,
+          willChange: 'transform',
         }}
       />
+      
+      {/* Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#667eea]/80 via-[#764ba2]/80 to-[#1e3a8a]/80" />
 
       <TopBar />
 
