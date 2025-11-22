@@ -20,6 +20,7 @@ interface WeekDetailProps {
   onAddObjective?: () => void;
   onEditObjective?: (objective: ObjectiveWithTasks) => void;
   onDeleteObjective?: (objectiveId: number) => void;
+  onCloneObjective?: (objectiveId: number) => void;
   onAddTask?: (objectiveId: number) => void;
   onEditTask?: (taskId: number) => void;
   onDeleteTask?: (taskId: number) => void;
@@ -43,6 +44,7 @@ export function WeekDetail({
   onAddObjective,
   onEditObjective,
   onDeleteObjective,
+  onCloneObjective,
   onAddTask,
   onEditTask,
   onDeleteTask,
@@ -172,6 +174,7 @@ export function WeekDetail({
                 onToggleTask={onToggleTask}
                 onEditObjective={onEditObjective}
                 onDeleteObjective={onDeleteObjective}
+                onCloneObjective={onCloneObjective}
                 onAddTask={onAddTask}
                 onEditTask={onEditTask}
                 onDeleteTask={onDeleteTask}

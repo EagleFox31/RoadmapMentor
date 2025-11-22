@@ -218,6 +218,14 @@ export default function RoadmapPage() {
     },
   });
 
+  const cloneObjectiveMutation = useMutation({
+    mutationFn: async (objectiveId: number) => await apiRequest("POST", `/api/objectives/${objectiveId}/clone`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      toast({ title: "Objectif dupliqué", description: "L'objectif a été cloné avec succès." });
+    },
+  });
+
   // Task mutations
   const createTaskMutation = useMutation({
     mutationFn: async (data: any) => await apiRequest("POST", `/api/objectives/${data.objectiveId}/tasks`, data),
@@ -353,6 +361,7 @@ export default function RoadmapPage() {
                 onAddObjective={() => openModal("objective")}
                 onEditObjective={(obj) => { setEditingObjective(obj); openModal("objective"); }}
                 onDeleteObjective={(id) => confirm("Supprimer cet objectif ?") && deleteObjectiveMutation.mutate(id)}
+                onCloneObjective={(id) => cloneObjectiveMutation.mutate(id)}
                 onAddTask={(objId) => { setTargetObjectiveId(objId); openModal("task"); }}
                 onEditTask={(taskId) => { const task = selectedWeek?.objectives.flatMap(o => o.tasks).find(t => t.id === taskId); if (task) { setEditingTask(task); openModal("task"); }}}
                 onDeleteTask={(id) => confirm("Supprimer cette tâche ?") && deleteTaskMutation.mutate(id)}
