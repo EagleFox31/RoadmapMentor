@@ -191,51 +191,8 @@
 
   body {
     @apply font-sans antialiased text-foreground;
-    background: transparent;
     position: relative;
     overflow-x: hidden;
-  }
-  
-  /* Premium Background Image with Overlay */
-  body::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: -2;
-    background-image: var(--bg-image);
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    pointer-events: none;
-  }
-  
-  body::after {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: -1;
-    background: linear-gradient(
-      135deg,
-      rgba(0, 0, 0, 0.85) 0%,
-      rgba(0, 0, 0, 0.75) 50%,
-      rgba(0, 0, 0, 0.85) 100%
-    );
-    pointer-events: none;
-  }
-  
-  .dark body::after {
-    background: linear-gradient(
-      135deg,
-      rgba(0, 0, 0, 0.90) 0%,
-      rgba(0, 0, 0, 0.80) 50%,
-      rgba(0, 0, 0, 0.90) 100%
-    );
   }
 }
 

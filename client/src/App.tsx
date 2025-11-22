@@ -42,15 +42,27 @@ function Router() {
 }
 
 function App() {
-  useEffect(() => {
-    document.documentElement.style.setProperty('--bg-image', `url(${mentorBg})`);
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
+        <div 
+          className="min-h-screen w-full relative overflow-hidden"
+          style={{ 
+            backgroundImage: `url(${mentorBg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+        >
+          {/* Dark overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-black/85 via-black/75 to-black/85" />
+          
+          {/* Content */}
+          <div className="relative z-10 min-h-screen">
+            <Router />
+          </div>
+        </div>
         <Toaster />
-        <Router />
       </TooltipProvider>
     </QueryClientProvider>
   );
