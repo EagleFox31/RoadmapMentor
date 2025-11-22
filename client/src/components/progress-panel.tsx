@@ -21,42 +21,39 @@ interface ProgressPanelProps {
 
 export function ProgressPanel({ stats }: ProgressPanelProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Global Progress */}
-      <Card className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl">
+      <Card className="bg-card rounded-xl p-6 shadow-md">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-lg">
+          <div className="w-12 h-12 rounded-lg bg-[#34A853] flex items-center justify-center shadow-sm">
             <TrendingUp className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h3 className="text-white font-bold text-lg">Progression Globale</h3>
-            <p className="text-white/60 text-xs">Toutes semaines confondues</p>
+            <h3 className="text-foreground font-bold text-base">Progression Globale</h3>
+            <p className="text-muted-foreground text-xs">Toutes semaines confondues</p>
           </div>
         </div>
 
         <div className="space-y-3">
           <div className="flex items-baseline justify-between">
-            <span className="text-white/70 text-sm">Tâches complétées</span>
-            <span className="text-white font-bold text-2xl" data-testid="text-global-percentage">
+            <span className="text-muted-foreground text-sm">Tâches complétées</span>
+            <span className="text-foreground font-bold text-2xl" data-testid="text-global-percentage">
               {stats.globalPercentage}%
             </span>
           </div>
 
-          <div className="h-4 bg-white/10 rounded-full overflow-hidden shadow-inner">
+          <div className="h-3 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-green-500 to-emerald-600 transition-all duration-500 rounded-full shadow-lg"
+              className="h-full bg-[#34A853] transition-all duration-500 rounded-full"
               style={{ width: `${stats.globalPercentage}%` }}
             />
           </div>
 
           <div className="flex items-center justify-between text-xs">
-            <span className="text-white/60">
+            <span className="text-muted-foreground">
               {stats.totalCompleted} / {stats.totalTasks} tâches
             </span>
-            <Badge
-              variant="secondary"
-              className="bg-gradient-to-r from-green-500/20 to-emerald-600/20 text-green-200 border-green-400/30"
-            >
+            <Badge className="bg-[#34A853]/10 text-[#34A853] border-0">
               {stats.totalTasks - stats.totalCompleted} restantes
             </Badge>
           </div>
@@ -64,15 +61,15 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
       </Card>
 
       {/* Weekly Breakdown */}
-      <Card className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl">
+      <Card className="bg-card rounded-xl p-6 shadow-md">
         <div className="flex items-center gap-2 mb-4">
-          <Target className="w-5 h-5 text-white" />
-          <h3 className="text-white font-bold text-base">Par Semaine</h3>
+          <Target className="w-5 h-5 text-foreground" />
+          <h3 className="text-foreground font-bold text-base">Par Semaine</h3>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {stats.weeklyProgress.length === 0 ? (
-            <p className="text-white/50 text-sm text-center py-4">
+            <p className="text-muted-foreground text-sm text-center py-4">
               Aucune donnée de progression
             </p>
           ) : (
@@ -80,29 +77,29 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
               <div key={week.weekNumber} className="space-y-2" data-testid={`progress-week-${week.weekNumber}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-md">
+                    <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white text-xs font-bold shadow-sm">
                       S{week.weekNumber}
                     </div>
-                    <span className="text-white text-sm font-medium truncate max-w-[150px]">
+                    <span className="text-foreground text-sm font-medium truncate max-w-[150px]">
                       {week.weekTitle}
                     </span>
                   </div>
-                  <span className="text-white font-semibold text-sm">
+                  <span className="text-foreground font-semibold text-sm">
                     {week.percentage}%
                   </span>
                 </div>
 
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-sky-500 to-indigo-600 transition-all duration-300 rounded-full"
+                    className="h-full bg-primary transition-all duration-300 rounded-full"
                     style={{ width: `${week.percentage}%` }}
                   />
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-white/60">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>{week.completed}/{week.total}</span>
                   {week.percentage === 100 && (
-                    <CheckCircle2 className="w-4 h-4 text-green-400" />
+                    <CheckCircle2 className="w-4 h-4 text-[#34A853]" />
                   )}
                 </div>
               </div>
@@ -112,11 +109,11 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
       </Card>
 
       {/* Motivation Badge */}
-      <Card className="bg-gradient-to-br from-violet-500/20 to-purple-600/20 backdrop-blur-xl border border-violet-400/30 rounded-2xl p-6 shadow-xl text-center">
+      <Card className="bg-card rounded-xl p-6 shadow-md text-center border-2 border-primary/20">
         <div className="text-4xl mb-3">
           {stats.globalPercentage === 100 ? "🎉" : stats.globalPercentage >= 75 ? "🔥" : stats.globalPercentage >= 50 ? "💪" : stats.globalPercentage >= 25 ? "🚀" : "💡"}
         </div>
-        <p className="text-white font-semibold text-sm">
+        <p className="text-foreground font-semibold text-sm">
           {stats.globalPercentage === 100
             ? "Bravo ! Toutes les tâches sont complétées !"
             : stats.globalPercentage >= 75

@@ -56,10 +56,10 @@ export function WeekDetail({
 }: WeekDetailProps) {
   if (!week) {
     return (
-      <Card className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-12 shadow-xl text-center">
+      <Card className="bg-card rounded-xl p-12 shadow-md text-center">
         <div className="text-6xl mb-4">📅</div>
-        <h3 className="text-white text-xl font-bold mb-2">Sélectionnez une semaine</h3>
-        <p className="text-white/60">
+        <h3 className="text-foreground text-xl font-bold mb-2">Sélectionnez une semaine</h3>
+        <p className="text-muted-foreground">
           Choisissez une semaine dans la liste de gauche pour voir les détails
         </p>
       </Card>
@@ -74,29 +74,29 @@ export function WeekDetail({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Week Header */}
-      <Card className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-6 shadow-xl">
+      <Card className="bg-card rounded-xl p-6 shadow-md">
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <Badge className="bg-gradient-to-r from-sky-500 to-indigo-600 text-white border-0 shadow-md">
+              <Badge className="bg-primary text-white border-0">
                 Semaine {week.number}
               </Badge>
               {week.isValidatedByMentor && (
-                <Badge variant="secondary" className="bg-gradient-to-r from-green-500/20 to-emerald-600/20 text-green-200 border-green-400/30">
+                <Badge className="bg-[#34A853]/10 text-[#34A853] border-0">
                   <CheckCircle2 className="w-3 h-3 mr-1" />
                   Validée
                 </Badge>
               )}
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">{week.title}</h2>
-            <div className="flex items-center gap-2 text-white/70 text-sm">
+            <h2 className="text-2xl font-bold text-foreground mb-2">{week.title}</h2>
+            <div className="flex items-center gap-2 text-muted-foreground text-sm">
               <Calendar className="w-4 h-4" />
               <span>{week.startDate} - {week.endDate}</span>
             </div>
             {week.description && (
-              <p className="mt-3 text-white/80 text-sm leading-relaxed">{week.description}</p>
+              <p className="mt-3 text-foreground text-sm leading-relaxed">{week.description}</p>
             )}
           </div>
 
@@ -106,7 +106,6 @@ export function WeekDetail({
                 onClick={onCloneWeek}
                 size="sm"
                 variant="outline"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                 data-testid="button-clone-week"
               >
                 <Plus className="w-4 h-4 mr-1" />
@@ -115,7 +114,7 @@ export function WeekDetail({
               {!week.isValidatedByMentor && (
                 <Button
                   onClick={onValidateWeek}
-                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                  className="bg-[#34A853] hover:bg-[#2D9348] text-white"
                   data-testid="button-validate-week"
                 >
                   <CheckCircle2 className="w-4 h-4 mr-2" />
@@ -126,7 +125,6 @@ export function WeekDetail({
                 size="icon"
                 variant="outline"
                 onClick={onEditWeek}
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                 data-testid="button-edit-week"
               >
                 <Pencil className="w-4 h-4" />

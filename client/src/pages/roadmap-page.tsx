@@ -299,26 +299,12 @@ export default function RoadmapPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-[#667eea] via-[#764ba2] to-[#1e3a8a] relative overflow-hidden">
-        {/* Parallax Background Image */}
-        <div
-          className="fixed inset-0 z-0 bg-cover bg-center"
-          style={{
-            backgroundImage: `url('/parallax-bg.png')`,
-            transform: `translateY(${scrollY * 0.5}px)`,
-            willChange: 'transform',
-            opacity: 0.7,
-          }}
-        />
-        
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 z-[1] bg-gradient-to-br from-[#667eea]/40 via-[#764ba2]/40 to-[#1e3a8a]/50" />
-        
+      <div className="min-h-screen w-full bg-background">
         <TopBar />
-        <div className="relative z-10 flex items-center justify-center h-[calc(100vh-4rem)] pt-20">
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)] pt-20">
           <div className="text-center">
-            <div className="w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-white text-lg">Chargement de la feuille de route...</p>
+            <div className="w-16 h-16 border-4 border-border border-t-primary rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-foreground text-lg font-medium">Chargement de la feuille de route...</p>
           </div>
         </div>
       </div>
@@ -326,33 +312,19 @@ export default function RoadmapPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-[#667eea] via-[#764ba2] to-[#1e3a8a] relative overflow-hidden">
-      {/* Parallax Background Image */}
-      <div
-        className="fixed inset-0 z-0 bg-cover bg-center"
-        style={{
-          backgroundImage: `url('/parallax-bg.png')`,
-          transform: `translateY(${scrollY * 0.5}px)`,
-          willChange: 'transform',
-          opacity: 0.7,
-        }}
-      />
-      
-      {/* Gradient Overlay */}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-br from-[#667eea]/40 via-[#764ba2]/40 to-[#1e3a8a]/50" />
-
+    <div className="min-h-screen w-full bg-background">
       <TopBar />
 
-      <main className="relative z-10 container max-w-[1600px] mx-auto px-6 py-8 pt-24">
+      <main className="container max-w-[1400px] mx-auto px-6 py-8 pt-24">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <aside className="lg:col-span-3 lg:sticky lg:top-24 lg:self-start">
             {isMentor() && (
               <Button
                 onClick={() => openModal("week")}
-                className="w-full mb-4 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                className="w-full mb-4 shadow-md"
                 data-testid="button-add-week"
               >
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="w-5 h-5 mr-2" />
                 Nouvelle Semaine
               </Button>
             )}

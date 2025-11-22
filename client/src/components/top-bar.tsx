@@ -28,38 +28,37 @@ export function TopBar() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-[9999] w-full bg-white/10 backdrop-blur-xl border-b border-white/20 shadow-lg">
+    <header className="fixed top-0 left-0 right-0 z-[9999] w-full bg-card border-b border-border shadow-sm">
       <div className="flex h-16 items-center justify-between px-6">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 shadow-md">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary shadow-sm">
             <Rocket className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white">Roadmap Mentor</h1>
-            <p className="text-xs text-white/70">Backend Python Mentorat</p>
+            <h1 className="text-lg font-bold text-foreground">Roadmap Mentor</h1>
+            <p className="text-xs text-muted-foreground">Backend Python Mentorat</p>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-semibold text-white">{user?.fullName}</p>
-            <p className="text-xs text-white/70">{user?.email}</p>
+            <p className="text-sm font-medium text-foreground">{user?.fullName}</p>
+            <p className="text-xs text-muted-foreground">{user?.email}</p>
           </div>
 
           <Badge 
-            variant={isMentor() ? "default" : "secondary"}
             className={`${
               isMentor() 
-                ? "bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0" 
-                : "bg-gradient-to-r from-violet-500 to-purple-600 text-white border-0"
-            } px-3 py-1 shadow-md`}
+                ? "bg-[#34A853] hover:bg-[#2D9348] text-white border-0" 
+                : "bg-[#4285F4] hover:bg-[#3367D6] text-white border-0"
+            } px-3 py-1`}
             data-testid="badge-user-role"
           >
             {user?.role === "MENTOR" ? "Mentor" : "Apprenant"}
           </Badge>
 
-          <Avatar className="w-10 h-10 border-2 border-white/30 shadow-md">
-            <AvatarFallback className="bg-gradient-to-br from-pink-500 to-rose-500 text-white font-semibold">
+          <Avatar className="w-10 h-10 border border-border shadow-sm">
+            <AvatarFallback className="bg-primary text-white font-semibold">
               {user ? getInitials(user.fullName) : "U"}
             </AvatarFallback>
           </Avatar>
@@ -68,7 +67,7 @@ export function TopBar() {
             variant="outline"
             size="icon"
             onClick={handleLogout}
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20 hover:scale-105 transition-all"
+            className="shadow-sm"
             data-testid="button-logout"
           >
             <LogOut className="w-4 h-4" />
