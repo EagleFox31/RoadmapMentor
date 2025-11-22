@@ -410,4 +410,69 @@
       box-shadow: var(--shadow-glow-md);
     }
   }
+  
+  /* Icon Hover Animations - Premium micro-interactions */
+  .icon-hover {
+    transition: all 0.25s var(--ease-smooth);
+  }
+  
+  .icon-hover:hover {
+    transform: rotate(5deg) scale(1.1);
+  }
+  
+  /* Parallax Effect - Subtle depth on scroll/hover */
+  .parallax-sm {
+    transition: transform 0.3s var(--ease-smooth);
+  }
+  
+  .parallax-sm:hover {
+    transform: translateZ(0) translateY(-2px);
+  }
+  
+  .parallax-md {
+    transition: transform 0.4s var(--ease-smooth);
+  }
+  
+  .parallax-md:hover {
+    transform: translateZ(0) translateY(-4px);
+  }
+  
+  /* Glow Effect Utilities */
+  .glow-on-hover {
+    transition: box-shadow 0.4s var(--ease-smooth);
+  }
+  
+  .glow-on-hover:hover {
+    box-shadow: var(--shadow-depth-2), var(--shadow-glow-md) !important;
+  }
+  
+  .glow-primary {
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+  }
+  
+  .glow-accent {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+  
+  /* Smooth Scale on Hover - Premium buttons */
+  .scale-hover {
+    transition: transform 0.25s var(--ease-smooth);
+  }
+  
+  .scale-hover:hover {
+    transform: scale(1.02);
+  }
+  
+  /* Depth Layering */
+  .depth-1 {
+    box-shadow: var(--shadow-depth-1) !important;
+  }
+  
+  .depth-2 {
+    box-shadow: var(--shadow-depth-2) !important;
+  }
+  
+  .depth-3 {
+    box-shadow: var(--shadow-depth-3) !important;
+  }
 }

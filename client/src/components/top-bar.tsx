@@ -31,8 +31,8 @@ export function TopBar() {
     <header className="fixed top-0 left-0 right-0 z-[9999] w-full glass-card border-b border-white/10">
       <div className="flex h-20 items-center justify-between px-8">
         <div className="flex items-center gap-4">
-          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg glow">
-            <Rocket className="w-6 h-6 text-white" />
+          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg glow pulse-glow">
+            <Rocket className="w-6 h-6 text-white icon-hover" />
           </div>
           <div>
             <h1 className="text-xl font-bold gradient-text">Roadmap Mentor</h1>
@@ -67,10 +67,10 @@ export function TopBar() {
             variant="outline"
             size="icon"
             onClick={handleLogout}
-            className="glass border-white/20 hover:border-white/30 shadow-lg hover:shadow-xl transition-all duration-300"
+            className="glass border-white/20 glow-on-hover"
             data-testid="button-logout"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-4 h-4 icon-hover" />
           </Button>
         </div>
       </div>

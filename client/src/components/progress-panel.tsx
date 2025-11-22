@@ -63,7 +63,7 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
       {/* Weekly Breakdown */}
       <Card className="glass-card rounded-2xl p-7">
         <div className="flex items-center gap-3 mb-5">
-          <Target className="w-6 h-6 text-primary" />
+          <Target className="w-6 h-6 text-primary icon-hover" />
           <h3 className="text-foreground font-bold text-lg">Par Semaine</h3>
         </div>
 
@@ -74,10 +74,10 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
             </p>
           ) : (
             stats.weeklyProgress.map((week) => (
-              <div key={week.weekNumber} className="space-y-2 glass p-4 rounded-xl" data-testid={`progress-week-${week.weekNumber}`}>
+              <div key={week.weekNumber} className="space-y-2 glass p-4 rounded-xl hover-elevate transition-all duration-300" data-testid={`progress-week-${week.weekNumber}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-xs font-bold shadow-lg pulse-glow">
                       S{week.weekNumber}
                     </div>
                     <span className="text-foreground text-sm font-semibold truncate max-w-[140px]">
@@ -99,7 +99,7 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
                 <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
                   <span>{week.completed}/{week.total}</span>
                   {week.percentage === 100 && (
-                    <CheckCircle2 className="w-5 h-5 text-success drop-shadow-lg" />
+                    <CheckCircle2 className="w-5 h-5 text-success drop-shadow-lg icon-hover" />
                   )}
                 </div>
               </div>
@@ -109,18 +109,18 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
       </Card>
 
       {/* Motivation Badge */}
-      <Card className="glass-card rounded-2xl p-7 text-center gradient-border">
+      <Card className="glass-card rounded-2xl p-7 text-center gradient-border glow-on-hover">
         <div className="mb-3">
           {stats.globalPercentage === 100 ? (
-            <CheckCircle2 className="w-12 h-12 text-success mx-auto" />
+            <CheckCircle2 className="w-12 h-12 text-success mx-auto icon-hover pulse-glow" />
           ) : stats.globalPercentage >= 75 ? (
-            <TrendingUp className="w-12 h-12 text-primary mx-auto" />
+            <TrendingUp className="w-12 h-12 text-primary mx-auto icon-hover pulse-glow" />
           ) : stats.globalPercentage >= 50 ? (
-            <Target className="w-12 h-12 text-warning mx-auto" />
+            <Target className="w-12 h-12 text-warning mx-auto icon-hover" />
           ) : stats.globalPercentage >= 25 ? (
-            <Circle className="w-12 h-12 text-destructive mx-auto" />
+            <Circle className="w-12 h-12 text-destructive mx-auto icon-hover" />
           ) : (
-            <Circle className="w-12 h-12 text-muted-foreground mx-auto" />
+            <Circle className="w-12 h-12 text-muted-foreground mx-auto icon-hover" />
           )}
         </div>
         <p className="text-foreground font-semibold text-sm">

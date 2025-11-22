@@ -31,17 +31,17 @@ export function WeekSelector({ weeks, selectedWeekId, onSelectWeek, progressByWe
               key={week.id}
               onClick={() => onSelectWeek(week.id)}
               className={`
-                relative cursor-pointer transition-all duration-400 hover-elevate
+                relative cursor-pointer transition-all duration-400 hover-elevate parallax-sm
                 ${isSelected 
                   ? "glass-card border-primary/50 shadow-lg ring-2 ring-primary/20 glow" 
-                  : "glass border-white/10 shadow-md hover:shadow-xl"
+                  : "glass border-white/10 shadow-md glow-on-hover"
                 }
                 rounded-2xl p-5 group
               `}
               data-testid={`card-week-${week.id}`}
             >
               {/* Week number badge */}
-              <div className="absolute -top-3 -left-3 w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-xl glow transition-all duration-300">
+              <div className="absolute -top-3 -left-3 w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-xl pulse-glow transition-all duration-300">
                 <span className="text-white font-bold text-lg">S{week.number}</span>
               </div>
 
@@ -51,7 +51,7 @@ export function WeekSelector({ weeks, selectedWeekId, onSelectWeek, progressByWe
                     {week.title}
                   </h3>
                   {week.isValidatedByMentor && (
-                    <CheckCircle2 className="w-6 h-6 text-success flex-shrink-0 ml-2 drop-shadow-lg" data-testid={`icon-validated-${week.id}`} />
+                    <CheckCircle2 className="w-6 h-6 text-success flex-shrink-0 ml-2 drop-shadow-lg icon-hover" data-testid={`icon-validated-${week.id}`} />
                   )}
                 </div>
 

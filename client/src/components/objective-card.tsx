@@ -51,11 +51,11 @@ export function ObjectiveCard({
   const typeLabel = objectiveTypeLabels[objective.type as keyof typeof objectiveTypeLabels];
 
   return (
-    <Card className="glass-card rounded-2xl p-7 hover:shadow-2xl hover-elevate transition-all duration-400 group gradient-border">
+    <Card className="glass-card rounded-2xl p-7 glow-on-hover hover-elevate transition-all duration-400 group gradient-border parallax-sm">
       <div className="flex items-start justify-between mb-5">
         <div className="flex items-center gap-4">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl glow ${gradientClass}`}>
-            <Icon className="w-7 h-7 text-white" />
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl pulse-glow ${gradientClass}`}>
+            <Icon className="w-7 h-7 text-white icon-hover" />
           </div>
           <div>
             <Badge className="mb-2 text-xs glass border-white/20 font-semibold shadow-md">
@@ -71,19 +71,19 @@ export function ObjectiveCard({
               size="icon"
               variant="ghost"
               onClick={() => onEditObjective?.(objective)}
-              className="glass border-white/20 hover:border-white/30 shadow-lg"
+              className="glass border-white/20 glow-on-hover"
               data-testid={`button-edit-objective-${objective.id}`}
             >
-              <Pencil className="w-4 h-4" />
+              <Pencil className="w-4 h-4 icon-hover" />
             </Button>
             <Button
               size="icon"
               variant="ghost"
               onClick={() => onDeleteObjective?.(objective.id)}
-              className="glass border-destructive/30 text-destructive hover:border-destructive/50 shadow-lg"
+              className="glass border-destructive/30 text-destructive glow-on-hover"
               data-testid={`button-delete-objective-${objective.id}`}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-4 h-4 icon-hover" />
             </Button>
           </div>
         )}
