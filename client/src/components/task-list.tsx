@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Image as ImageIcon } from "lucide-react";
 import type { Task, TaskProgress } from "@shared/schema";
 import { isMentor, isLearner, getCurrentUser } from "@/lib/auth";
+import { ScreenshotUploader } from "./ScreenshotUploader";
 
 interface TaskWithProgress extends Task {
   progress?: TaskProgress[];
@@ -10,18 +12,30 @@ interface TaskWithProgress extends Task {
 
 interface TaskListProps {
   tasks: TaskWithProgress[];
-  onToggleTask?: (taskId: number) => void;
+  onToggleTask?: (taskId: number, screenshotUrl?: string) => void;
   onEditTask?: (taskId: number) => void;
   onDeleteTask?: (taskId: number) => void;
 }
 
 export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: TaskListProps) {
   const currentUser = getCurrentUser();
+  const [pendingScreenshots, setPendingScreenshots] = useState<Record<number, string>>({});
 
   const isTaskCompleted = (task: TaskWithProgress): boolean => {
     if (!task.progress || task.progress.length === 0) return false;
     const userProgress = task.progress.find(p => p.learnerId === currentUser?.id);
     return userProgress?.isDone || false;
+  };
+
+  const getTaskProgress = (task: TaskWithProgress): TaskProgress | undefined => {
+    if (!task.progress || task.progress.length === 0) return undefined;
+    return task.progress.find(p => p.learnerId === currentUser?.id);
+  };
+
+  const handleScreenshotUpload = (taskId: number, url: string) => {
+    setPendingScreenshots(prev => ({ ...prev, [taskId]: url }));
+    // Auto-complete the task after screenshot upload
+    onToggleTask?.(taskId, url);
   };
 
   if (tasks.length === 0) {
@@ -61,20 +75,58 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
               }`} />
             )}
 
-            <span
-              className={`
-                flex-1 text-sm leading-relaxed transition-all font-medium
-                ${isCompleted 
-                  ? "text-muted-foreground line-through opacity-60" 
-                  : "text-foreground"
-                }
-              `}
-            >
-              {task.label}
-              {task.isOptional && (
-                <span className="ml-2 text-xs text-muted-foreground italic font-semibold">(optionnel)</span>
+            <div className="flex-1 flex flex-col gap-2">
+              <span
+                className={`
+                  text-sm leading-relaxed transition-all font-medium
+                  ${isCompleted 
+                    ? "text-muted-foreground line-through opacity-60" 
+                    : "text-foreground"
+                  }
+                `}
+              >
+                {task.label}
+                {task.isOptional && (
+                  <span className="ml-2 text-xs text-muted-foreground italic font-semibold">(optionnel)</span>
+                )}
+              </span>
+
+              {isLearner() && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {isCompleted && getTaskProgress(task)?.screenshotUrl && (
+                    <a 
+                      href={getTaskProgress(task)!.screenshotUrl!} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-primary hover:underline"
+                      data-testid={`link-screenshot-${task.id}`}
+                    >
+                      <ImageIcon className="w-3 h-3" />
+                      Voir la capture
+                    </a>
+                  )}
+                  {!isCompleted && (
+                    <ScreenshotUploader
+                      onUploadComplete={(url) => handleScreenshotUpload(task.id, url)}
+                      currentUrl={pendingScreenshots[task.id] || getTaskProgress(task)?.screenshotUrl}
+                    />
+                  )}
+                </div>
               )}
-            </span>
+
+              {isMentor() && isCompleted && getTaskProgress(task)?.screenshotUrl && (
+                <a 
+                  href={getTaskProgress(task)!.screenshotUrl!} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  data-testid={`link-screenshot-${task.id}`}
+                >
+                  <ImageIcon className="w-3 h-3" />
+                  Voir la capture
+                </a>
+              )}
+            </div>
 
             {isMentor() && (
               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">

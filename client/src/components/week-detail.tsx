@@ -11,7 +11,7 @@ import { isMentor } from "@/lib/auth";
 
 interface WeekDetailProps {
   week: WeekWithDetails | null;
-  onToggleTask?: (taskId: number) => void;
+  onToggleTask?: (taskId: number, screenshotUrl?: string) => void;
   onAddComment?: (content: string) => void;
   onEditWeek?: () => void;
   onDeleteWeek?: () => void;

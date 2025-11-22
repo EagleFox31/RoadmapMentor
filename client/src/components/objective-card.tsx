@@ -8,7 +8,7 @@ import { isMentor } from "@/lib/auth";
 
 interface ObjectiveCardProps {
   objective: ObjectiveWithTasks;
-  onToggleTask?: (taskId: number) => void;
+  onToggleTask?: (taskId: number, screenshotUrl?: string) => void;
   onEditObjective?: (objective: ObjectiveWithTasks) => void;
   onDeleteObjective?: (objectiveId: number) => void;
   onAddTask?: (objectiveId: number) => void;

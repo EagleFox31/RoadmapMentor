@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authMiddleware, requireMentor, requireLearner, generateToken, hashPassword, comparePassword, type AuthRequest } from "./auth";
 import { insertUserSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema } from "@shared/schema";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { ObjectPermission } from "./objectAcl";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Helper to send errors
@@ -108,6 +110,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Test users created", users: createdUsers });
     } catch (error) {
       handleError(res, error);
+    }
+  });
+
+  // ========== OBJECT STORAGE ROUTES ==========
+  // Referenced from blueprint:javascript_object_storage
+
+  // Get presigned upload URL for screenshots
+  app.post("/api/objects/upload", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Serve uploaded screenshots
+  app.get("/objects/:objectPath(*)", authMiddleware, async (req: AuthRequest, res) => {
+    const userId = req.user!.id.toString();
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      const canAccess = await objectStorageService.canAccessObjectEntity({
+        objectFile,
+        userId,
+        requestedPermission: ObjectPermission.READ,
+      });
+      if (!canAccess) {
+        return res.sendStatus(401);
+      }
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error accessing object:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
     }
   });
 
@@ -407,6 +447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // NEVER accept learnerId from request body - prevents privilege escalation
       const authenticatedLearnerId = req.user!.id;
       const taskId = parseInt(req.params.taskId);
+      const { screenshotUrl } = req.body;
       
       // Verify task exists before toggling
       const task = await storage.getTask(taskId);
@@ -414,8 +455,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Task not found" });
       }
       
+      // If screenshot URL is provided, set ACL policy
+      let normalizedScreenshotUrl = screenshotUrl;
+      if (screenshotUrl) {
+        const objectStorageService = new ObjectStorageService();
+        normalizedScreenshotUrl = await objectStorageService.trySetObjectEntityAclPolicy(
+          screenshotUrl,
+          {
+            owner: authenticatedLearnerId.toString(),
+            visibility: "public",
+          }
+        );
+      }
+      
       // Storage.toggleTaskProgress will create/update progress ONLY for the authenticated learner
-      const progress = await storage.toggleTaskProgress(taskId, authenticatedLearnerId);
+      const progress = await storage.toggleTaskProgress(taskId, authenticatedLearnerId, normalizedScreenshotUrl);
       res.json(progress);
     } catch (error) {
       handleError(res, error);

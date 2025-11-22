@@ -123,8 +123,8 @@ export default function RoadmapPage() {
 
   // Toggle task completion (learner only)
   const toggleTaskMutation = useMutation({
-    mutationFn: async (taskId: number) => {
-      return await apiRequest("POST", `/api/tasks/${taskId}/toggle-progress`, {});
+    mutationFn: async ({ taskId, screenshotUrl }: { taskId: number; screenshotUrl?: string }) => {
+      return await apiRequest("POST", `/api/tasks/${taskId}/toggle-progress`, { screenshotUrl });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
@@ -344,7 +344,7 @@ export default function RoadmapPage() {
             <div className="glass-card rounded-3xl p-8">
               <WeekDetail
                 week={selectedWeek}
-                onToggleTask={(taskId) => toggleTaskMutation.mutate(taskId)}
+                onToggleTask={(taskId, screenshotUrl) => toggleTaskMutation.mutate({ taskId, screenshotUrl })}
                 onAddComment={(content) => selectedWeekId && addCommentMutation.mutate({ weekId: selectedWeekId, content })}
                 onEditWeek={() => { setEditingWeek(selectedWeek); openModal("week"); }}
                 onDeleteWeek={() => selectedWeekId && confirm("Êtes-vous sûr de vouloir supprimer cette semaine ?") && deleteWeekMutation.mutate(selectedWeekId)}

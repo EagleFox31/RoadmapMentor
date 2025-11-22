@@ -77,6 +77,7 @@ export const taskProgress = pgTable("task_progress", {
   taskId: integer("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
   learnerId: integer("learner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   isDone: boolean("is_done").notNull().default(false),
+  screenshotUrl: text("screenshot_url"),
   doneAt: timestamp("done_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

@@ -74,7 +74,7 @@ export interface IStorage {
   // Task Progress methods
   getTaskProgress(taskId: number, learnerId: number): Promise<TaskProgress | undefined>;
   getProgressByLearner(learnerId: number): Promise<TaskProgress[]>;
-  toggleTaskProgress(taskId: number, learnerId: number): Promise<TaskProgress>;
+  toggleTaskProgress(taskId: number, learnerId: number, screenshotUrl?: string): Promise<TaskProgress>;
 
   // Week Comment methods
   getCommentsByWeek(weekId: number): Promise<WeekComment[]>;
@@ -313,7 +313,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(taskProgress).where(eq(taskProgress.learnerId, learnerId));
   }
 
-  async toggleTaskProgress(taskId: number, learnerId: number): Promise<TaskProgress> {
+  async toggleTaskProgress(taskId: number, learnerId: number, screenshotUrl?: string): Promise<TaskProgress> {
     const existing = await this.getTaskProgress(taskId, learnerId);
 
     if (existing) {
@@ -323,6 +323,7 @@ export class DatabaseStorage implements IStorage {
         .set({
           isDone: !existing.isDone,
           doneAt: !existing.isDone ? new Date() : null,
+          screenshotUrl: screenshotUrl || existing.screenshotUrl,
         })
         .where(eq(taskProgress.id, existing.id))
         .returning();
@@ -336,6 +337,7 @@ export class DatabaseStorage implements IStorage {
           learnerId,
           isDone: true,
           doneAt: new Date(),
+          screenshotUrl,
         })
         .returning();
       return created;
