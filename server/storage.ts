@@ -10,6 +10,7 @@ import {
   resources,
   taskProgress,
   weekComments,
+  emailNotificationPreferences,
   type User,
   type InsertUser,
   type Week,
@@ -27,6 +28,8 @@ import {
   type InsertTaskProgress,
   type WeekComment,
   type InsertWeekComment,
+  type EmailNotificationPreferences,
+  type InsertEmailNotificationPreferences,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -82,6 +85,11 @@ export interface IStorage {
   // Week Comment methods
   getCommentsByWeek(weekId: number): Promise<WeekComment[]>;
   createComment(comment: InsertWeekComment): Promise<WeekComment>;
+
+  // Email Notification Preferences methods
+  getEmailPreferences(userId: number): Promise<EmailNotificationPreferences | undefined>;
+  updateEmailPreferences(userId: number, preferences: Partial<InsertEmailNotificationPreferences>): Promise<EmailNotificationPreferences>;
+  createEmailPreferences(preferences: InsertEmailNotificationPreferences): Promise<EmailNotificationPreferences>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -417,6 +425,38 @@ export class DatabaseStorage implements IStorage {
 
   async createComment(comment: InsertWeekComment): Promise<WeekComment> {
     const [created] = await db.insert(weekComments).values(comment).returning();
+    return created;
+  }
+
+  // Email Notification Preferences methods
+  async getEmailPreferences(userId: number): Promise<EmailNotificationPreferences | undefined> {
+    const [prefs] = await db
+      .select()
+      .from(emailNotificationPreferences)
+      .where(eq(emailNotificationPreferences.userId, userId));
+    return prefs || undefined;
+  }
+
+  async updateEmailPreferences(userId: number, preferences: Partial<InsertEmailNotificationPreferences>): Promise<EmailNotificationPreferences> {
+    const [updated] = await db
+      .update(emailNotificationPreferences)
+      .set({ ...preferences, updatedAt: new Date() })
+      .where(eq(emailNotificationPreferences.userId, userId))
+      .returning();
+    
+    if (!updated) {
+      // Si les préférences n'existent pas, les créer
+      return await this.createEmailPreferences({ userId, ...preferences } as InsertEmailNotificationPreferences);
+    }
+    
+    return updated;
+  }
+
+  async createEmailPreferences(preferences: InsertEmailNotificationPreferences): Promise<EmailNotificationPreferences> {
+    const [created] = await db
+      .insert(emailNotificationPreferences)
+      .values(preferences)
+      .returning();
     return created;
   }
 }

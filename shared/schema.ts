@@ -91,6 +91,37 @@ export const weekComments = pgTable("week_comments", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Email notification preferences
+export const emailNotificationTypeEnum = pgEnum("email_notification_type", [
+  "TASK_REMINDER",
+  "WEEK_PREPARATION",
+  "PROGRESS_UPDATE",
+  "COMMENT_NOTIFICATION"
+]);
+
+export const emailNotificationPreferences = pgTable("email_notification_preferences", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  taskReminders: boolean("task_reminders").notNull().default(true),
+  weekPreparation: boolean("week_preparation").notNull().default(true),
+  progressUpdates: boolean("progress_updates").notNull().default(true),
+  commentNotifications: boolean("comment_notifications").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+// Email notifications log (pour tracer les envois)
+export const emailNotifications = pgTable("email_notifications", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: emailNotificationTypeEnum("type").notNull(),
+  subject: text("subject").notNull(),
+  recipientEmail: text("recipient_email").notNull(),
+  sentAt: timestamp("sent_at").notNull().defaultNow(),
+  status: text("status").notNull().default("sent"),
+  errorMessage: text("error_message"),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   taskProgress: many(taskProgress),
@@ -199,6 +230,17 @@ export const insertWeekCommentSchema = createInsertSchema(weekComments).omit({
   createdAt: true,
 });
 
+export const insertEmailNotificationPreferencesSchema = createInsertSchema(emailNotificationPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertEmailNotificationSchema = createInsertSchema(emailNotifications).omit({
+  id: true,
+  sentAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -223,6 +265,12 @@ export type InsertTaskProgress = z.infer<typeof insertTaskProgressSchema>;
 
 export type WeekComment = typeof weekComments.$inferSelect;
 export type InsertWeekComment = z.infer<typeof insertWeekCommentSchema>;
+
+export type EmailNotificationPreferences = typeof emailNotificationPreferences.$inferSelect;
+export type InsertEmailNotificationPreferences = z.infer<typeof insertEmailNotificationPreferencesSchema>;
+
+export type EmailNotification = typeof emailNotifications.$inferSelect;
+export type InsertEmailNotification = z.infer<typeof insertEmailNotificationSchema>;
 
 // Extended types for frontend (with relations)
 export type TaskProgressWithLearner = TaskProgress & {
