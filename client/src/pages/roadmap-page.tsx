@@ -14,6 +14,7 @@ import { Plus } from "lucide-react";
 import { isMentor, getCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import bgPatternUrl from "@assets/generated_images/material_design_3_subtle_pattern_background_texture.png";
 import type { WeekWithDetails, Week, Objective, Task, Deliverable, Resource, ObjectiveWithTasks } from "@shared/schema";
 
 type ModalState = {
@@ -29,7 +30,7 @@ export default function RoadmapPage() {
   const [selectedWeekId, setSelectedWeekId] = useState<number | null>(null);
   const currentUser = getCurrentUser();
   const [scrollY, setScrollY] = useState(0);
-  
+
   // Parallax effect
   useEffect(() => {
     const handleScroll = () => {
@@ -38,7 +39,7 @@ export default function RoadmapPage() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-  
+
   // Modal states
   const [modals, setModals] = useState<ModalState>({
     week: false,
@@ -47,7 +48,7 @@ export default function RoadmapPage() {
     deliverable: false,
     resource: false,
   });
-  
+
   // Edit states
   const [editingWeek, setEditingWeek] = useState<Week | null>(null);
   const [editingObjective, setEditingObjective] = useState<Objective | null>(null);
@@ -299,12 +300,12 @@ export default function RoadmapPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen w-full bg-background">
+      <div className="min-h-screen w-full bg-[#f8f9fa]" style={{ backgroundImage: `url(${bgPatternUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}>
         <TopBar />
         <div className="flex items-center justify-center h-[calc(100vh-4rem)] pt-20">
           <div className="text-center">
-            <div className="w-16 h-16 border-4 border-border border-t-primary rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-foreground text-lg font-medium">Chargement de la feuille de route...</p>
+            <div className="w-16 h-16 border-4 border-[#e8eaed] border-t-[#1a73e8] rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-[#202124] text-lg font-normal">Chargement de la feuille de route...</p>
           </div>
         </div>
       </div>
@@ -312,7 +313,7 @@ export default function RoadmapPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-background">
+    <div className="min-h-screen w-full bg-[#f8f9fa]" style={{ backgroundImage: `url(${bgPatternUrl})`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
       <TopBar />
 
       <main className="container max-w-[1400px] mx-auto px-6 py-8 pt-24">
@@ -321,48 +322,54 @@ export default function RoadmapPage() {
             {isMentor() && (
               <Button
                 onClick={() => openModal("week")}
-                className="w-full mb-4 shadow-md"
+                className="w-full mb-4 bg-[#1a73e8] hover:bg-[#1557b0] text-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 font-medium"
                 data-testid="button-add-week"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 Nouvelle Semaine
               </Button>
             )}
-            <WeekSelector
-              weeks={weeks}
-              selectedWeekId={selectedWeekId}
-              onSelectWeek={setSelectedWeekId}
-              progressByWeek={progressByWeek}
-            />
+            <div className="bg-white rounded-lg shadow-sm border border-[#dadce0] overflow-hidden">
+              <WeekSelector
+                weeks={weeks}
+                selectedWeekId={selectedWeekId}
+                onSelectWeek={setSelectedWeekId}
+                progressByWeek={progressByWeek}
+              />
+            </div>
           </aside>
 
           <section className="lg:col-span-6">
-            <WeekDetail
-              week={selectedWeek}
-              onToggleTask={(taskId) => toggleTaskMutation.mutate(taskId)}
-              onAddComment={(content) => selectedWeekId && addCommentMutation.mutate({ weekId: selectedWeekId, content })}
-              onEditWeek={() => { setEditingWeek(selectedWeek); openModal("week"); }}
-              onDeleteWeek={() => selectedWeekId && confirm("Êtes-vous sûr de vouloir supprimer cette semaine ?") && deleteWeekMutation.mutate(selectedWeekId)}
-              onCloneWeek={() => selectedWeekId && cloneWeekMutation.mutate(selectedWeekId)}
-              onValidateWeek={() => selectedWeekId && validateWeekMutation.mutate(selectedWeekId)}
-              onAddObjective={() => openModal("objective")}
-              onEditObjective={(obj) => { setEditingObjective(obj); openModal("objective"); }}
-              onDeleteObjective={(id) => confirm("Supprimer cet objectif ?") && deleteObjectiveMutation.mutate(id)}
-              onAddTask={(objId) => { setTargetObjectiveId(objId); openModal("task"); }}
-              onEditTask={(taskId) => { const task = selectedWeek?.objectives.flatMap(o => o.tasks).find(t => t.id === taskId); if (task) { setEditingTask(task); openModal("task"); }}}
-              onDeleteTask={(id) => confirm("Supprimer cette tâche ?") && deleteTaskMutation.mutate(id)}
-              onAddDeliverable={() => openModal("deliverable")}
-              onEditDeliverable={(d) => { setEditingDeliverable(d); openModal("deliverable"); }}
-              onDeleteDeliverable={(id) => confirm("Supprimer ce livrable ?") && deleteDeliverableMutation.mutate(id)}
-              onAddResource={() => openModal("resource")}
-              onEditResource={(r) => { setEditingResource(r); openModal("resource"); }}
-              onDeleteResource={(id) => confirm("Supprimer cette ressource ?") && deleteResourceMutation.mutate(id)}
-              isLoadingComment={addCommentMutation.isPending}
-            />
+            <div className="bg-white rounded-lg shadow-sm border border-[#dadce0] p-6">
+              <WeekDetail
+                week={selectedWeek}
+                onToggleTask={(taskId) => toggleTaskMutation.mutate(taskId)}
+                onAddComment={(content) => selectedWeekId && addCommentMutation.mutate({ weekId: selectedWeekId, content })}
+                onEditWeek={() => { setEditingWeek(selectedWeek); openModal("week"); }}
+                onDeleteWeek={() => selectedWeekId && confirm("Êtes-vous sûr de vouloir supprimer cette semaine ?") && deleteWeekMutation.mutate(selectedWeekId)}
+                onCloneWeek={() => selectedWeekId && cloneWeekMutation.mutate(selectedWeekId)}
+                onValidateWeek={() => selectedWeekId && validateWeekMutation.mutate(selectedWeekId)}
+                onAddObjective={() => openModal("objective")}
+                onEditObjective={(obj) => { setEditingObjective(obj); openModal("objective"); }}
+                onDeleteObjective={(id) => confirm("Supprimer cet objectif ?") && deleteObjectiveMutation.mutate(id)}
+                onAddTask={(objId) => { setTargetObjectiveId(objId); openModal("task"); }}
+                onEditTask={(taskId) => { const task = selectedWeek?.objectives.flatMap(o => o.tasks).find(t => t.id === taskId); if (task) { setEditingTask(task); openModal("task"); }}}
+                onDeleteTask={(id) => confirm("Supprimer cette tâche ?") && deleteTaskMutation.mutate(id)}
+                onAddDeliverable={() => openModal("deliverable")}
+                onEditDeliverable={(d) => { setEditingDeliverable(d); openModal("deliverable"); }}
+                onDeleteDeliverable={(id) => confirm("Supprimer ce livrable ?") && deleteDeliverableMutation.mutate(id)}
+                onAddResource={() => openModal("resource")}
+                onEditResource={(r) => { setEditingResource(r); openModal("resource"); }}
+                onDeleteResource={(id) => confirm("Supprimer cette ressource ?") && deleteResourceMutation.mutate(id)}
+                isLoadingComment={addCommentMutation.isPending}
+              />
+            </div>
           </section>
 
           <aside className="lg:col-span-3 lg:sticky lg:top-24 lg:self-start">
-            <ProgressPanel stats={globalStats} />
+            <div className="bg-white rounded-lg shadow-sm border border-[#dadce0] p-5">
+              <ProgressPanel stats={globalStats} />
+            </div>
           </aside>
         </div>
       </main>
