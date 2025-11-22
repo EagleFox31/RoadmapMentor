@@ -14,7 +14,7 @@ import { Plus } from "lucide-react";
 import { isMentor, getCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import bgPatternUrl from "@assets/generated_images/material_design_3_subtle_pattern_background_texture.png";
+import bgHeroUrl from "@assets/generated_images/python_mentorship_hero_background_modern_tech.png";
 import type { WeekWithDetails, Week, Objective, Task, Deliverable, Resource, ObjectiveWithTasks } from "@shared/schema";
 
 type ModalState = {
@@ -300,12 +300,13 @@ export default function RoadmapPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen w-full bg-[#f8f9fa]" style={{ backgroundImage: `url(${bgPatternUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+      <div className="min-h-screen w-full" style={{ backgroundImage: `url(${bgHeroUrl})`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
+        <div className="absolute inset-0 bg-black/30"></div>
         <TopBar />
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)] pt-20">
+        <div className="relative flex items-center justify-center h-[calc(100vh-4rem)] pt-20">
           <div className="text-center">
-            <div className="w-16 h-16 border-4 border-[#e8eaed] border-t-[#1a73e8] rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-[#202124] text-lg font-normal">Chargement de la feuille de route...</p>
+            <div className="w-16 h-16 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-white text-lg font-normal drop-shadow-lg">Chargement de la feuille de route...</p>
           </div>
         </div>
       </div>
@@ -313,7 +314,7 @@ export default function RoadmapPage() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#f8f9fa]" style={{ backgroundImage: `url(${bgPatternUrl})`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
+    <div className="min-h-screen w-full bg-[#f8f9fa]" style={{ backgroundImage: `url(${bgHeroUrl})`, backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed" }}>
       <TopBar />
 
       <main className="container max-w-[1400px] mx-auto px-6 py-8 pt-24">
