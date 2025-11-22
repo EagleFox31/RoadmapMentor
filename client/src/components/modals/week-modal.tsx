@@ -140,7 +140,7 @@ export function WeekModal({ isOpen, onClose, onSubmit, week, isLoading }: WeekMo
                     {startDate ? format(startDate, "d MMM yyyy", { locale: fr }) : "Choisir une date"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0 bg-white dark:bg-slate-800" align="start">
                   <Calendar
                     mode="single"
                     selected={startDate}
@@ -168,7 +168,7 @@ export function WeekModal({ isOpen, onClose, onSubmit, week, isLoading }: WeekMo
                     {endDate ? format(endDate, "d MMM yyyy", { locale: fr }) : "Choisir une date"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0 bg-white dark:bg-slate-800" align="start">
                   <Calendar
                     mode="single"
                     selected={endDate}
