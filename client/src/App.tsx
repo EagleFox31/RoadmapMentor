@@ -8,7 +8,7 @@ import AuthPage from "@/pages/auth-page";
 import RoadmapPage from "@/pages/roadmap-page";
 import NotFound from "@/pages/not-found";
 import { isAuthenticated } from "@/lib/auth";
-import mentorBg from "@/assets/mentor-bg.jpg";
+import mentorBg from "./assets/mentor-bg.jpg";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   if (!isAuthenticated()) {
