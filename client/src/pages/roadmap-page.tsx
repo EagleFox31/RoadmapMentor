@@ -321,9 +321,24 @@ export default function RoadmapPage() {
 
   // AI Roadmap save function (ATOMIC BULK CREATION WITH TRANSACTION)
   const handleSaveAIRoadmap = async (generatedWeeks: any[]) => {
+    // Transform AI-generated weeks to match backend schema
+    // AI returns "weekNumber" but backend expects "number"
+    const transformedWeeks = generatedWeeks.map((week) => ({
+      ...week,
+      number: week.weekNumber, // Map weekNumber -> number
+      objectives: week.objectives.map((obj: any, index: number) => ({
+        ...obj,
+        orderIndex: obj.orderIndex !== undefined ? obj.orderIndex : index,
+        tasks: obj.tasks.map((task: any, taskIndex: number) => ({
+          ...task,
+          orderIndex: task.orderIndex !== undefined ? task.orderIndex : taskIndex,
+        })),
+      })),
+    }));
+
     // Single atomic API call that creates all weeks, objectives, tasks, deliverables, and resources
     // in one database transaction. If any part fails, everything is rolled back automatically.
-    const result = await apiRequest("POST", "/api/weeks/bulk", generatedWeeks);
+    const result = await apiRequest("POST", "/api/weeks/bulk", transformedWeeks);
 
     // Invalidate cache only on success (transaction committed)
     queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
