@@ -7,6 +7,13 @@ import { z } from "zod";
 // Otherwise, use Replit AI Integrations (billed to Replit credits)
 const useOwnApiKey = !!process.env.OPENAI_API_KEY;
 
+console.log("[AI Service] OpenAI configuration:", {
+  useOwnApiKey,
+  hasOwnKey: !!process.env.OPENAI_API_KEY,
+  hasReplitKey: !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+  hasReplitBaseURL: !!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+});
+
 const openai = new OpenAI({
   baseURL: useOwnApiKey ? "https://api.openai.com/v1" : process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
   apiKey: useOwnApiKey ? process.env.OPENAI_API_KEY : process.env.AI_INTEGRATIONS_OPENAI_API_KEY
@@ -174,7 +181,7 @@ Génère exactement ${request.numberOfWeeks} semaines. Les dates doivent être s
       async () => {
         try {
           const completion = await openai.chat.completions.create({
-            model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+            model: "gpt-4o", // Using GPT-4o for reliable JSON mode
             messages: [
               {
                 role: "system",
@@ -189,8 +196,16 @@ Génère exactement ${request.numberOfWeeks} semaines. Les dates doivent être s
             max_completion_tokens: 8192,
           });
 
+          console.log("OpenAI response received:", {
+            hasChoices: !!completion.choices,
+            choicesLength: completion.choices?.length,
+            hasContent: !!completion.choices[0]?.message?.content,
+            finishReason: completion.choices[0]?.finish_reason,
+          });
+
           const content = completion.choices[0]?.message?.content;
           if (!content) {
+            console.error("OpenAI returned empty content. Full response:", JSON.stringify(completion, null, 2));
             throw new Error("No content returned from OpenAI");
           }
 
