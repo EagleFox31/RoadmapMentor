@@ -73,8 +73,16 @@ export default function RoadmapPage() {
     const totalTasks = week.objectives.reduce((sum, obj) => sum + obj.tasks.length, 0);
     const completedTasks = week.objectives.reduce((sum, obj) => {
       return sum + obj.tasks.filter(task => {
-        const userProgress = task.progress?.find(p => p.learnerId === currentUser?.id);
-        return userProgress?.isDone || false;
+        if (!task.progress || task.progress.length === 0) return false;
+        
+        if (isMentor()) {
+          // For mentors, count tasks completed by ANY learner
+          return task.progress.some(p => p.isDone);
+        } else {
+          // For learners, check their own progress
+          const userProgress = task.progress.find(p => p.learnerId === currentUser?.id);
+          return userProgress?.isDone || false;
+        }
       }).length;
     }, 0);
 

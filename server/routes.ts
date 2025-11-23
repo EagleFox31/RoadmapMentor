@@ -20,7 +20,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const { fullName, email, password, role } = insertUserSchema.parse(req.body);
+      const userData = insertUserSchema.parse(req.body);
+      const { fullName, email, password, role } = userData;
       
       // Check if user exists
       const existing = await storage.getUserByEmail(email);
@@ -570,28 +571,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/progress/summary", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      // SECURITY: Only learners can see progress summaries
-      if (req.user?.role !== "LEARNER") {
-        return res.json({ globalPercentage: 0, totalCompleted: 0, totalTasks: 0 });
-      }
-
-      // SECURITY: Always scope progress to the authenticated learner
-      const authenticatedLearnerId = req.user.id;
       const weeks = await storage.getAllWeeks();
       let totalTasks = 0;
       let completedTasks = 0;
 
-      for (const week of weeks) {
-        const objectives = await storage.getObjectivesByWeek(week.id);
-        for (const objective of objectives) {
-          const tasks = await storage.getTasksByObjective(objective.id);
-          totalTasks += tasks.length;
+      if (req.user?.role === "LEARNER") {
+        // For learners: scope progress to the authenticated learner only
+        const authenticatedLearnerId = req.user.id;
 
-          for (const task of tasks) {
-            // CRITICAL: Only fetch progress for the authenticated learner
-            const progress = await storage.getTaskProgress(task.id, authenticatedLearnerId);
-            if (progress?.isDone) {
-              completedTasks++;
+        for (const week of weeks) {
+          const objectives = await storage.getObjectivesByWeek(week.id);
+          for (const objective of objectives) {
+            const tasks = await storage.getTasksByObjective(objective.id);
+            totalTasks += tasks.length;
+
+            for (const task of tasks) {
+              const progress = await storage.getTaskProgress(task.id, authenticatedLearnerId);
+              if (progress?.isDone) {
+                completedTasks++;
+              }
+            }
+          }
+        }
+      } else {
+        // For mentors: count tasks completed by ANY learner
+        for (const week of weeks) {
+          const objectives = await storage.getObjectivesByWeek(week.id);
+          for (const objective of objectives) {
+            const tasks = await storage.getTasksByObjective(objective.id);
+            totalTasks += tasks.length;
+
+            for (const task of tasks) {
+              const allProgress = await storage.getAllTaskProgress(task.id);
+              if (allProgress.some(p => p.isDone)) {
+                completedTasks++;
+              }
             }
           }
         }
