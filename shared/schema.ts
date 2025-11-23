@@ -291,3 +291,63 @@ export type WeekWithDetails = Week & {
   resources: Resource[];
   comments: (WeekComment & { learner: User })[];
 };
+
+// Bulk roadmap creation schemas (nested)
+// These schemas allow creating weeks with nested objectives, tasks, deliverables, and resources in a single transaction
+
+// Task schema for bulk creation (without weekId/objectiveId as they'll be set during insertion)
+export const bulkTaskSchema = insertTaskSchema.omit({ 
+  objectiveId: true 
+}).extend({
+  // Add a temporary ID for matching after insertion
+  tempId: z.string().optional(),
+});
+
+// Objective schema with nested tasks
+export const bulkObjectiveSchema = insertObjectiveSchema.omit({ 
+  weekId: true 
+}).extend({
+  tempId: z.string().optional(),
+  tasks: z.array(bulkTaskSchema).min(1, "Each objective must have at least one task"),
+});
+
+// Week schema with all nested entities
+export const bulkWeekSchema = insertWeekSchema.extend({
+  number: z.number().int().positive(),
+  objectives: z.array(bulkObjectiveSchema).min(1, "Each week must have at least one objective"),
+  deliverables: z.array(insertDeliverableSchema.omit({ weekId: true })).default([]),
+  resources: z.array(insertResourceSchema.omit({ weekId: true })).default([]),
+});
+
+// Array of weeks for bulk roadmap creation
+export const insertRoadmapBulkSchema = z.array(bulkWeekSchema).min(1, "At least one week is required");
+
+// Types for bulk creation
+export type BulkTask = z.infer<typeof bulkTaskSchema>;
+export type BulkObjective = z.infer<typeof bulkObjectiveSchema>;
+export type BulkWeek = z.infer<typeof bulkWeekSchema>;
+export type RoadmapBulkInsert = z.infer<typeof insertRoadmapBulkSchema>;
+
+// Response type for bulk creation (with generated IDs)
+export type BulkCreatedTask = {
+  id: number;
+  tempId?: string;
+};
+
+export type BulkCreatedObjective = {
+  id: number;
+  tempId?: string;
+  tasks: BulkCreatedTask[];
+};
+
+export type BulkCreatedWeek = {
+  id: number;
+  number: number;
+  objectives: BulkCreatedObjective[];
+  deliverables: Array<{ id: number }>;
+  resources: Array<{ id: number }>;
+};
+
+export type RoadmapBulkCreateResponse = {
+  weeks: BulkCreatedWeek[];
+};
