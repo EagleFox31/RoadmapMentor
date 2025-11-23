@@ -1,20 +1,32 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import { db } from "../db";
 import { emailNotifications, emailNotificationPreferences, users } from "@shared/schema";
 import type { InsertEmailNotification } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Configuration SMTP Hostinger
+const MAIL_PORT = parseInt(process.env.MAIL_PORT || "465");
+const transporter = nodemailer.createTransport({
+  host: process.env.MAIL_HOST,
+  port: MAIL_PORT,
+  secure: MAIL_PORT === 465, // true pour port 465 (SSL/TLS), false pour port 587 (STARTTLS)
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS,
+  },
+});
 
-// Configuration de l'expéditeur (doit être un domaine vérifié sur Resend)
-const FROM_EMAIL = process.env.FROM_EMAIL || "onboarding@resend.dev";
+// Validation des variables d'environnement au démarrage
+if (!process.env.MAIL_HOST || !process.env.MAIL_USER || !process.env.MAIL_PASS) {
+  console.warn("[EMAIL WARNING] Missing SMTP configuration. Email sending may fail.");
+  console.warn("Required: MAIL_HOST, MAIL_USER, MAIL_PASS, MAIL_FROM");
+}
+
+const FROM_EMAIL = process.env.MAIL_FROM || "Roadmap Mentor <support@xeptionetwork.shop>";
 const APP_NAME = "Roadmap Mentor";
 const APP_URL = process.env.REPL_SLUG 
   ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
   : "http://localhost:5000";
-
-// Email autorisé en mode test (Resend ne peut envoyer qu'à cette adresse sans domaine vérifié)
-const ALLOWED_TEST_EMAIL = "justsmilewithme242@gmail.com";
 
 interface EmailTemplateData {
   userName: string;
@@ -57,42 +69,16 @@ export class EmailService {
     type: typeof emailNotifications.$inferSelect.type
   ): Promise<boolean> {
     try {
-      // En mode test (sans domaine vérifié), Resend ne peut envoyer qu'à l'email autorisé
-      if (recipientEmail !== ALLOWED_TEST_EMAIL) {
-        console.log(`[EMAIL SKIP] Cannot send to ${recipientEmail} in test mode (only ${ALLOWED_TEST_EMAIL} allowed)`);
-        await this.logEmailNotification({
-          userId,
-          type,
-          subject,
-          recipientEmail,
-          status: "skipped",
-          errorMessage: `Test mode: can only send to ${ALLOWED_TEST_EMAIL}`,
-        });
-        return false;
-      }
-
       console.log(`[EMAIL SEND] Sending to ${recipientEmail}: ${subject}`);
-      const { data, error } = await resend.emails.send({
+      
+      const info = await transporter.sendMail({
         from: FROM_EMAIL,
         to: recipientEmail,
         subject,
         html,
       });
 
-      if (error) {
-        console.error("[EMAIL ERROR] Resend error:", error);
-        await this.logEmailNotification({
-          userId,
-          type,
-          subject,
-          recipientEmail,
-          status: "failed",
-          errorMessage: error.message,
-        });
-        return false;
-      }
-
-      console.log(`[EMAIL SUCCESS] Email sent to ${recipientEmail} with ID: ${data?.id}`);
+      console.log(`[EMAIL SUCCESS] Email sent to ${recipientEmail} - MessageID: ${info.messageId}`);
       await this.logEmailNotification({
         userId,
         type,
@@ -104,7 +90,7 @@ export class EmailService {
 
       return true;
     } catch (error: any) {
-      console.error("Email sending error:", error);
+      console.error("[EMAIL ERROR] SMTP error:", error);
       await this.logEmailNotification({
         userId,
         type,
