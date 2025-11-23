@@ -319,92 +319,17 @@ export default function RoadmapPage() {
     },
   });
 
-  // AI Roadmap save function
+  // AI Roadmap save function (ATOMIC BULK CREATION WITH TRANSACTION)
   const handleSaveAIRoadmap = async (generatedWeeks: any[]) => {
-    // Basic validation before saving
-    if (!Array.isArray(generatedWeeks) || generatedWeeks.length === 0) {
-      throw new Error("Aucune semaine à sauvegarder");
-    }
+    // Single atomic API call that creates all weeks, objectives, tasks, deliverables, and resources
+    // in one database transaction. If any part fails, everything is rolled back automatically.
+    const result = await apiRequest("POST", "/api/weeks/bulk", generatedWeeks);
 
-    for (const genWeek of generatedWeeks) {
-      // Validate required fields
-      if (!genWeek.weekNumber || !genWeek.title || !genWeek.startDate || !genWeek.endDate) {
-        throw new Error(`Semaine invalide : champs obligatoires manquants`);
-      }
-
-      if (!Array.isArray(genWeek.objectives) || genWeek.objectives.length === 0) {
-        throw new Error(`Semaine ${genWeek.weekNumber} : au moins un objectif est requis`);
-      }
-
-      // Create week
-      const week: any = await apiRequest("POST", "/api/weeks", {
-        number: genWeek.weekNumber,
-        title: genWeek.title,
-        startDate: genWeek.startDate,
-        endDate: genWeek.endDate,
-        description: genWeek.description,
-      });
-
-      // Create objectives for this week
-      for (const genObj of genWeek.objectives) {
-        if (!genObj.title || !genObj.type || !Array.isArray(genObj.tasks) || genObj.tasks.length === 0) {
-          throw new Error(`Objectif invalide dans la semaine ${genWeek.weekNumber}`);
-        }
-
-        const objective: any = await apiRequest("POST", `/api/weeks/${week.id}/objectives`, {
-          weekId: week.id,
-          type: genObj.type,
-          title: genObj.title,
-          description: genObj.description,
-          orderIndex: 0,
-        });
-
-        // Create tasks for this objective
-        for (const genTask of genObj.tasks) {
-          if (!genTask.label) {
-            throw new Error(`Tâche invalide dans l'objectif "${genObj.title}"`);
-          }
-
-          await apiRequest("POST", `/api/objectives/${objective.id}/tasks`, {
-            objectiveId: objective.id,
-            label: genTask.label,
-            isOptional: genTask.isOptional || false,
-            orderIndex: 0,
-          });
-        }
-      }
-
-      // Create deliverables for this week
-      if (Array.isArray(genWeek.deliverables)) {
-        for (const genDeliv of genWeek.deliverables) {
-          if (genDeliv.title) {
-            await apiRequest("POST", `/api/weeks/${week.id}/deliverables`, {
-              weekId: week.id,
-              title: genDeliv.title,
-              description: genDeliv.description || "",
-              instructions: genDeliv.instructions || "",
-            });
-          }
-        }
-      }
-
-      // Create resources for this week
-      if (Array.isArray(genWeek.resources)) {
-        for (const genRes of genWeek.resources) {
-          if (genRes.label && genRes.url) {
-            await apiRequest("POST", `/api/weeks/${week.id}/resources`, {
-              weekId: week.id,
-              label: genRes.label,
-              url: genRes.url,
-              resourceType: genRes.resourceType || "OTHER",
-            });
-          }
-        }
-      }
-    }
-
+    // Invalidate cache only on success (transaction committed)
     queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
     queryClient.invalidateQueries({ queryKey: ["/api/progress/summary"] });
+    
+    return result;
   };
 
   if (isLoading) {
