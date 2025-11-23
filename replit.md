@@ -167,27 +167,22 @@ Preferred communication style: Simple, everyday language.
     -H "Authorization: Bearer YOUR_MENTOR_TOKEN"
   ```
 
-**Automation Options:**
-1. **Replit Scheduled Deployments** (Recommended):
-   - Navigate to Publishing → Scheduled → Set up
-   - Configure two scheduled jobs:
-     - Wednesday at 10:00 AM: `0 10 * * 3`
-     - Sunday at 6:00 PM: `0 18 * * 0`
-   - Command: `curl -X POST http://localhost:5000/api/jobs/send-task-reminders -H "Authorization: Bearer TOKEN"`
-   - Requires Replit Core membership for credits
-2. **External Cron Services**:
-   - GitHub Actions: `.github/workflows/task-reminders.yml`
-   - EasyCron, Cron-job.org, AWS EventBridge
-3. **Manual Trigger**:
-   - Use provided script: `./scripts/send-task-reminders.sh YOUR_MENTOR_TOKEN`
-   - Or call endpoint directly via API client
-4. **Recommended Schedule**:
-   - Mid-week (Wednesday 10:00): Check progress and send reminders
-   - End-of-week (Sunday 18:00): Final reminder before new week
+**Automated Scheduling:**
+- **Built-in Scheduler** (Active by default):
+  - Uses `node-cron` to automatically send reminders
+  - Wednesday at 10:00 AM: Mid-week reminder
+  - Friday at 10:00 AM: End-of-week reminder
+  - Timezone: Europe/Paris (configurable in `server/scheduler.ts`)
+  - No external configuration needed - works as soon as app starts
+- **Manual Trigger** (for testing):
+  - Endpoint: `POST /api/jobs/send-task-reminders`
+  - Use provided script: `./scripts/send-task-reminders.sh YOUR_MENTOR_TOKEN`
+  - Or call endpoint directly via API client
 
 **Documentation Files:**
-- `AUTOMATION.md`: Complete automation setup guide
+- `AUTOMATION.md`: Complete automation guide and alternatives
 - `scripts/send-task-reminders.sh`: Bash script for manual triggering
+- `server/scheduler.ts`: Cron job configuration
 
 **Testing Learner Email:**
 - Current learner email: `justsmilewithme242@gmail.com`

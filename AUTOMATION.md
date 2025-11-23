@@ -1,10 +1,28 @@
 # Automatisation des Rappels de Tâches
 
-Ce guide explique comment configurer l'envoi automatique de rappels de tâches aux apprenants.
+Ce guide explique comment fonctionne l'envoi automatique de rappels de tâches aux apprenants.
 
-## Option 1 : Déploiements Planifiés Replit (Recommandé)
+## 🎯 Système Automatique Intégré (Activé par défaut)
 
-Replit propose des **Scheduled Deployments** qui permettent d'exécuter automatiquement des tâches à intervalles réguliers.
+L'application utilise **node-cron** pour envoyer automatiquement des rappels de tâches. Dès que l'application démarre, les tâches planifiées sont actives.
+
+### Planning Automatique
+
+Les emails sont envoyés automatiquement :
+- **Mercredi à 10h** : Rappel de mi-semaine
+- **Vendredi à 10h** : Rappel de fin de semaine
+
+**Aucune configuration supplémentaire n'est nécessaire !** Le système fonctionne automatiquement tant que l'application est en ligne.
+
+### Fuseau Horaire
+
+Par défaut configuré sur **Europe/Paris**. Pour modifier le fuseau horaire, éditez `server/scheduler.ts` et changez la valeur de `timezone`.
+
+---
+
+## Option Alternative : Déploiements Planifiés Replit
+
+Si vous préférez utiliser les Scheduled Deployments de Replit pour plus de contrôle (désactivez d'abord le scheduler automatique dans `server/app.ts`):
 
 ### Configuration
 
@@ -73,13 +91,18 @@ jobs:
 - **Cron-job.org** : https://cron-job.org
 - **AWS EventBridge** : Pour des solutions d'entreprise
 
-## Option 3 : Appel Manuel
+## Appel Manuel (Pour Tester)
 
-Pour tester ou envoyer des rappels ponctuels :
+Pour tester ou envoyer des rappels ponctuels sans attendre mercredi/vendredi :
 
 ```bash
 curl -X POST https://votre-app.replit.app/api/jobs/send-task-reminders \
   -H "Authorization: Bearer VOTRE_TOKEN_MENTOR"
+```
+
+Ou utilisez le script fourni :
+```bash
+./scripts/send-task-reminders.sh VOTRE_TOKEN_MENTOR
 ```
 
 Réponse attendue :
@@ -91,11 +114,6 @@ Réponse attendue :
   "learners": 1
 }
 ```
-
-## Calendrier Recommandé
-
-- **Mercredi 10h** : Rappel de mi-semaine pour vérifier la progression
-- **Dimanche 18h** : Rappel de fin de semaine avant le début de la nouvelle semaine
 
 ## Fonctionnement
 
