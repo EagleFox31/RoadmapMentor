@@ -618,13 +618,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/progress/summary", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const weeks = await storage.getAllWeeks();
+      let weeks = await storage.getAllWeeks();
       let totalTasks = 0;
       let completedTasks = 0;
 
       if (req.user?.role === "LEARNER") {
-        // For learners: scope progress to the authenticated learner only
+        // For learners: scope progress to the authenticated learner only AND only validated weeks
         const authenticatedLearnerId = req.user.id;
+        
+        // BUSINESS RULE: Learners can only see validated weeks
+        weeks = weeks.filter(week => week.isValidatedByMentor);
 
         for (const week of weeks) {
           const objectives = await storage.getObjectivesByWeek(week.id);
