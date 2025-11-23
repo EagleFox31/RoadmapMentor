@@ -9,8 +9,9 @@ import { ObjectiveModal } from "@/components/modals/objective-modal";
 import { TaskModal } from "@/components/modals/task-modal";
 import { DeliverableModal } from "@/components/modals/deliverable-modal";
 import { ResourceModal } from "@/components/modals/resource-modal";
+import { AIRoadmapModal } from "@/components/modals/ai-roadmap-modal";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import { isMentor, getCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -47,6 +48,9 @@ export default function RoadmapPage() {
     deliverable: false,
     resource: false,
   });
+  
+  // AI Roadmap Modal state
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   // Edit states
   const [editingWeek, setEditingWeek] = useState<Week | null>(null);
@@ -315,6 +319,64 @@ export default function RoadmapPage() {
     },
   });
 
+  // AI Roadmap save function
+  const handleSaveAIRoadmap = async (generatedWeeks: any[]) => {
+    for (const genWeek of generatedWeeks) {
+      // Create week
+      const week: any = await apiRequest("POST", "/api/weeks", {
+        number: genWeek.weekNumber,
+        title: genWeek.title,
+        startDate: genWeek.startDate,
+        endDate: genWeek.endDate,
+        description: genWeek.description,
+      });
+
+      // Create objectives for this week
+      for (const genObj of genWeek.objectives) {
+        const objective: any = await apiRequest("POST", `/api/weeks/${week.id}/objectives`, {
+          weekId: week.id,
+          type: genObj.type,
+          title: genObj.title,
+          description: genObj.description,
+          orderIndex: 0,
+        });
+
+        // Create tasks for this objective
+        for (const genTask of genObj.tasks) {
+          await apiRequest("POST", `/api/objectives/${objective.id}/tasks`, {
+            objectiveId: objective.id,
+            label: genTask.label,
+            isOptional: genTask.isOptional,
+            orderIndex: 0,
+          });
+        }
+      }
+
+      // Create deliverables for this week
+      for (const genDeliv of genWeek.deliverables) {
+        await apiRequest("POST", `/api/weeks/${week.id}/deliverables`, {
+          weekId: week.id,
+          title: genDeliv.title,
+          description: genDeliv.description,
+          instructions: genDeliv.instructions,
+        });
+      }
+
+      // Create resources for this week
+      for (const genRes of genWeek.resources) {
+        await apiRequest("POST", `/api/weeks/${week.id}/resources`, {
+          weekId: week.id,
+          label: genRes.label,
+          url: genRes.url,
+          resourceType: genRes.resourceType,
+        });
+      }
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/progress/summary"] });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen w-full bg-background">
@@ -337,14 +399,24 @@ export default function RoadmapPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <aside className="lg:col-span-3 lg:sticky lg:top-28 lg:self-start space-y-6">
             {isMentor() && (
-              <Button
-                onClick={() => openModal("week")}
-                className="w-full bg-gradient-to-br from-primary to-accent text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl hover-elevate transition-all duration-300 glow"
-                data-testid="button-add-week"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Nouvelle Semaine
-              </Button>
+              <>
+                <Button
+                  onClick={() => setAiModalOpen(true)}
+                  className="w-full bg-gradient-to-br from-purple-600 to-pink-600 text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl hover-elevate transition-all duration-300 glow"
+                  data-testid="button-ai-generate"
+                >
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  Générer avec l'IA
+                </Button>
+                <Button
+                  onClick={() => openModal("week")}
+                  className="w-full bg-gradient-to-br from-primary to-accent text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl hover-elevate transition-all duration-300 glow"
+                  data-testid="button-add-week"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Nouvelle Semaine
+                </Button>
+              </>
             )}
             <div className="glass-card rounded-3xl overflow-hidden">
               <WeekSelector
@@ -435,6 +507,12 @@ export default function RoadmapPage() {
         weekId={selectedWeekId!}
         resource={editingResource}
         isLoading={createResourceMutation.isPending || updateResourceMutation.isPending}
+      />
+
+      <AIRoadmapModal
+        open={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        onSave={handleSaveAIRoadmap}
       />
     </div>
   );

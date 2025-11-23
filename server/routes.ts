@@ -776,6 +776,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== AI ROADMAP GENERATION ==========
+
+  app.post("/api/ai/generate-roadmap", authMiddleware, requireMentor, async (req, res) => {
+    try {
+      const { generateRoadmap } = await import("./services/aiRoadmapGenerator");
+      const { topic, numberOfWeeks, skillLevel, additionalContext } = req.body;
+
+      if (!topic || !numberOfWeeks) {
+        return res.status(400).json({ error: "topic and numberOfWeeks are required" });
+      }
+
+      if (numberOfWeeks < 1 || numberOfWeeks > 12) {
+        return res.status(400).json({ error: "numberOfWeeks must be between 1 and 12" });
+      }
+
+      const generatedWeeks = await generateRoadmap({
+        topic,
+        numberOfWeeks,
+        skillLevel: skillLevel || "intermédiaire",
+        additionalContext,
+      });
+
+      res.json({ weeks: generatedWeeks });
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
