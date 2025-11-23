@@ -125,19 +125,35 @@ export async function generateRoadmap(request: RoadmapGenerationRequest): Promis
 Niveau: ${request.skillLevel}
 ${request.additionalContext ? `Contexte additionnel: ${request.additionalContext}` : ""}
 
-Pour chaque semaine, fournis:
-- Un titre clair et motivant
-- Une description détaillée des concepts à apprendre
-- Des objectifs d'apprentissage (CONCEPT, ALGO, PROJECT, OTHER) avec leurs tâches associées
-- Des livrables concrets (projets, exercices)
-- Des ressources d'apprentissage (documentation, vidéos, cours, articles)
+STRUCTURE OBLIGATOIRE PAR SEMAINE:
+Chaque semaine DOIT contenir EXACTEMENT 3 objectifs dans cet ordre précis:
 
-IMPORTANT: 
-- Les URLs des ressources doivent être des liens RÉELS et VALIDES vers des ressources en ligne
-- Privilégie les ressources officielles (documentation Python, tutoriels Django/FastAPI, etc.)
+1. **CONCEPT** (type: "CONCEPT"): Théorie et concepts à apprendre
+   - Tâches : lectures, visionnage de tutoriels, compréhension des concepts
+
+2. **ALGO** (type: "ALGO"): Exercices pratiques de coding
+   - OBLIGATOIRE : Inclure des liens vers des exercices HackerRank ou LeetCode adaptés au niveau
+   - Tâches : résoudre X exercices sur la plateforme, pratiquer les algorithmes
+
+3. **PROJECT** (type: "PROJECT"): Projet fil rouge e-commerce
+   - Ce projet évolue chaque semaine en fonction des concepts appris
+   - Tâches : implémenter une nouvelle fonctionnalité du projet e-commerce
+   - Exemple semaine 1 : Créer la structure du projet
+   - Exemple semaine 2 : Ajouter les modèles de données
+   - Exemple semaine 3 : Créer les endpoints API
+   - etc.
+
+LIVRABLES:
+Pour chaque semaine, inclure un deliverable "Guide GitHub" avec:
+- title: "Code source sur GitHub"
+- description: "Pousser le code de la semaine sur votre repository GitHub"
+- instructions: "Guide détaillé étape par étape pour: 1) git init (si première fois), 2) git add ., 3) git commit -m 'Semaine X: [description]', 4) git push origin main"
+
+RESSOURCES:
+- Les URLs des ressources doivent être des liens RÉELS et VALIDES
+- Privilégie la documentation officielle Python/FastAPI
+- Pour les exercices ALGO, utilise des liens HackerRank ou LeetCode réels
 - Pour les vidéos, utilise des chaînes YouTube reconnues
-- Chaque tâche doit être claire et actionnable
-- Marque les tâches bonus comme "isOptional: true"
 
 Retourne le résultat en JSON avec cette structure exacte:
 [
