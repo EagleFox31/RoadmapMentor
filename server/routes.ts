@@ -550,8 +550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Email notifications
       if (progress.isDone || normalizedScreenshotUrl) {
-        // Import email service
-        const { emailService } = await import("./services/emailService");
+        console.log(`[EMAIL] Task ${taskId} - Triggering email notifications (isDone: ${progress.isDone}, hasScreenshot: ${!!normalizedScreenshotUrl})`);
         
         // Get objective to find week
         const objective = await storage.getObjective(task.objectiveId);
@@ -561,6 +560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (week && learner) {
             const mentors = await emailService.getAllMentors();
+            console.log(`[EMAIL] Found ${mentors.length} mentors to notify`);
             
             // Notification de screenshot uploadé (si screenshot fourni)
             if (normalizedScreenshotUrl && progress.isDone) {
