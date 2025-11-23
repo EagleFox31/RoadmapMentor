@@ -168,11 +168,26 @@ Preferred communication style: Simple, everyday language.
   ```
 
 **Automation Options:**
-1. **Manual Trigger**: Mentors can call the endpoint via API client or browser
-2. **External Cron**: Configure external services (e.g., Replit Deployments cron, GitHub Actions) to hit the endpoint
-3. **Recommended Schedule**:
-   - Mid-week (Wednesday): Check progress and send reminders
-   - End-of-week (Sunday): Final reminder before new week
+1. **Replit Scheduled Deployments** (Recommended):
+   - Navigate to Publishing → Scheduled → Set up
+   - Configure two scheduled jobs:
+     - Wednesday at 10:00 AM: `0 10 * * 3`
+     - Sunday at 6:00 PM: `0 18 * * 0`
+   - Command: `curl -X POST http://localhost:5000/api/jobs/send-task-reminders -H "Authorization: Bearer TOKEN"`
+   - Requires Replit Core membership for credits
+2. **External Cron Services**:
+   - GitHub Actions: `.github/workflows/task-reminders.yml`
+   - EasyCron, Cron-job.org, AWS EventBridge
+3. **Manual Trigger**:
+   - Use provided script: `./scripts/send-task-reminders.sh YOUR_MENTOR_TOKEN`
+   - Or call endpoint directly via API client
+4. **Recommended Schedule**:
+   - Mid-week (Wednesday 10:00): Check progress and send reminders
+   - End-of-week (Sunday 18:00): Final reminder before new week
+
+**Documentation Files:**
+- `AUTOMATION.md`: Complete automation setup guide
+- `scripts/send-task-reminders.sh`: Bash script for manual triggering
 
 **Testing Learner Email:**
 - Current learner email: `justsmilewithme242@gmail.com`
