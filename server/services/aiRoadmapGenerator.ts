@@ -212,12 +212,26 @@ Génère exactement ${request.numberOfWeeks} semaines. Les dates doivent être s
           // Parse the JSON response
           const parsed = JSON.parse(content);
           
+          console.log("OpenAI parsed response structure:", {
+            isArray: Array.isArray(parsed),
+            keys: Object.keys(parsed),
+            hasWeeks: 'weeks' in parsed,
+            hasRoadmap: 'roadmap' in parsed,
+            hasPlan: 'plan' in parsed,
+            topLevelType: Array.isArray(parsed) ? 'array' : typeof parsed,
+          });
+          
           // Handle both array and object with weeks array
-          const weeksData = Array.isArray(parsed) ? parsed : parsed.weeks;
+          const weeksData = Array.isArray(parsed) 
+            ? parsed 
+            : (parsed.weeks || parsed.roadmap || parsed.plan || parsed.semaines);
           
           if (!weeksData || !Array.isArray(weeksData)) {
+            console.error("Invalid weeks data. Full parsed response:", JSON.stringify(parsed, null, 2));
             throw new Error("Invalid response format from OpenAI: expected array of weeks");
           }
+          
+          console.log(`Successfully extracted ${weeksData.length} weeks from OpenAI response`);
 
           // Validate each week using Zod schema
           const validatedWeeks = z.array(generatedWeekSchema).parse(weeksData);
