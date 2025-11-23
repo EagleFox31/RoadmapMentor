@@ -117,13 +117,27 @@ export interface RoadmapGenerationRequest {
   numberOfWeeks: number;
   skillLevel: "débutant" | "intermédiaire" | "avancé";
   additionalContext?: string;
+  startWeekNumber?: number; // Optional: start from specific week number
+  baseDate?: string; // Optional: base date to start from (YYYY-MM-DD)
 }
 
 export async function generateRoadmap(request: RoadmapGenerationRequest): Promise<GeneratedWeek[]> {
+  const startWeek = request.startWeekNumber || 1;
+  
+  // CRITICAL: Enforce baseDate whenever startWeekNumber is provided
+  // This ensures explicit timeline control (no ambiguity about start date)
+  if (request.startWeekNumber && !request.baseDate) {
+    throw new Error(`baseDate is required when startWeekNumber is provided (startWeekNumber=${startWeek}). This ensures explicit timeline control.`);
+  }
+  
+  // Use provided baseDate or default to today (only when no startWeekNumber)
+  const startDate = request.baseDate ? new Date(request.baseDate) : new Date();
+  
   const prompt = `Tu es un expert en mentorat Backend Python. Génère un plan de formation structuré sur ${request.numberOfWeeks} semaines pour apprendre "${request.topic}".
 
 Niveau: ${request.skillLevel}
 ${request.additionalContext ? `Contexte additionnel: ${request.additionalContext}` : ""}
+Semaine de départ: ${startWeek} (commence le ${startDate.toISOString().split('T')[0]})
 
 STRUCTURE OBLIGATOIRE PAR SEMAINE:
 Chaque semaine DOIT contenir EXACTEMENT 3 objectifs dans cet ordre précis:
@@ -155,42 +169,62 @@ RESSOURCES:
 - Pour les exercices ALGO, utilise des liens HackerRank ou LeetCode réels
 - Pour les vidéos, utilise des chaînes YouTube reconnues
 
-Retourne le résultat en JSON avec cette structure exacte:
-[
-  {
-    "weekNumber": 1,
-    "title": "Titre de la semaine",
-    "startDate": "2025-01-06",
-    "endDate": "2025-01-12",
-    "description": "Description détaillée",
-    "objectives": [
-      {
-        "type": "CONCEPT",
-        "title": "Titre de l'objectif",
-        "description": "Description de l'objectif",
-        "tasks": [
-          { "label": "Tâche à accomplir", "isOptional": false }
-        ]
-      }
-    ],
-    "deliverables": [
-      {
-        "title": "Livrable à produire",
-        "description": "Description du livrable",
-        "instructions": "Instructions détaillées"
-      }
-    ],
-    "resources": [
-      {
-        "label": "Documentation Python",
-        "url": "https://docs.python.org/fr/3/",
-        "resourceType": "DOC"
-      }
-    ]
-  }
-]
+IMPORTANT: Génère exactement ${request.numberOfWeeks} semaines avec des numéros séquentiels (${startWeek}, ${startWeek + 1}, ${startWeek + 2}...).
+Les dates ne sont pas critiques car elles seront recalculées côté serveur pour garantir la continuité chronologique.
 
-Génère exactement ${request.numberOfWeeks} semaines. Les dates doivent être séquentielles (chaque semaine dure 7 jours).`;
+Structure JSON attendue:
+{
+  "weeks": [
+    {
+      "weekNumber": ${startWeek},
+      "title": "Introduction et fondamentaux",
+      "startDate": "${startDate.toISOString().split('T')[0]}",
+      "endDate": "${new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}",
+      "description": "Description détaillée de la semaine",
+      "objectives": [
+        {
+          "type": "CONCEPT",
+          "title": "Comprendre les bases de ...",
+          "description": "Apprendre les concepts fondamentaux",
+          "tasks": [
+            { "label": "Lire la documentation officielle", "isOptional": false },
+            { "label": "Regarder tutoriel vidéo", "isOptional": false }
+          ]
+        },
+        {
+          "type": "ALGO",
+          "title": "Exercices pratiques",
+          "description": "Pratiquer avec des exercices de coding",
+          "tasks": [
+            { "label": "Résoudre 3 exercices faciles sur HackerRank", "isOptional": false }
+          ]
+        },
+        {
+          "type": "PROJECT",
+          "title": "Projet e-commerce fil rouge",
+          "description": "Créer la structure du projet",
+          "tasks": [
+            { "label": "Initialiser le projet avec les bonnes dépendances", "isOptional": false }
+          ]
+        }
+      ],
+      "deliverables": [
+        {
+          "title": "Code source sur GitHub",
+          "description": "Pousser le code de la semaine sur GitHub",
+          "instructions": "1) git init (si première fois), 2) git add ., 3) git commit -m 'Semaine ${startWeek}: ...', 4) git push origin main"
+        }
+      ],
+      "resources": [
+        {
+          "label": "Documentation Python",
+          "url": "https://docs.python.org/fr/3/",
+          "resourceType": "DOC"
+        }
+      ]
+    }
+  ]
+}`;
 
   try {
     const response = await pRetry(
@@ -252,7 +286,24 @@ Génère exactement ${request.numberOfWeeks} semaines. Les dates doivent être s
           // Validate each week using Zod schema
           const validatedWeeks = z.array(generatedWeekSchema).parse(weeksData);
 
-          return validatedWeeks;
+          // CRITICAL: Normalize dates to ensure chronological continuity
+          // This prevents AI drift and guarantees sequential 7-day weeks
+          const normalizedWeeks = validatedWeeks.map((week, index) => {
+            const weekStartDate = new Date(startDate);
+            weekStartDate.setDate(weekStartDate.getDate() + (index * 7));
+            
+            const weekEndDate = new Date(weekStartDate);
+            weekEndDate.setDate(weekEndDate.getDate() + 6);
+
+            return {
+              ...week,
+              weekNumber: startWeek + index, // Ensure sequential numbering
+              startDate: weekStartDate.toISOString().split('T')[0],
+              endDate: weekEndDate.toISOString().split('T')[0],
+            };
+          });
+
+          return normalizedWeeks;
         } catch (error: any) {
           if (isRateLimitError(error)) {
             throw error; // Rethrow to trigger p-retry

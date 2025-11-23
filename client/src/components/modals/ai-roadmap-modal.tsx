@@ -58,12 +58,18 @@ interface AIRoadmapModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (weeks: GeneratedWeek[]) => Promise<void>;
+  existingWeeks?: { number: number; endDate?: string }[]; // List of existing weeks to calculate next week number
 }
 
-export function AIRoadmapModal({ open, onClose, onSave }: AIRoadmapModalProps) {
+export function AIRoadmapModal({ open, onClose, onSave, existingWeeks = [] }: AIRoadmapModalProps) {
   const { toast } = useToast();
   const [step, setStep] = useState<"form" | "preview">("form");
   const [generatedWeeks, setGeneratedWeeks] = useState<GeneratedWeek[]>([]);
+
+  // Calculate next available week number
+  const nextWeekNumber = existingWeeks && existingWeeks.length > 0 
+    ? Math.max(...existingWeeks.map(w => w.number)) + 1 
+    : 1;
 
   // React Hook Form with Zod validation
   const form = useForm<RoadmapFormData>({
@@ -78,7 +84,31 @@ export function AIRoadmapModal({ open, onClose, onSave }: AIRoadmapModalProps) {
 
   const generateMutation = useMutation({
     mutationFn: async (formData: RoadmapFormData) => {
-      return await apiRequest("POST", "/api/ai/generate-roadmap", formData);
+      // Calculate base date from last existing week (if any)
+      let baseDate: string | undefined;
+      if (existingWeeks && existingWeeks.length > 0) {
+        // Find the week with the highest number and use its endDate
+        const sortedWeeks = [...existingWeeks].sort((a, b) => b.number - a.number);
+        const lastWeek = sortedWeeks[0];
+        // Base date is the day after the last week's endDate
+        if ('endDate' in lastWeek && lastWeek.endDate) {
+          const lastEndDate = new Date(lastWeek.endDate as string);
+          lastEndDate.setDate(lastEndDate.getDate() + 1); // Start the next day
+          baseDate = lastEndDate.toISOString().split('T')[0];
+        }
+      }
+      
+      // If no existing weeks, use today as base date
+      if (!baseDate) {
+        baseDate = new Date().toISOString().split('T')[0];
+      }
+
+      // Include startWeekNumber and baseDate in the request
+      return await apiRequest("POST", "/api/ai/generate-roadmap", {
+        ...formData,
+        startWeekNumber: nextWeekNumber,
+        baseDate,
+      });
     },
     onSuccess: (data: any) => {
       setGeneratedWeeks(data.weeks);
@@ -161,7 +191,9 @@ export function AIRoadmapModal({ open, onClose, onSave }: AIRoadmapModalProps) {
           </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             {step === "form" 
-              ? "Décrivez votre projet de formation et laissez l'IA créer un plan détaillé sur plusieurs semaines."
+              ? existingWeeks.length > 0
+                ? `Décrivez votre projet de formation et laissez l'IA créer un plan détaillé. Les semaines générées commenceront à la semaine ${nextWeekNumber}.`
+                : "Décrivez votre projet de formation et laissez l'IA créer un plan détaillé sur plusieurs semaines."
               : "Prévisualisez et modifiez votre roadmap avant de la sauvegarder."
             }
           </DialogDescription>

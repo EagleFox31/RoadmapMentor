@@ -199,6 +199,31 @@ export const insertWeekSchema = createInsertSchema(weeks).omit({
   isValidatedByMentor: true,
 });
 
+// Schema for AI roadmap generation request
+export const aiRoadmapRequestSchema = z.object({
+  topic: z.string().min(3, "Le sujet doit contenir au moins 3 caractères"),
+  numberOfWeeks: z.number().int().min(1).max(12),
+  skillLevel: z.enum(["débutant", "intermédiaire", "avancé"]),
+  additionalContext: z.string().optional(),
+  startWeekNumber: z.number().int().positive().optional(), // Optional: start from specific week number
+  baseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), // Optional: base date to start from (YYYY-MM-DD)
+}).refine(
+  (data) => {
+    // CRITICAL VALIDATION: baseDate is REQUIRED whenever startWeekNumber is provided
+    // This ensures explicit timeline control and chronological continuity
+    if (data.startWeekNumber && !data.baseDate) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: "baseDate is required when startWeekNumber is provided to ensure explicit timeline control",
+    path: ["baseDate"],
+  }
+);
+
+export type AIRoadmapRequest = z.infer<typeof aiRoadmapRequestSchema>;
+
 export const insertObjectiveSchema = createInsertSchema(objectives).omit({
   id: true,
   createdAt: true,

@@ -483,6 +483,7 @@ export default function RoadmapPage() {
         open={aiModalOpen}
         onClose={() => setAiModalOpen(false)}
         onSave={handleSaveAIRoadmap}
+        existingWeeks={weeks || []}
       />
     </div>
   );
