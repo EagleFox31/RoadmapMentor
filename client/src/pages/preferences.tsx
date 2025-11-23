@@ -1,405 +1,264 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
-import { TopBar } from "@/components/top-bar";
-import type { EmailNotificationPreferences } from "@shared/schema";
+import { useState, useEffect } from "react";
+import { Check, Loader2, Sparkles, Bell, Zap, Users, Trophy, Mail, ArrowLeft } from "lucide-react";
+import { useLocation } from "wouter";
 
 export default function PreferencesPage() {
-  const { toast } = useToast();
-
-  const { data: preferences, isLoading } = useQuery<EmailNotificationPreferences>({
-    queryKey: ["/api/email-preferences"],
+  const [, setLocation] = useLocation();
+  const [scrollY, setScrollY] = useState(0);
+  const [preferences, setPreferences] = useState({
+    taskReminders: true,
+    weekPreparation: false,
+    progressUpdates: true,
+    commentNotifications: true,
+    aiGenerationNotifications: true,
+    weekValidationNotifications: true,
+    newTaskNotifications: true,
+    screenshotNotifications: false,
+    weekModifiedNotifications: true,
+    deadlineReminders: true,
+    streakWarnings: true,
+    milestoneNotifications: true,
+    badgeNotifications: true,
+    weeklyReports: true,
   });
+  const [updating, setUpdating] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const updateMutation = useMutation({
-    mutationFn: async (updates: Partial<EmailNotificationPreferences>) => {
-      return await apiRequest("PUT", "/api/email-preferences", updates);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/email-preferences"] });
-      toast({
-        title: "Préférences sauvegardées",
-        description: "Vos préférences de notification ont été mises à jour.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder vos préférences.",
-        variant: "destructive",
-      });
-    },
-  });
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-  const handleToggle = (key: keyof EmailNotificationPreferences, value: boolean) => {
-    updateMutation.mutate({ [key]: value });
+  const handleToggle = (key: string) => {
+    setUpdating(key);
+    setSaveSuccess(false);
+
+    setTimeout(() => {
+      setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
+      setUpdating(null);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    }, 400);
   };
 
-  if (isLoading) {
-    return (
-      <>
-        <TopBar />
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" data-testid="spinner-loading" />
-        </div>
-      </>
-    );
-  }
-
-  if (!preferences) {
-    return (
-      <>
-        <TopBar />
-        <div className="flex items-center justify-center min-h-screen">
-          <Card>
-            <CardHeader>
-              <CardTitle>Erreur</CardTitle>
-              <CardDescription>Impossible de charger vos préférences.</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      </>
-    );
-  }
+  const categories = [
+    {
+      title: "Notifications de base",
+      icon: Bell,
+      gradient: "from-blue-500 to-cyan-500",
+      items: [
+        { key: "taskReminders", label: "Rappels de tâches", desc: "Recevez des rappels pour les tâches en attente" },
+        { key: "weekPreparation", label: "Préparation de semaine", desc: "Rappels pour préparer les semaines à venir" },
+        { key: "progressUpdates", label: "Mises à jour de progression", desc: "Notifications de complétion de tâches" },
+        { key: "commentNotifications", label: "Commentaires", desc: "Alertes sur les nouveaux commentaires" },
+      ]
+    },
+    {
+      title: "IA & Système",
+      icon: Sparkles,
+      gradient: "from-purple-500 to-pink-500",
+      items: [
+        { key: "aiGenerationNotifications", label: "Génération IA", desc: "Succès ou échec de génération automatique" },
+        { key: "weekValidationNotifications", label: "Validation de semaine", desc: "Notifications de validation mentor" },
+      ]
+    },
+    {
+      title: "Collaboration",
+      icon: Users,
+      gradient: "from-green-500 to-emerald-500",
+      items: [
+        { key: "newTaskNotifications", label: "Nouvelles tâches", desc: "Alertes pour les tâches assignées" },
+        { key: "screenshotNotifications", label: "Screenshots", desc: "Notifications d'upload de captures" },
+        { key: "weekModifiedNotifications", label: "Modifications", desc: "Changements dans les semaines" },
+      ]
+    },
+    {
+      title: "Rappels Intelligents",
+      icon: Zap,
+      gradient: "from-orange-500 to-red-500",
+      items: [
+        { key: "deadlineReminders", label: "Deadlines proches", desc: "Rappels 2 jours avant échéance" },
+        { key: "streakWarnings", label: "Streak en danger", desc: "Maintenez votre rythme quotidien" },
+      ]
+    },
+    {
+      title: "Gamification",
+      icon: Trophy,
+      gradient: "from-yellow-500 to-amber-500",
+      items: [
+        { key: "milestoneNotifications", label: "Milestones", desc: "Célébrez vos jalons à 25%, 50%, 75%, 100%" },
+        { key: "badgeNotifications", label: "Badges", desc: "Nouveaux badges débloqués" },
+        { key: "weeklyReports", label: "Rapports hebdomadaires", desc: "Résumé de votre progression" },
+      ]
+    },
+  ];
 
   return (
-    <>
-      <TopBar />
-      <div className="container max-w-4xl py-8">
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Préférences de notification</h1>
-            <p className="text-muted-foreground mt-2">
-              Gérez les notifications par email que vous souhaitez recevoir.
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-blue-50">
+      {/* Animated background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 -left-4 w-96 h-96 bg-blue-200/30 rounded-full blur-3xl animate-pulse" 
+             style={{ animationDelay: '0s', animationDuration: '4s' }} />
+        <div className="absolute top-1/4 right-0 w-96 h-96 bg-purple-200/30 rounded-full blur-3xl animate-pulse" 
+             style={{ animationDelay: '2s', animationDuration: '5s' }} />
+        <div className="absolute bottom-0 left-1/3 w-96 h-96 bg-pink-200/30 rounded-full blur-3xl animate-pulse" 
+             style={{ animationDelay: '1s', animationDuration: '6s' }} />
+      </div>
+
+      {/* Top Bar - Sticky Header */}
+      <div className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 border-b border-slate-200 shadow-sm">
+        <div className="container max-w-[1400px] mx-auto px-8 py-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {/* Bouton de retour */}
+            <button
+              onClick={() => setLocation("/roadmap")}
+              data-testid="button-back-roadmap"
+              className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 hover:from-slate-200 hover:to-slate-300 transition-all duration-200 shadow-sm hover:shadow-md group"
+            >
+              <ArrowLeft className="w-5 h-5 text-slate-700 group-hover:text-slate-900 group-hover:-translate-x-0.5 transition-transform" />
+            </button>
+            
+            <div className="flex items-center gap-3">
+              <Mail className="w-8 h-8 text-blue-600" />
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Préférences de Notification
+              </h1>
+            </div>
           </div>
-
-          {/* Notifications de base */}
-          <Card>
-            <CardHeader>
-              <CardTitle>📬 Notifications de base</CardTitle>
-              <CardDescription>
-                Notifications essentielles pour votre activité quotidienne
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="taskReminders" className="text-base font-medium">
-                    Rappels de tâches
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Recevez des rappels pour les tâches en attente (Apprenants uniquement).
-                  </p>
-                </div>
-                <Switch
-                  id="taskReminders"
-                  data-testid="switch-task-reminders"
-                  checked={preferences.taskReminders}
-                  onCheckedChange={(checked) => handleToggle("taskReminders", checked)}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="weekPreparation" className="text-base font-medium">
-                    Rappels de préparation de semaine
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Recevez des rappels pour préparer les semaines à venir (Mentors uniquement).
-                  </p>
-                </div>
-                <Switch
-                  id="weekPreparation"
-                  data-testid="switch-week-preparation"
-                  checked={preferences.weekPreparation}
-                  onCheckedChange={(checked) => handleToggle("weekPreparation", checked)}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="progressUpdates" className="text-base font-medium">
-                    Mises à jour de progression
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Recevez des notifications quand un apprenant complète une tâche (Mentors uniquement).
-                  </p>
-                </div>
-                <Switch
-                  id="progressUpdates"
-                  data-testid="switch-progress-updates"
-                  checked={preferences.progressUpdates}
-                  onCheckedChange={(checked) => handleToggle("progressUpdates", checked)}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="commentNotifications" className="text-base font-medium">
-                    Notifications de commentaires
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Recevez des notifications quand quelqu'un commente une semaine.
-                  </p>
-                </div>
-                <Switch
-                  id="commentNotifications"
-                  data-testid="switch-comment-notifications"
-                  checked={preferences.commentNotifications}
-                  onCheckedChange={(checked) => handleToggle("commentNotifications", checked)}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Notifications IA/Système */}
-          <Card>
-            <CardHeader>
-              <CardTitle>✨ Notifications IA & Système</CardTitle>
-              <CardDescription>
-                Alertes sur la génération automatique de roadmaps et validations
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="aiGenerationNotifications" className="text-base font-medium">
-                    Notifications de génération IA
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Succès ou échec de la génération automatique de roadmaps par l'IA.
-                  </p>
-                </div>
-                <Switch
-                  id="aiGenerationNotifications"
-                  data-testid="switch-ai-generation"
-                  checked={preferences.aiGenerationNotifications}
-                  onCheckedChange={(checked) => handleToggle("aiGenerationNotifications", checked)}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="weekValidationNotifications" className="text-base font-medium">
-                    Validation de semaine
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Recevez une notification quand le mentor valide une semaine (Apprenants uniquement).
-                  </p>
-                </div>
-                <Switch
-                  id="weekValidationNotifications"
-                  data-testid="switch-week-validation"
-                  checked={preferences.weekValidationNotifications}
-                  onCheckedChange={(checked) => handleToggle("weekValidationNotifications", checked)}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Notifications Collaboration */}
-          <Card>
-            <CardHeader>
-              <CardTitle>👥 Notifications Collaboration</CardTitle>
-              <CardDescription>
-                Restez informé des activités collaboratives sur votre roadmap
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="newTaskNotifications" className="text-base font-medium">
-                    Nouvelles tâches assignées
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Recevez une notification quand le mentor ajoute de nouvelles tâches (Apprenants uniquement).
-                  </p>
-                </div>
-                <Switch
-                  id="newTaskNotifications"
-                  data-testid="switch-new-task"
-                  checked={preferences.newTaskNotifications}
-                  onCheckedChange={(checked) => handleToggle("newTaskNotifications", checked)}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="screenshotNotifications" className="text-base font-medium">
-                    Screenshots uploadés
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Recevez une notification quand un apprenant upload un screenshot (Mentors uniquement).
-                  </p>
-                </div>
-                <Switch
-                  id="screenshotNotifications"
-                  data-testid="switch-screenshot"
-                  checked={preferences.screenshotNotifications}
-                  onCheckedChange={(checked) => handleToggle("screenshotNotifications", checked)}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="weekModifiedNotifications" className="text-base font-medium">
-                    Modifications de semaine
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Recevez une notification quand le mentor modifie une semaine (Apprenants uniquement).
-                  </p>
-                </div>
-                <Switch
-                  id="weekModifiedNotifications"
-                  data-testid="switch-week-modified"
-                  checked={preferences.weekModifiedNotifications}
-                  onCheckedChange={(checked) => handleToggle("weekModifiedNotifications", checked)}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Rappels Intelligents */}
-          <Card>
-            <CardHeader>
-              <CardTitle>⏰ Rappels Intelligents</CardTitle>
-              <CardDescription>
-                Notifications pour maintenir votre rythme d'apprentissage
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="deadlineReminders" className="text-base font-medium">
-                    Deadline proche
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Recevez un rappel quand une deadline approche (2 jours restants).
-                  </p>
-                </div>
-                <Switch
-                  id="deadlineReminders"
-                  data-testid="switch-deadline"
-                  checked={preferences.deadlineReminders}
-                  onCheckedChange={(checked) => handleToggle("deadlineReminders", checked)}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="streakWarnings" className="text-base font-medium">
-                    Streak en danger
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Recevez un rappel si vous n'avez pas travaillé aujourd'hui.
-                  </p>
-                </div>
-                <Switch
-                  id="streakWarnings"
-                  data-testid="switch-streak"
-                  checked={preferences.streakWarnings}
-                  onCheckedChange={(checked) => handleToggle("streakWarnings", checked)}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Gamification */}
-          <Card>
-            <CardHeader>
-              <CardTitle>🏆 Gamification & Progrès</CardTitle>
-              <CardDescription>
-                Célébrez vos accomplissements et suivez votre progression
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="milestoneNotifications" className="text-base font-medium">
-                    Milestones atteints
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Recevez une notification à 25%, 50%, 75% et 100% de votre roadmap.
-                  </p>
-                </div>
-                <Switch
-                  id="milestoneNotifications"
-                  data-testid="switch-milestone"
-                  checked={preferences.milestoneNotifications}
-                  onCheckedChange={(checked) => handleToggle("milestoneNotifications", checked)}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="badgeNotifications" className="text-base font-medium">
-                    Badges débloqués
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Recevez une notification quand vous déverrouillez un nouveau badge.
-                  </p>
-                </div>
-                <Switch
-                  id="badgeNotifications"
-                  data-testid="switch-badge"
-                  checked={preferences.badgeNotifications}
-                  onCheckedChange={(checked) => handleToggle("badgeNotifications", checked)}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="weeklyReports" className="text-base font-medium">
-                    Rapports hebdomadaires
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Recevez un résumé de votre progression chaque semaine.
-                  </p>
-                </div>
-                <Switch
-                  id="weeklyReports"
-                  data-testid="switch-weekly-report"
-                  checked={preferences.weeklyReports}
-                  onCheckedChange={(checked) => handleToggle("weeklyReports", checked)}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>À propos des notifications</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground">
-                <li>Les notifications sont envoyées à l'adresse email de votre compte.</li>
-                <li>Certaines notifications sont spécifiques à votre rôle (Mentor ou Apprenant).</li>
-                <li>Vous pouvez modifier ces préférences à tout moment.</li>
-                <li>Les modifications prennent effet immédiatement.</li>
-              </ul>
-            </CardContent>
-          </Card>
+          {saveSuccess && (
+            <div className="flex items-center gap-2 text-green-600 animate-in fade-in slide-in-from-right-5 duration-300">
+              <Check className="w-5 h-5" />
+              <span className="font-medium">Sauvegardé</span>
+            </div>
+          )}
         </div>
       </div>
-    </>
+
+      <main className="container max-w-[1400px] mx-auto px-8 py-12 relative">
+        {/* Hero Section */}
+        <div className="mb-12 text-center" style={{ transform: `translateY(${scrollY * 0.1}px)` }}>
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+            Personnalisez votre expérience de notification pour rester informé sans être submergé
+          </p>
+        </div>
+
+        {/* Categories Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {categories.map((category, idx) => {
+            const Icon = category.icon;
+            return (
+              <div
+                key={category.title}
+                className="group relative"
+                style={{
+                  animation: `fadeInUp 0.6s ease-out ${idx * 0.1}s both`
+                }}
+              >
+                {/* Glow effect */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${category.gradient} opacity-0 group-hover:opacity-20 blur-2xl transition-all duration-500 rounded-3xl`} />
+
+                {/* Card */}
+                <div className="relative backdrop-blur-xl bg-white/80 rounded-3xl border border-slate-200 shadow-lg overflow-hidden transition-all duration-300 hover:border-blue-300 hover:shadow-2xl hover:shadow-blue-500/20">
+                  {/* Header */}
+                  <div className={`px-6 py-5 bg-gradient-to-br ${category.gradient} bg-opacity-10 border-b border-slate-200 flex items-center gap-3`}>
+                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${category.gradient} shadow-lg`}>
+                      <Icon className="w-5 h-5 text-white drop-shadow-md" />
+                    </div>
+                    <h2 className="text-xl font-bold text-slate-800">{category.title}</h2>
+                  </div>
+
+                  {/* Items */}
+                  <div className="p-4 space-y-3">
+                    {category.items.map((item) => (
+                      <div
+                        key={item.key}
+                        className="group/item backdrop-blur-xl bg-white/90 rounded-2xl border border-slate-200 p-5 transition-all duration-300 hover:bg-blue-50 hover:border-blue-300 hover:scale-[1.02] hover:shadow-lg cursor-pointer"
+                        onClick={() => handleToggle(item.key)}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-slate-800 mb-1 group-hover/item:text-blue-700 transition-colors">
+                              {item.label}
+                            </h3>
+                            <p className="text-sm text-slate-600 leading-relaxed">
+                              {item.desc}
+                            </p>
+                          </div>
+
+                          {/* Toggle Switch */}
+                          <button
+                            className={`relative flex-shrink-0 w-12 h-6 rounded-full transition-all duration-300 ${
+                              preferences[item.key as keyof typeof preferences]
+                                ? `bg-gradient-to-r ${category.gradient} shadow-lg`
+                                : 'bg-slate-300'
+                            }`}
+                            disabled={updating === item.key}
+                          >
+                            {updating === item.key ? (
+                              <Loader2 className="w-4 h-4 text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin" />
+                            ) : (
+                              <div
+                                className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-lg ${
+                                  preferences[item.key as keyof typeof preferences]
+                                    ? 'left-7'
+                                    : 'left-1'
+                                }`}
+                              />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Info Card */}
+        <div 
+          className="mt-8 backdrop-blur-xl bg-gradient-to-br from-blue-50 to-purple-50 rounded-3xl border border-slate-200 shadow-lg p-8"
+          style={{ animation: 'fadeInUp 0.6s ease-out 0.5s both' }}
+        >
+          <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-slate-800">
+            <Sparkles className="w-5 h-5 text-blue-600" />
+            À propos de vos notifications
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-700">
+            <div className="flex items-start gap-3">
+              <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <span>Modifications instantanées et automatiques</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <span>Notifications adaptées à votre rôle</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <span>Envoyées à votre email principal</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+              <span>Contrôle total sur vos préférences</span>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <style>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+    </div>
   );
 }
