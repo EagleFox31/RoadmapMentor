@@ -1,5 +1,6 @@
 import OpenAI from "openai";
-import pRetry from "p-retry";
+import pRetry, { AbortError } from "p-retry";
+import { z } from "zod";
 
 // Check if user provided their own OpenAI API key
 // If OPENAI_API_KEY exists, use it directly (user's own key)
@@ -21,6 +22,61 @@ function isRateLimitError(error: any): boolean {
     errorMsg.toLowerCase().includes("rate limit")
   );
 }
+
+// Zod schemas for AI response validation with normalization
+const taskSchema = z.object({
+  label: z.string().trim().min(1, "Task label cannot be empty"),
+  isOptional: z.boolean().default(false),
+});
+
+const objectiveSchema = z.object({
+  type: z.enum(["CONCEPT", "ALGO", "PROJECT", "OTHER"]),
+  title: z.string().trim().min(1, "Objective title cannot be empty"),
+  description: z.string().trim().default(""),
+  tasks: z.array(taskSchema).min(1, "At least one task required"),
+});
+
+const deliverableSchema = z.object({
+  title: z.string().trim().default(""),
+  description: z.string().trim().default(""),
+  instructions: z.string().trim().default(""),
+});
+
+const resourceSchema = z.object({
+  label: z.string().trim().default(""),
+  url: z.string().trim().default("").refine((url) => {
+    if (!url) return true; // Empty URLs will be filtered out later
+    try {
+      new URL(url);
+      return url.startsWith('http://') || url.startsWith('https://');
+    } catch {
+      return false;
+    }
+  }, { message: "Invalid URL format" }),
+  resourceType: z.enum(["DOC", "VIDEO", "COURSE", "ARTICLE", "OTHER"]).default("OTHER"),
+});
+
+const generatedWeekSchema = z.object({
+  weekNumber: z.number().int().positive(),
+  title: z.string().trim().min(1, "Week title cannot be empty"),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"),
+  description: z.string().trim().default(""),
+  objectives: z.array(objectiveSchema).min(1, "At least one objective required"),
+  deliverables: z.array(deliverableSchema).default([]),
+  resources: z.array(resourceSchema).default([]),
+}).refine((week) => {
+  // Validate that endDate is after startDate
+  const start = new Date(week.startDate);
+  const end = new Date(week.endDate);
+  return end >= start;
+}, { message: "End date must be after or equal to start date" })
+.transform((week) => ({
+  ...week,
+  // Filter out deliverables/resources with empty titles/labels or invalid URLs
+  deliverables: week.deliverables.filter(d => d.title.length > 0),
+  resources: week.resources.filter(r => r.label.length > 0 && r.url.length > 0),
+}));
 
 export interface GeneratedWeek {
   weekNumber: number;
@@ -142,18 +198,27 @@ Génère exactement ${request.numberOfWeeks} semaines. Les dates doivent être s
           const parsed = JSON.parse(content);
           
           // Handle both array and object with weeks array
-          const weeks = Array.isArray(parsed) ? parsed : parsed.weeks;
+          const weeksData = Array.isArray(parsed) ? parsed : parsed.weeks;
           
-          if (!weeks || !Array.isArray(weeks)) {
-            throw new Error("Invalid response format from OpenAI");
+          if (!weeksData || !Array.isArray(weeksData)) {
+            throw new Error("Invalid response format from OpenAI: expected array of weeks");
           }
 
-          return weeks as GeneratedWeek[];
+          // Validate each week using Zod schema
+          const validatedWeeks = z.array(generatedWeekSchema).parse(weeksData);
+
+          return validatedWeeks;
         } catch (error: any) {
           if (isRateLimitError(error)) {
             throw error; // Rethrow to trigger p-retry
           }
-          throw new pRetry.AbortError(error);
+          // Preserve validation errors for better debugging
+          if (error instanceof z.ZodError) {
+            const errorMessage = `AI response validation failed: ${error.errors[0]?.message}`;
+            throw new AbortError(errorMessage);
+          }
+          const errorMessage = error?.message || String(error);
+          throw new AbortError(errorMessage);
         }
       },
       {
@@ -167,6 +232,7 @@ Génère exactement ${request.numberOfWeeks} semaines. Les dates doivent être s
     return response;
   } catch (error: any) {
     console.error("Error generating roadmap:", error);
-    throw new Error(`Failed to generate roadmap: ${error.message}`);
+    const errorMessage = error?.message || String(error) || "Unknown error occurred";
+    throw new Error(`Failed to generate roadmap: ${errorMessage}`);
   }
 }

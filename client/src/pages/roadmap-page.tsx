@@ -321,7 +321,21 @@ export default function RoadmapPage() {
 
   // AI Roadmap save function
   const handleSaveAIRoadmap = async (generatedWeeks: any[]) => {
+    // Basic validation before saving
+    if (!Array.isArray(generatedWeeks) || generatedWeeks.length === 0) {
+      throw new Error("Aucune semaine à sauvegarder");
+    }
+
     for (const genWeek of generatedWeeks) {
+      // Validate required fields
+      if (!genWeek.weekNumber || !genWeek.title || !genWeek.startDate || !genWeek.endDate) {
+        throw new Error(`Semaine invalide : champs obligatoires manquants`);
+      }
+
+      if (!Array.isArray(genWeek.objectives) || genWeek.objectives.length === 0) {
+        throw new Error(`Semaine ${genWeek.weekNumber} : au moins un objectif est requis`);
+      }
+
       // Create week
       const week: any = await apiRequest("POST", "/api/weeks", {
         number: genWeek.weekNumber,
@@ -333,6 +347,10 @@ export default function RoadmapPage() {
 
       // Create objectives for this week
       for (const genObj of genWeek.objectives) {
+        if (!genObj.title || !genObj.type || !Array.isArray(genObj.tasks) || genObj.tasks.length === 0) {
+          throw new Error(`Objectif invalide dans la semaine ${genWeek.weekNumber}`);
+        }
+
         const objective: any = await apiRequest("POST", `/api/weeks/${week.id}/objectives`, {
           weekId: week.id,
           type: genObj.type,
@@ -343,33 +361,45 @@ export default function RoadmapPage() {
 
         // Create tasks for this objective
         for (const genTask of genObj.tasks) {
+          if (!genTask.label) {
+            throw new Error(`Tâche invalide dans l'objectif "${genObj.title}"`);
+          }
+
           await apiRequest("POST", `/api/objectives/${objective.id}/tasks`, {
             objectiveId: objective.id,
             label: genTask.label,
-            isOptional: genTask.isOptional,
+            isOptional: genTask.isOptional || false,
             orderIndex: 0,
           });
         }
       }
 
       // Create deliverables for this week
-      for (const genDeliv of genWeek.deliverables) {
-        await apiRequest("POST", `/api/weeks/${week.id}/deliverables`, {
-          weekId: week.id,
-          title: genDeliv.title,
-          description: genDeliv.description,
-          instructions: genDeliv.instructions,
-        });
+      if (Array.isArray(genWeek.deliverables)) {
+        for (const genDeliv of genWeek.deliverables) {
+          if (genDeliv.title) {
+            await apiRequest("POST", `/api/weeks/${week.id}/deliverables`, {
+              weekId: week.id,
+              title: genDeliv.title,
+              description: genDeliv.description || "",
+              instructions: genDeliv.instructions || "",
+            });
+          }
+        }
       }
 
       // Create resources for this week
-      for (const genRes of genWeek.resources) {
-        await apiRequest("POST", `/api/weeks/${week.id}/resources`, {
-          weekId: week.id,
-          label: genRes.label,
-          url: genRes.url,
-          resourceType: genRes.resourceType,
-        });
+      if (Array.isArray(genWeek.resources)) {
+        for (const genRes of genWeek.resources) {
+          if (genRes.label && genRes.url) {
+            await apiRequest("POST", `/api/weeks/${week.id}/resources`, {
+              weekId: week.id,
+              label: genRes.label,
+              url: genRes.url,
+              resourceType: genRes.resourceType || "OTHER",
+            });
+          }
+        }
       }
     }
 

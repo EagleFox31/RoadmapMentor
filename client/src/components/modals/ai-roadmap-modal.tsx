@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Sparkles, CheckCircle2, Edit2, Trash2, ChevronDown, ChevronUp } from "lucide-react";
@@ -13,6 +15,17 @@ import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { z } from "zod";
+
+// Validation schema for form inputs
+const roadmapFormSchema = z.object({
+  topic: z.string().min(3, "Le sujet doit contenir au moins 3 caractères"),
+  numberOfWeeks: z.coerce.number().int().min(1, "Minimum 1 semaine").max(12, "Maximum 12 semaines"),
+  skillLevel: z.enum(["débutant", "intermédiaire", "avancé"]),
+  additionalContext: z.string().optional(),
+});
+
+type RoadmapFormData = z.infer<typeof roadmapFormSchema>;
 
 interface GeneratedWeek {
   weekNumber: number;
@@ -52,20 +65,20 @@ export function AIRoadmapModal({ open, onClose, onSave }: AIRoadmapModalProps) {
   const [step, setStep] = useState<"form" | "preview">("form");
   const [generatedWeeks, setGeneratedWeeks] = useState<GeneratedWeek[]>([]);
 
-  // Form state
-  const [topic, setTopic] = useState("");
-  const [numberOfWeeks, setNumberOfWeeks] = useState("4");
-  const [skillLevel, setSkillLevel] = useState<"débutant" | "intermédiaire" | "avancé">("intermédiaire");
-  const [additionalContext, setAdditionalContext] = useState("");
+  // React Hook Form with Zod validation
+  const form = useForm<RoadmapFormData>({
+    resolver: zodResolver(roadmapFormSchema),
+    defaultValues: {
+      topic: "",
+      numberOfWeeks: 4,
+      skillLevel: "intermédiaire",
+      additionalContext: "",
+    },
+  });
 
   const generateMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("POST", "/api/ai/generate-roadmap", {
-        topic,
-        numberOfWeeks: parseInt(numberOfWeeks),
-        skillLevel,
-        additionalContext: additionalContext || undefined,
-      });
+    mutationFn: async (formData: RoadmapFormData) => {
+      return await apiRequest("POST", "/api/ai/generate-roadmap", formData);
     },
     onSuccess: (data: any) => {
       setGeneratedWeeks(data.weeks);
@@ -107,24 +120,13 @@ export function AIRoadmapModal({ open, onClose, onSave }: AIRoadmapModalProps) {
   const handleClose = () => {
     setStep("form");
     setGeneratedWeeks([]);
-    setTopic("");
-    setNumberOfWeeks("4");
-    setSkillLevel("intermédiaire");
-    setAdditionalContext("");
+    form.reset();
     onClose();
   };
 
-  const handleGenerate = () => {
-    if (!topic.trim()) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez entrer un sujet.",
-        variant: "destructive",
-      });
-      return;
-    }
-    generateMutation.mutate();
-  };
+  const handleGenerate = form.handleSubmit((data) => {
+    generateMutation.mutate(data);
+  });
 
   const handleDeleteWeek = (index: number) => {
     setGeneratedWeeks(prev => prev.filter((_, i) => i !== index));
@@ -166,100 +168,130 @@ export function AIRoadmapModal({ open, onClose, onSave }: AIRoadmapModalProps) {
         </DialogHeader>
 
         {step === "form" && (
-          <div className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="topic" className="text-foreground font-semibold">
-                Sujet de la formation *
-              </Label>
-              <Input
-                id="topic"
-                placeholder="Ex: Apprendre FastAPI, Créer une API REST complète, Maîtriser Django..."
-                value={topic}
-                onChange={(e) => setTopic(e.target.value)}
-                className="glass border-white/20"
-                data-testid="input-ai-topic"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="weeks" className="text-foreground font-semibold">
-                  Nombre de semaines *
-                </Label>
-                <Select value={numberOfWeeks} onValueChange={setNumberOfWeeks}>
-                  <SelectTrigger className="glass border-white/20" data-testid="select-weeks">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
-                      <SelectItem key={n} value={String(n)}>
-                        {n} semaine{n > 1 ? "s" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="level" className="text-foreground font-semibold">
-                  Niveau
-                </Label>
-                <Select value={skillLevel} onValueChange={(v: any) => setSkillLevel(v)}>
-                  <SelectTrigger className="glass border-white/20" data-testid="select-level">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="débutant">Débutant</SelectItem>
-                    <SelectItem value="intermédiaire">Intermédiaire</SelectItem>
-                    <SelectItem value="avancé">Avancé</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="context" className="text-foreground font-semibold">
-                Contexte additionnel (optionnel)
-              </Label>
-              <Textarea
-                id="context"
-                placeholder="Ex: Focus sur les tests unitaires, utilisation de PostgreSQL, déploiement sur Replit..."
-                value={additionalContext}
-                onChange={(e) => setAdditionalContext(e.target.value)}
-                className="glass border-white/20 min-h-[100px]"
-                data-testid="textarea-ai-context"
-              />
-            </div>
-
-            <div className="flex gap-3 pt-4">
-              <Button
-                variant="outline"
-                onClick={handleClose}
-                className="flex-1 glass border-white/20"
-                data-testid="button-cancel-ai"
-              >
-                Annuler
-              </Button>
-              <Button
-                onClick={handleGenerate}
-                disabled={generateMutation.isPending}
-                className="flex-1 bg-gradient-to-r from-primary to-accent text-white shadow-lg"
-                data-testid="button-generate-ai"
-              >
-                {generateMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Génération en cours...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Générer avec l'IA
-                  </>
+          <Form {...form}>
+            <form onSubmit={handleGenerate} className="space-y-5">
+              <FormField
+                control={form.control}
+                name="topic"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-foreground font-semibold">Sujet de la formation *</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Ex: Apprendre FastAPI, Créer une API REST complète, Maîtriser Django..."
+                        className="glass border-white/20"
+                        data-testid="input-ai-topic"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </Button>
-            </div>
-          </div>
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="numberOfWeeks"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground font-semibold">Nombre de semaines *</FormLabel>
+                      <Select 
+                        onValueChange={(value) => field.onChange(parseInt(value))} 
+                        value={field.value.toString()}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="glass border-white/20" data-testid="select-weeks">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
+                            <SelectItem key={n} value={String(n)}>
+                              {n} semaine{n > 1 ? "s" : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="skillLevel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-foreground font-semibold">Niveau</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="glass border-white/20" data-testid="select-level">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="débutant">Débutant</SelectItem>
+                          <SelectItem value="intermédiaire">Intermédiaire</SelectItem>
+                          <SelectItem value="avancé">Avancé</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="additionalContext"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-foreground font-semibold">Contexte additionnel (optionnel)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Ex: Focus sur les tests unitaires, utilisation de PostgreSQL, déploiement sur Replit..."
+                        className="glass border-white/20 min-h-[100px]"
+                        data-testid="textarea-ai-context"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleClose}
+                  className="flex-1 glass border-white/20"
+                  data-testid="button-cancel-ai"
+                >
+                  Annuler
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={generateMutation.isPending}
+                  className="flex-1 bg-gradient-to-r from-primary to-accent text-white shadow-lg"
+                  data-testid="button-generate-ai"
+                >
+                  {generateMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Génération en cours...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Générer avec l'IA
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
         )}
 
         {step === "preview" && (
