@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import jwt from "jsonwebtoken";
 import { storage } from "./storage";
 import { authMiddleware, requireMentor, requireLearner, generateToken, hashPassword, comparePassword, type AuthRequest } from "./auth";
-import { insertUserSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema } from "@shared/schema";
+import { insertUserSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 
@@ -267,6 +267,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const week = await storage.createWeek(weekData);
       res.status(201).json(week);
     } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Bulk roadmap creation endpoint (transactional)
+  app.post("/api/weeks/bulk", authMiddleware, requireMentor, async (req, res) => {
+    try {
+      // Validate the entire roadmap data with nested validation
+      const validatedData = insertRoadmapBulkSchema.parse(req.body);
+      
+      // Create all weeks, objectives, tasks, deliverables, and resources in a single transaction
+      const result = await storage.createRoadmapBulk(validatedData);
+      
+      res.status(201).json(result);
+    } catch (error) {
+      // Return detailed error for validation failures
+      if (error instanceof Error && error.name === 'ZodError') {
+        return res.status(400).json({ 
+          error: "Validation error", 
+          details: error.message 
+        });
+      }
       handleError(res, error);
     }
   });
