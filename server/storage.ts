@@ -30,6 +30,8 @@ import {
   type InsertWeekComment,
   type EmailNotificationPreferences,
   type InsertEmailNotificationPreferences,
+  type RoadmapBulkInsert,
+  type RoadmapBulkCreateResponse,
 } from "@shared/schema";
 
 export interface IStorage {
@@ -46,6 +48,9 @@ export interface IStorage {
   deleteWeek(id: number): Promise<boolean>;
   validateWeek(id: number): Promise<Week | undefined>;
   cloneWeek(id: number, newNumber: number): Promise<Week | undefined>;
+  
+  // Bulk roadmap creation (transactional)
+  createRoadmapBulk(weeksData: RoadmapBulkInsert): Promise<RoadmapBulkCreateResponse>;
 
   // Objective methods
   getObjectivesByWeek(weekId: number): Promise<Objective[]>;
