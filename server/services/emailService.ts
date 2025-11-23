@@ -13,6 +13,9 @@ const APP_URL = process.env.REPL_SLUG
   ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
   : "http://localhost:5000";
 
+// Email autorisé en mode test (Resend ne peut envoyer qu'à cette adresse sans domaine vérifié)
+const ALLOWED_TEST_EMAIL = "justsmilewithme242@gmail.com";
+
 interface EmailTemplateData {
   userName: string;
   [key: string]: any;
@@ -54,6 +57,20 @@ export class EmailService {
     type: typeof emailNotifications.$inferSelect.type
   ): Promise<boolean> {
     try {
+      // En mode test (sans domaine vérifié), Resend ne peut envoyer qu'à l'email autorisé
+      if (recipientEmail !== ALLOWED_TEST_EMAIL) {
+        console.log(`[EMAIL SKIP] Cannot send to ${recipientEmail} in test mode (only ${ALLOWED_TEST_EMAIL} allowed)`);
+        await this.logEmailNotification({
+          userId,
+          type,
+          subject,
+          recipientEmail,
+          status: "skipped",
+          errorMessage: `Test mode: can only send to ${ALLOWED_TEST_EMAIL}`,
+        });
+        return false;
+      }
+
       const { data, error } = await resend.emails.send({
         from: FROM_EMAIL,
         to: recipientEmail,
