@@ -195,7 +195,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // BUSINESS RULE: Learners can only see validated weeks
       if (isLearner) {
-        weeks = weeks.filter(week => week.isValidated);
+        console.log(`[LEARNER VIEW] Total weeks: ${weeks.length}, Validated weeks:`, weeks.filter(w => w.isValidatedByMentor).map(w => ({id: w.id, number: w.number, isValidatedByMentor: w.isValidatedByMentor})));
+        weeks = weeks.filter(week => week.isValidatedByMentor);
       }
       
       // Get all nested data for each week
