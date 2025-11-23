@@ -71,6 +71,7 @@ export class EmailService {
         return false;
       }
 
+      console.log(`[EMAIL SEND] Sending to ${recipientEmail}: ${subject}`);
       const { data, error } = await resend.emails.send({
         from: FROM_EMAIL,
         to: recipientEmail,
@@ -79,7 +80,7 @@ export class EmailService {
       });
 
       if (error) {
-        console.error("Resend error:", error);
+        console.error("[EMAIL ERROR] Resend error:", error);
         await this.logEmailNotification({
           userId,
           type,
@@ -91,6 +92,7 @@ export class EmailService {
         return false;
       }
 
+      console.log(`[EMAIL SUCCESS] Email sent to ${recipientEmail} with ID: ${data?.id}`);
       await this.logEmailNotification({
         userId,
         type,
