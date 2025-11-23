@@ -541,8 +541,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Storage.toggleTaskProgress will create/update progress ONLY for the authenticated learner
       const progress = await storage.toggleTaskProgress(taskId, authenticatedLearnerId, normalizedScreenshotUrl);
       
-      // Email notification: notify mentor when learner completes a task
-      if (progress.isDone) {
+      // Email notifications
+      if (progress.isDone || normalizedScreenshotUrl) {
         // Import email service
         const { emailService } = await import("./services/emailService");
         
@@ -553,33 +553,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const learner = await storage.getUser(authenticatedLearnerId);
           
           if (week && learner) {
-            // Calculate completion percentage for this week
-            const allObjectives = await storage.getObjectivesByWeek(week.id);
-            let totalTasks = 0;
-            let completedTasks = 0;
+            const mentors = await emailService.getAllMentors();
             
-            for (const obj of allObjectives) {
-              const tasks = await storage.getTasksByObjective(obj.id);
-              totalTasks += tasks.length;
-              for (const t of tasks) {
-                const prog = await storage.getTaskProgress(t.id, authenticatedLearnerId);
-                if (prog?.isDone) completedTasks++;
+            // Notification de screenshot uploadé (si screenshot fourni)
+            if (normalizedScreenshotUrl && progress.isDone) {
+              for (const mentor of mentors) {
+                await emailService.sendScreenshotUploaded(
+                  mentor.id,
+                  mentor.email,
+                  mentor.fullName,
+                  learner.fullName,
+                  task.title,
+                  week.number
+                ).catch(err => console.error("Failed to send screenshot notification:", err));
               }
             }
             
-            const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-            
-            // Notify all mentors
-            const mentors = await emailService.getAllMentors();
-            for (const mentor of mentors) {
-              await emailService.sendProgressUpdate(
-                mentor.id,
-                mentor.email,
-                mentor.fullName,
-                learner.fullName,
-                week.number,
-                completionPercentage
-              );
+            // Notification de progression (si tâche complétée)
+            if (progress.isDone) {
+              // Calculate completion percentage for this week
+              const allObjectives = await storage.getObjectivesByWeek(week.id);
+              let totalTasks = 0;
+              let completedTasks = 0;
+              
+              for (const obj of allObjectives) {
+                const tasks = await storage.getTasksByObjective(obj.id);
+                totalTasks += tasks.length;
+                for (const t of tasks) {
+                  const prog = await storage.getTaskProgress(t.id, authenticatedLearnerId);
+                  if (prog?.isDone) completedTasks++;
+                }
+              }
+              
+              const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+              
+              // Notify all mentors of progress update
+              for (const mentor of mentors) {
+                await emailService.sendProgressUpdate(
+                  mentor.id,
+                  mentor.email,
+                  mentor.fullName,
+                  learner.fullName,
+                  week.number,
+                  completionPercentage
+                ).catch(err => console.error("Failed to send progress update:", err));
+              }
             }
           }
         }
@@ -764,13 +782,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let preferences = await storage.getEmailPreferences(userId);
       
       if (!preferences) {
-        // Create default preferences if they don't exist
+        // Create default preferences if they don't exist (all enabled by default)
         preferences = await storage.createEmailPreferences({
           userId,
+          // Existing preferences
           taskReminders: true,
           weekPreparation: true,
           progressUpdates: true,
           commentNotifications: true,
+          // AI/System notifications
+          aiGenerationNotifications: true,
+          weekValidationNotifications: true,
+          // Collaboration notifications
+          newTaskNotifications: true,
+          screenshotNotifications: true,
+          weekModifiedNotifications: true,
+          // Intelligent reminders
+          deadlineReminders: true,
+          streakWarnings: true,
+          // Gamification
+          milestoneNotifications: true,
+          badgeNotifications: true,
+          weeklyReports: true,
         });
       }
       
@@ -783,13 +816,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/email-preferences", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const userId = req.user!.id;
-      const { taskReminders, weekPreparation, progressUpdates, commentNotifications } = req.body;
+      const { 
+        // Existing preferences
+        taskReminders, 
+        weekPreparation, 
+        progressUpdates, 
+        commentNotifications,
+        // AI/System notifications
+        aiGenerationNotifications,
+        weekValidationNotifications,
+        // Collaboration notifications
+        newTaskNotifications,
+        screenshotNotifications,
+        weekModifiedNotifications,
+        // Intelligent reminders
+        deadlineReminders,
+        streakWarnings,
+        // Gamification
+        milestoneNotifications,
+        badgeNotifications,
+        weeklyReports
+      } = req.body;
       
       const preferences = await storage.updateEmailPreferences(userId, {
         taskReminders,
         weekPreparation,
         progressUpdates,
         commentNotifications,
+        aiGenerationNotifications,
+        weekValidationNotifications,
+        newTaskNotifications,
+        screenshotNotifications,
+        weekModifiedNotifications,
+        deadlineReminders,
+        streakWarnings,
+        milestoneNotifications,
+        badgeNotifications,
+        weeklyReports,
       });
       
       res.json(preferences);
@@ -800,7 +863,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ========== AI ROADMAP GENERATION ==========
 
-  app.post("/api/ai/generate-roadmap", authMiddleware, requireMentor, async (req, res) => {
+  app.post("/api/ai/generate-roadmap", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
+    const userId = req.user!.id;
+    const userEmail = req.user!.email;
+    const userName = req.user!.username;
+    
     try {
       const { generateRoadmap } = await import("./services/aiRoadmapGenerator");
       const { topic, numberOfWeeks, skillLevel, additionalContext } = req.body;
@@ -820,8 +887,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         additionalContext,
       });
 
+      // Envoyer notification de succès de génération IA
+      emailService.sendAIGenerationSuccess(userId, userEmail, userName, numberOfWeeks)
+        .catch(err => console.error("Failed to send AI generation success email:", err));
+
       res.json({ weeks: generatedWeeks });
     } catch (error) {
+      // Envoyer notification d'échec de génération IA
+      const errorMessage = error instanceof Error ? error.message : "Erreur inconnue lors de la génération";
+      emailService.sendAIGenerationFailure(userId, userEmail, userName, errorMessage)
+        .catch(err => console.error("Failed to send AI generation failure email:", err));
+      
       handleError(res, error);
     }
   });

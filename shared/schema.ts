@@ -93,19 +93,50 @@ export const weekComments = pgTable("week_comments", {
 
 // Email notification preferences
 export const emailNotificationTypeEnum = pgEnum("email_notification_type", [
+  // Existing notifications
   "TASK_REMINDER",
   "WEEK_PREPARATION",
   "PROGRESS_UPDATE",
-  "COMMENT_NOTIFICATION"
+  "COMMENT_NOTIFICATION",
+  // AI/System notifications
+  "AI_GENERATION_SUCCESS",
+  "AI_GENERATION_FAILURE",
+  "WEEK_VALIDATION",
+  // Collaboration notifications
+  "NEW_TASK_ASSIGNED",
+  "SCREENSHOT_UPLOADED",
+  "WEEK_MODIFIED",
+  // Intelligent reminders
+  "DEADLINE_APPROACHING",
+  "STREAK_WARNING",
+  // Gamification notifications
+  "MILESTONE_REACHED",
+  "BADGE_UNLOCKED",
+  "WEEKLY_REPORT"
 ]);
 
 export const emailNotificationPreferences = pgTable("email_notification_preferences", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  // Existing preferences
   taskReminders: boolean("task_reminders").notNull().default(true),
   weekPreparation: boolean("week_preparation").notNull().default(true),
   progressUpdates: boolean("progress_updates").notNull().default(true),
   commentNotifications: boolean("comment_notifications").notNull().default(true),
+  // AI/System notifications preferences
+  aiGenerationNotifications: boolean("ai_generation_notifications").notNull().default(true),
+  weekValidationNotifications: boolean("week_validation_notifications").notNull().default(true),
+  // Collaboration notifications preferences
+  newTaskNotifications: boolean("new_task_notifications").notNull().default(true),
+  screenshotNotifications: boolean("screenshot_notifications").notNull().default(true),
+  weekModifiedNotifications: boolean("week_modified_notifications").notNull().default(true),
+  // Intelligent reminders preferences
+  deadlineReminders: boolean("deadline_reminders").notNull().default(true),
+  streakWarnings: boolean("streak_warnings").notNull().default(true),
+  // Gamification preferences
+  milestoneNotifications: boolean("milestone_notifications").notNull().default(true),
+  badgeNotifications: boolean("badge_notifications").notNull().default(true),
+  weeklyReports: boolean("weekly_reports").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
