@@ -216,6 +216,117 @@ export class DatabaseStorage implements IStorage {
     return newWeek;
   }
 
+  // Bulk roadmap creation with transaction (OPTIMIZED with grouped inserts)
+  async createRoadmapBulk(weeksData: RoadmapBulkInsert): Promise<RoadmapBulkCreateResponse> {
+    return await db.transaction(async (tx) => {
+      const result: RoadmapBulkCreateResponse = { weeks: [] };
+
+      for (const weekData of weeksData) {
+        // 1. Insert the week
+        const [insertedWeek] = await tx
+          .insert(weeks)
+          .values({
+            number: weekData.number,
+            title: weekData.title,
+            startDate: weekData.startDate,
+            endDate: weekData.endDate,
+            description: weekData.description || "",
+            isValidatedByMentor: false,
+          })
+          .returning();
+
+        // 2. Group insert all objectives for this week
+        const objectivesToInsert = weekData.objectives.map((obj, index) => ({
+          weekId: insertedWeek.id,
+          type: obj.type,
+          title: obj.title,
+          description: obj.description || "",
+          orderIndex: obj.orderIndex !== undefined ? obj.orderIndex : index,
+        }));
+
+        const insertedObjectives = await tx
+          .insert(objectives)
+          .values(objectivesToInsert)
+          .returning();
+
+        // 3. For each inserted objective, group insert its tasks
+        const objectivesResult = [];
+        for (let i = 0; i < insertedObjectives.length; i++) {
+          const insertedObj = insertedObjectives[i];
+          const originalObj = weekData.objectives[i]; // Same order as insertion
+
+          const tasksToInsert = originalObj.tasks.map((task, taskIndex) => ({
+            objectiveId: insertedObj.id,
+            label: task.label,
+            orderIndex: task.orderIndex !== undefined ? task.orderIndex : taskIndex,
+            isOptional: task.isOptional || false,
+          }));
+
+          const insertedTasks = await tx
+            .insert(tasks)
+            .values(tasksToInsert)
+            .returning();
+
+          objectivesResult.push({
+            id: insertedObj.id,
+            tempId: originalObj.tempId,
+            tasks: insertedTasks.map((t, idx) => ({ 
+              id: t.id,
+              tempId: originalObj.tasks[idx].tempId,
+            })),
+          });
+        }
+
+        // 4. Group insert deliverables (if any)
+        const deliverablesResult = [];
+        if (weekData.deliverables && weekData.deliverables.length > 0) {
+          const deliverablesToInsert = weekData.deliverables.map((d) => ({
+            weekId: insertedWeek.id,
+            title: d.title,
+            description: d.description || "",
+            instructions: d.instructions || "",
+          }));
+
+          const insertedDeliverables = await tx
+            .insert(deliverables)
+            .values(deliverablesToInsert)
+            .returning();
+
+          deliverablesResult.push(...insertedDeliverables.map((d) => ({ id: d.id })));
+        }
+
+        // 5. Group insert resources (if any)
+        const resourcesResult = [];
+        if (weekData.resources && weekData.resources.length > 0) {
+          const resourcesToInsert = weekData.resources.map((r) => ({
+            weekId: insertedWeek.id,
+            label: r.label,
+            url: r.url,
+            resourceType: r.resourceType,
+          }));
+
+          const insertedResources = await tx
+            .insert(resources)
+            .values(resourcesToInsert)
+            .returning();
+
+          resourcesResult.push(...insertedResources.map((r) => ({ id: r.id })));
+        }
+
+        // Add to result
+        result.weeks.push({
+          id: insertedWeek.id,
+          number: insertedWeek.number,
+          objectives: objectivesResult,
+          deliverables: deliverablesResult,
+          resources: resourcesResult,
+        });
+      }
+
+      return result;
+    });
+  }
+
   // Objective methods
   async getObjectivesByWeek(weekId: number): Promise<Objective[]> {
     return await db.select().from(objectives).where(eq(objectives.weekId, weekId)).orderBy(objectives.orderIndex);
