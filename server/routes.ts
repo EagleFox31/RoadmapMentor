@@ -186,12 +186,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/weeks", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const weeks = await storage.getAllWeeks();
+      let weeks = await storage.getAllWeeks();
       
       // SECURITY: Progress is ONLY returned for the authenticated learner (req.user.id)
       // Mentors receive no progress data. Learners only see their own progress.
       const currentUserId = req.user!.id;
       const isLearner = req.user?.role === "LEARNER";
+      
+      // BUSINESS RULE: Learners can only see validated weeks
+      if (isLearner) {
+        weeks = weeks.filter(week => week.isValidated);
+      }
       
       // Get all nested data for each week
       const weeksWithDetails = await Promise.all(
