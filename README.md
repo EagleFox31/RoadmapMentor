@@ -4,16 +4,6 @@
 
 RoadmapMentor structures a learning plan into weeks, objectives, tasks, deliverables and resources. Mentors can build or validate roadmaps, while learners track their own progress, submit evidence and follow a clear progression over time.
 
-## Preview
-
-<p align="center">
-  <img src="objective_card.png" alt="RoadmapMentor objective card" width="760" />
-</p>
-
-| Weekly roadmap | Progress / achievements |
-| --- | --- |
-| ![Weekly roadmap](card-week-1-element.png) | ![Progress and badges](badge_card_union.png) |
-
 ## Main capabilities
 
 - **Mentor / learner roles** — distinct workflows for roadmap supervision and learning progress
