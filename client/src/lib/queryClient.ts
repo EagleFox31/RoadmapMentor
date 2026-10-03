@@ -7,14 +7,14 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-function getAuthHeaders(): HeadersInit {
+function getAuthHeaders(): Headers {
   const token = localStorage.getItem("jwt_token");
-  const headers: HeadersInit = {};
-  
+  const headers = new Headers();
+
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    headers.set("Authorization", `Bearer ${token}`);
   }
-  
+
   return headers;
 }
 
@@ -23,12 +23,10 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<any> {
-  const headers: HeadersInit = {
-    ...getAuthHeaders(),
-  };
+  const headers = new Headers(getAuthHeaders());
 
-  if (data) {
-    headers["Content-Type"] = "application/json";
+  if (data !== undefined) {
+    headers.set("Content-Type", "application/json");
   }
 
   const res = await fetch(url, {

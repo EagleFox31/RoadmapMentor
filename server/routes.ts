@@ -570,7 +570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   mentor.email,
                   mentor.fullName,
                   learner.fullName,
-                  task.title,
+                  task.label,
                   week.number
                 ).catch(err => console.error("Failed to send screenshot notification:", err));
               }
@@ -876,7 +876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/ai/generate-roadmap", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     const userId = req.user!.id;
     const userEmail = req.user!.email;
-    const userName = req.user!.username;
+    const userName = req.user!.fullName;
     
     try {
       const { generateRoadmap } = await import("./services/aiRoadmapGenerator");

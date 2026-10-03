@@ -220,12 +220,10 @@ export const weekCommentsRelations = relations(weekComments, ({ one }) => ({
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
-  id: true,
   createdAt: true,
 });
 
 export const insertWeekSchema = createInsertSchema(weeks).omit({
-  id: true,
   createdAt: true,
   isValidatedByMentor: true,
 });
@@ -256,44 +254,36 @@ export const aiRoadmapRequestSchema = z.object({
 export type AIRoadmapRequest = z.infer<typeof aiRoadmapRequestSchema>;
 
 export const insertObjectiveSchema = createInsertSchema(objectives).omit({
-  id: true,
   createdAt: true,
 });
 
 export const insertTaskSchema = createInsertSchema(tasks).omit({
-  id: true,
   createdAt: true,
 });
 
 export const insertDeliverableSchema = createInsertSchema(deliverables).omit({
-  id: true,
   createdAt: true,
 });
 
 export const insertResourceSchema = createInsertSchema(resources).omit({
-  id: true,
   createdAt: true,
 });
 
 export const insertTaskProgressSchema = createInsertSchema(taskProgress).omit({
-  id: true,
   createdAt: true,
   doneAt: true,
 });
 
 export const insertWeekCommentSchema = createInsertSchema(weekComments).omit({
-  id: true,
   createdAt: true,
 });
 
 export const insertEmailNotificationPreferencesSchema = createInsertSchema(emailNotificationPreferences).omit({
-  id: true,
   createdAt: true,
   updatedAt: true,
 });
 
 export const insertEmailNotificationSchema = createInsertSchema(emailNotifications).omit({
-  id: true,
   sentAt: true,
 });
 
