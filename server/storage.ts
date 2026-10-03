@@ -167,10 +167,10 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     // Clone objectives and their tasks
-    const objectives = await this.getObjectivesByWeek(id);
-    for (const objective of objectives) {
+    const objectiveList = await this.getObjectivesByWeek(id);
+    for (const objective of objectiveList) {
       const [newObjective] = await db
-        .insert(objectives as any)
+        .insert(objectives)
         .values({
           weekId: newWeek.id,
           type: objective.type,
