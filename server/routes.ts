@@ -1,14 +1,12 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import jwt from "jsonwebtoken";
 import { storage } from "./storage";
 import { emailService } from "./services/emailService";
-import { authMiddleware, requireMentor, requireLearner, generateToken, hashPassword, comparePassword, type AuthRequest } from "./auth";
-import { insertUserSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema } from "@shared/schema";
+import { authMiddleware, requireMentor, requireLearner, generateToken, hashPassword, comparePassword, verifyToken, type AuthRequest } from "./auth";
+import { publicRegistrationSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
-
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production";
+import { isDevelopmentEnvironment } from "./security";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Helper to send errors
@@ -21,8 +19,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const userData = insertUserSchema.parse(req.body);
-      const { fullName, email, password, role } = userData;
+      const userData = publicRegistrationSchema.parse(req.body);
+      const { fullName, email, password } = userData;
       
       // Check if user exists
       const existing = await storage.getUserByEmail(email);
@@ -36,7 +34,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fullName,
         email,
         password: hashedPassword,
-        role: role || "LEARNER",
+        role: "LEARNER",
       });
 
       // Create default email notification preferences
@@ -94,8 +92,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Development: Create test users
-  app.post("/api/auth/create-test-users", async (req, res) => {
+  // Development only: create local test users. This route does not exist in production.
+  if (isDevelopmentEnvironment()) {
+    app.post("/api/auth/create-test-users", async (req, res) => {
     try {
       const testUsers = [
         { fullName: "Mentor Test", email: "mentor@test.com", password: "Test123!", role: "MENTOR" },
@@ -125,7 +124,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       handleError(res, error);
     }
-  });
+    });
+  }
 
   // ========== OBJECT STORAGE ROUTES ==========
   // Referenced from blueprint:javascript_object_storage
@@ -150,8 +150,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (authHeader && authHeader.startsWith("Bearer ")) {
       try {
         const token = authHeader.substring(7);
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
-        userId = decoded.userId.toString();
+        const decoded = verifyToken(token) as { id?: number } | null;
+        if (decoded?.id) {
+          userId = decoded.id.toString();
+        }
       } catch (error) {
         // Token invalid or expired, but that's ok for public files
       }

@@ -1,14 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { NextFunction, Response } from "express";
-import {
+import type { AuthRequest } from "../server/auth";
+
+process.env.NODE_ENV = "test";
+process.env.JWT_SECRET = "roadmapmentor-test-secret";
+
+const {
   authMiddleware,
   comparePassword,
   hashPassword,
   requireLearner,
   requireMentor,
-  type AuthRequest,
-} from "../server/auth";
+} = await import("../server/auth");
 
 function createResponse() {
   const state: { statusCode?: number; body?: unknown } = {};
