@@ -35,7 +35,7 @@ export default function PreferencesPage() {
     setSaveSuccess(false);
 
     setTimeout(() => {
-      setPreferences(prev => ({ ...prev, [key]: !prev[key] }));
+      setPreferences(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
       setUpdating(null);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2000);
