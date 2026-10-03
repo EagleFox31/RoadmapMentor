@@ -1,4 +1,4 @@
-type RuntimeEnvironment = Pick<NodeJS.ProcessEnv, "NODE_ENV" | "JWT_SECRET">;
+type RuntimeEnvironment = { NODE_ENV?: string; JWT_SECRET?: string };
 
 const DEVELOPMENT_ONLY_JWT_SECRET = "roadmapmentor-development-only-secret";
 
