@@ -21,8 +21,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/register", async (req, res) => {
     try {
-      const userData = insertUserSchema.parse(req.body);
-      const { fullName, email, password, role } = userData;
+      const userData = publicRegistrationSchema.parse(req.body);
+      const { fullName, email, password } = userData;
       
       // Check if user exists
       const existing = await storage.getUserByEmail(email);
@@ -36,7 +36,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fullName,
         email,
         password: hashedPassword,
-        role: role || "LEARNER",
+        role: "LEARNER",
       });
 
       // Create default email notification preferences
@@ -94,8 +94,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Development: Create test users
-  app.post("/api/auth/create-test-users", async (req, res) => {
+  // Development only: create local test users. This route does not exist in production.
+  if (isDevelopmentEnvironment()) {
+    app.post("/api/auth/create-test-users", async (req, res) => {
     try {
       const testUsers = [
         { fullName: "Mentor Test", email: "mentor@test.com", password: "Test123!", role: "MENTOR" },
@@ -125,7 +126,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       handleError(res, error);
     }
-  });
+    });
+  }
 
   // ========== OBJECT STORAGE ROUTES ==========
   // Referenced from blueprint:javascript_object_storage
