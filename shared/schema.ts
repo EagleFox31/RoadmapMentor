@@ -223,6 +223,10 @@ export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
 });
 
+export const publicRegistrationSchema = insertUserSchema
+  .omit({ role: true })
+  .strict();
+
 export const insertWeekSchema = createInsertSchema(weeks).omit({
   createdAt: true,
   isValidatedByMentor: true,
