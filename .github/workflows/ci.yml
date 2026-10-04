@@ -99,4 +99,4 @@ jobs:
 
       - name: Static Terraform lint
         working-directory: infra/terraform
-        run: tflint --recursive --config .tflint.hcl
+        run: tflint --recursive --config "$GITHUB_WORKSPACE/infra/terraform/.tflint.hcl"
