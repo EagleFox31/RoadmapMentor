@@ -429,6 +429,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/mentorships", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const accessibleRoadmaps = await storage.getRoadmapsForUser(
+        req.user!.id,
+        req.user!.role,
+      );
+
+      const entries = [];
+      for (const roadmap of accessibleRoadmaps) {
+        const memberships = await storage.getMentorshipsByRoadmap(roadmap.id);
+
+        for (const mentorship of memberships) {
+          const belongsToCurrentUser =
+            req.user!.role === "MENTOR"
+              ? mentorship.mentorId === req.user!.id ||
+                roadmap.createdByUserId === req.user!.id ||
+                roadmap.isLegacy
+              : mentorship.learnerId === req.user!.id;
+
+          if (!belongsToCurrentUser || mentorship.status === "CANCELLED") {
+            continue;
+          }
+
+          const [mentor, learner] = await Promise.all([
+            storage.getUser(mentorship.mentorId),
+            storage.getUser(mentorship.learnerId),
+          ]);
+
+          entries.push({
+            ...mentorship,
+            roadmap: {
+              id: roadmap.id,
+              title: roadmap.title,
+              description: roadmap.description,
+            },
+            mentor: mentor
+              ? {
+                  id: mentor.id,
+                  fullName: mentor.fullName,
+                  email: mentor.email,
+                }
+              : null,
+            learner: learner
+              ? {
+                  id: learner.id,
+                  fullName: learner.fullName,
+                  email: learner.email,
+                }
+              : null,
+          });
+        }
+      }
+
+      res.json(entries);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   app.get(
     "/api/roadmaps/:id/mentorships",
     authMiddleware,
