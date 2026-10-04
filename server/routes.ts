@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { emailService } from "./services/emailService";
 import { authMiddleware, requireMentor, requireLearner, generateToken, hashPassword, comparePassword, verifyToken, type AuthRequest } from "./auth";
-import { publicRegistrationSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema } from "@shared/schema";
+import { publicRegistrationSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema, updateEmailNotificationPreferencesSchema } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { isDevelopmentEnvironment } from "./security";
@@ -828,45 +828,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/email-preferences", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const userId = req.user!.id;
-      const { 
-        // Existing preferences
-        taskReminders, 
-        weekPreparation, 
-        progressUpdates, 
-        commentNotifications,
-        // AI/System notifications
-        aiGenerationNotifications,
-        weekValidationNotifications,
-        // Collaboration notifications
-        newTaskNotifications,
-        screenshotNotifications,
-        weekModifiedNotifications,
-        // Intelligent reminders
-        deadlineReminders,
-        streakWarnings,
-        // Gamification
-        milestoneNotifications,
-        badgeNotifications,
-        weeklyReports
-      } = req.body;
-      
-      const preferences = await storage.updateEmailPreferences(userId, {
-        taskReminders,
-        weekPreparation,
-        progressUpdates,
-        commentNotifications,
-        aiGenerationNotifications,
-        weekValidationNotifications,
-        newTaskNotifications,
-        screenshotNotifications,
-        weekModifiedNotifications,
-        deadlineReminders,
-        streakWarnings,
-        milestoneNotifications,
-        badgeNotifications,
-        weeklyReports,
-      });
-      
+      const parsed = updateEmailNotificationPreferencesSchema.safeParse(req.body);
+
+      if (!parsed.success || Object.keys(parsed.data).length === 0) {
+        return res.status(400).json({
+          error: "Invalid email preference update",
+          details: parsed.success ? undefined : parsed.error.flatten(),
+        });
+      }
+
+      const preferences = await storage.updateEmailPreferences(userId, parsed.data);
       res.json(preferences);
     } catch (error) {
       handleError(res, error);
