@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { pool } from "./db";
 import { emailService } from "./services/emailService";
 import { authMiddleware, requireMentor, requireLearner, generateToken, hashPassword, comparePassword, verifyToken, type AuthRequest } from "./auth";
 import { publicRegistrationSchema, insertRoadmapSchema, insertMentorshipSchema, createMentoringPackageSchema, insertMentoringPackageSchema, createChangeRequestSchema, insertChangeRequestSchema, quoteChangeRequestSchema, changeRequestDecisionSchema, scheduleMentoringSessionSchema, insertMentoringSessionSchema, completeMentoringSessionSchema, createBillingPeriodSchema, insertBillingPeriodSchema, insertBillingChargeSchema, manualBillingChargeSchema, insertPaymentSchema, recordManualPaymentSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema, updateEmailNotificationPreferencesSchema, type BillingPeriod, type Week } from "@shared/schema";
@@ -13,6 +14,20 @@ import { assertCurrencyMatches, summarizeBilling } from "./domain/billing";
 import { manualPaymentAdapter } from "./payments/provider";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.get("/health/live", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+  });
+
+  app.get("/health/ready", async (_req, res) => {
+    try {
+      await pool.query("SELECT 1");
+      res.status(200).json({ status: "ready" });
+    } catch (error) {
+      console.error("Readiness check failed:", error);
+      res.status(503).json({ status: "not_ready" });
+    }
+  });
+
   // Helper to send errors
   const handleError = (res: any, error: any) => {
     console.error("API Error:", error);
