@@ -146,6 +146,12 @@ The migration is intentionally idempotent. It:
 
 New roadmaps do **not** inherit that global compatibility behavior. Their access is restricted to the roadmap creator and explicit, non-cancelled mentorships.
 
+## Container deployment
+
+A production Dockerfile, local Compose stack and environment-specific examples are included. The same runtime image is configured through environment variables for local, staging, VPS, AWS-compatible and Azure-compatible hosts.
+
+See `docs/deployment.md` for health checks, PostgreSQL proxy configuration, migrations, backups and rollback.
+
 ## Validate a change
 
 Before opening or merging a pull request:
@@ -186,9 +192,9 @@ The Replit sidecar is now isolated inside the Replit adapter rather than being r
 
 ## Current portability limits
 
-The remaining infrastructure portability constraint is the database driver: the current adapter is `@neondatabase/serverless`, so a generic local PostgreSQL container is not yet guaranteed. Containerization and database portability are tracked in the platform backlog.
+The application remains on `@neondatabase/serverless`, but a configurable WebSocket proxy transport now allows the same application code to reach a standard PostgreSQL server. The local Docker stack demonstrates this with PostgreSQL 16 plus the proxy.
 
-The existing `.replit` deployment configuration remains available as a compatibility path while provider-agnostic deployment work continues.
+The existing `.replit` deployment configuration remains available as a compatibility path; it is no longer the only deployment model.
 
 ## AI roadmap generation
 
