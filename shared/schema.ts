@@ -15,6 +15,12 @@ export const changeRequestStatusEnum = pgEnum("change_request_status", [
   "REJECTED",
   "DELIVERED",
 ]);
+export const mentoringSessionStatusEnum = pgEnum("mentoring_session_status", [
+  "SCHEDULED",
+  "COMPLETED",
+  "CANCELLED",
+  "NO_SHOW",
+]);
 
 // Users table
 export const users = pgTable("users", {
@@ -140,6 +146,25 @@ export const changeRequests = pgTable("change_requests", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const mentoringSessions = pgTable("mentoring_sessions", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  mentorshipId: integer("mentorship_id").notNull().references(() => mentorships.id, { onDelete: "cascade" }),
+  packageId: integer("package_id").references(() => mentoringPackages.id, { onDelete: "set null" }),
+  weekId: integer("week_id").references(() => weeks.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  status: mentoringSessionStatusEnum("status").notNull().default("SCHEDULED"),
+  isAdditional: boolean("is_additional").notNull().default(false),
+  learnerAttended: boolean("learner_attended"),
+  mentorNotes: text("mentor_notes"),
+  calendarProvider: text("calendar_provider"),
+  calendarEventId: text("calendar_event_id"),
+  createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // Deliverables table
 export const deliverables = pgTable("deliverables", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -251,6 +276,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   learnerMentorships: many(mentorships, { relationName: "learnerMentorships" }),
   createdMentoringPackages: many(mentoringPackages),
   requestedChangeRequests: many(changeRequests),
+  createdMentoringSessions: many(mentoringSessions),
 }));
 
 export const roadmapsRelations = relations(roadmaps, ({ one, many }) => ({
@@ -279,6 +305,7 @@ export const mentorshipsRelations = relations(mentorships, ({ one, many }) => ({
   }),
   packages: many(mentoringPackages),
   changeRequests: many(changeRequests),
+  sessions: many(mentoringSessions),
 }));
 
 export const mentoringPackagesRelations = relations(mentoringPackages, ({ one, many }) => ({
@@ -292,6 +319,7 @@ export const mentoringPackagesRelations = relations(mentoringPackages, ({ one, m
   }),
   scopeItems: many(mentoringPackageScopeItems),
   changeRequests: many(changeRequests),
+  sessions: many(mentoringSessions),
 }));
 
 export const mentoringPackageScopeItemsRelations = relations(mentoringPackageScopeItems, ({ one }) => ({
@@ -345,6 +373,25 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     references: [objectives.id],
   }),
   progress: many(taskProgress),
+}));
+
+export const mentoringSessionsRelations = relations(mentoringSessions, ({ one }) => ({
+  mentorship: one(mentorships, {
+    fields: [mentoringSessions.mentorshipId],
+    references: [mentorships.id],
+  }),
+  package: one(mentoringPackages, {
+    fields: [mentoringSessions.packageId],
+    references: [mentoringPackages.id],
+  }),
+  week: one(weeks, {
+    fields: [mentoringSessions.weekId],
+    references: [weeks.id],
+  }),
+  createdBy: one(users, {
+    fields: [mentoringSessions.createdByUserId],
+    references: [users.id],
+  }),
 }));
 
 export const deliverablesRelations = relations(deliverables, ({ one }) => ({
@@ -498,6 +545,36 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   createdAt: true,
 });
 
+export const insertMentoringSessionSchema = createInsertSchema(mentoringSessions).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const scheduleMentoringSessionSchema = z.object({
+  packageId: z.number().int().positive().nullable().optional(),
+  weekId: z.number().int().positive().nullable().optional(),
+  title: z.string().trim().min(1),
+  startsAt: z.string().datetime({ offset: true }),
+  endsAt: z.string().datetime({ offset: true }),
+  isAdditional: z.boolean().default(false),
+  calendarProvider: z.string().trim().min(1).nullable().optional(),
+  calendarEventId: z.string().trim().min(1).nullable().optional(),
+})
+  .strict()
+  .refine((data) => new Date(data.endsAt) > new Date(data.startsAt), {
+    message: "endsAt must be after startsAt",
+    path: ["endsAt"],
+  })
+  .refine((data) => data.isAdditional || Boolean(data.packageId), {
+    message: "packageId is required for an included session",
+    path: ["packageId"],
+  });
+
+export const completeMentoringSessionSchema = z.object({
+  learnerAttended: z.boolean(),
+  mentorNotes: z.string().trim().max(5000).nullable().optional(),
+}).strict();
+
 export const insertDeliverableSchema = createInsertSchema(deliverables).omit({
   createdAt: true,
 });
@@ -560,6 +637,9 @@ export type InsertObjective = z.infer<typeof insertObjectiveSchema>;
 
 export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
+
+export type MentoringSession = typeof mentoringSessions.$inferSelect;
+export type InsertMentoringSession = z.infer<typeof insertMentoringSessionSchema>;
 
 export type Deliverable = typeof deliverables.$inferSelect;
 export type InsertDeliverable = z.infer<typeof insertDeliverableSchema>;
