@@ -77,7 +77,16 @@
       ],
       "gates": [
         "verify",
-        "container-build"
+        "container-build",
+        "terraform-checks"
+      ]
+    },
+    "terraform-iac": {
+      "paths": [
+        "infra/terraform/**"
+      ],
+      "gates": [
+        "terraform-checks"
       ]
     }
   }
