@@ -3,10 +3,11 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { emailService } from "./services/emailService";
 import { authMiddleware, requireMentor, requireLearner, generateToken, hashPassword, comparePassword, verifyToken, type AuthRequest } from "./auth";
-import { publicRegistrationSchema, insertRoadmapSchema, insertMentorshipSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema, updateEmailNotificationPreferencesSchema, type Week } from "@shared/schema";
+import { publicRegistrationSchema, insertRoadmapSchema, insertMentorshipSchema, createMentoringPackageSchema, insertMentoringPackageSchema, createChangeRequestSchema, insertChangeRequestSchema, quoteChangeRequestSchema, changeRequestDecisionSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema, updateEmailNotificationPreferencesSchema, type Week } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { isDevelopmentEnvironment } from "./security";
+import { assertChangeRequestTransition, requiresLinkedRoadmapWork } from "./domain/changeRequest";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Helper to send errors
@@ -167,6 +168,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       week: weekAccess.week,
       allowed: weekAccess.allowed,
     };
+  };
+
+  const getMentorshipAccess = async (req: AuthRequest, mentorshipId: number) => {
+    const mentorship = await storage.getMentorship(mentorshipId);
+    if (!mentorship) {
+      return { mentorship: undefined, allowed: false, canManage: false };
+    }
+
+    const roadmap = await storage.getRoadmap(mentorship.roadmapId);
+    if (!roadmap) {
+      return { mentorship, allowed: false, canManage: false };
+    }
+
+    if (req.user!.role === "LEARNER") {
+      const allowed =
+        mentorship.learnerId === req.user!.id &&
+        mentorship.status !== "CANCELLED";
+      return { mentorship, allowed, canManage: false };
+    }
+
+    const canManage =
+      mentorship.mentorId === req.user!.id ||
+      roadmap.createdByUserId === req.user!.id;
+
+    return { mentorship, allowed: canManage, canManage };
+  };
+
+  const validateTaskBelongsToMentorshipRoadmap = async (
+    mentorshipId: number,
+    taskId: number,
+  ) => {
+    const mentorship = await storage.getMentorship(mentorshipId);
+    const task = await storage.getTask(taskId);
+    if (!mentorship || !task) {
+      return false;
+    }
+
+    const objective = await storage.getObjective(task.objectiveId);
+    if (!objective) {
+      return false;
+    }
+
+    const week = await storage.getWeek(objective.weekId);
+    return Boolean(week && week.roadmapId === mentorship.roadmapId);
   };
 
   // ========== AUTH ROUTES ==========
@@ -383,6 +428,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/mentorships", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const accessibleRoadmaps = await storage.getRoadmapsForUser(
+        req.user!.id,
+        req.user!.role,
+      );
+
+      const entries = [];
+      for (const roadmap of accessibleRoadmaps) {
+        const memberships = await storage.getMentorshipsByRoadmap(roadmap.id);
+
+        for (const mentorship of memberships) {
+          const belongsToCurrentUser =
+            req.user!.role === "MENTOR"
+              ? mentorship.mentorId === req.user!.id ||
+                roadmap.createdByUserId === req.user!.id
+              : mentorship.learnerId === req.user!.id;
+
+          if (!belongsToCurrentUser || mentorship.status === "CANCELLED") {
+            continue;
+          }
+
+          const [mentor, learner] = await Promise.all([
+            storage.getUser(mentorship.mentorId),
+            storage.getUser(mentorship.learnerId),
+          ]);
+
+          entries.push({
+            ...mentorship,
+            roadmap: {
+              id: roadmap.id,
+              title: roadmap.title,
+              description: roadmap.description,
+            },
+            mentor: mentor
+              ? {
+                  id: mentor.id,
+                  fullName: mentor.fullName,
+                  email: mentor.email,
+                }
+              : null,
+            learner: learner
+              ? {
+                  id: learner.id,
+                  fullName: learner.fullName,
+                  email: learner.email,
+                }
+              : null,
+          });
+        }
+      }
+
+      res.json(entries);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
   app.get(
     "/api/roadmaps/:id/mentorships",
     authMiddleware,
@@ -455,6 +558,323 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const mentorship = await storage.createMentorship(mentorshipData);
         res.status(201).json(mentorship);
       } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  // ========== MENTORING PACKAGE / SCOPE ROUTES ==========
+
+  app.get(
+    "/api/mentorships/:id/packages",
+    authMiddleware,
+    async (req: AuthRequest, res) => {
+      try {
+        const mentorshipId = Number(req.params.id);
+        if (!Number.isInteger(mentorshipId) || mentorshipId <= 0) {
+          return res.status(400).json({ error: "Invalid mentorship id" });
+        }
+
+        const access = await getMentorshipAccess(req, mentorshipId);
+        if (!access.allowed) {
+          return res.status(404).json({ error: "Mentorship not found" });
+        }
+
+        const packages = await storage.getMentoringPackagesByMentorship(
+          mentorshipId,
+        );
+        res.json(packages);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/mentorships/:id/packages",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const mentorshipId = Number(req.params.id);
+        if (!Number.isInteger(mentorshipId) || mentorshipId <= 0) {
+          return res.status(400).json({ error: "Invalid mentorship id" });
+        }
+
+        const access = await getMentorshipAccess(req, mentorshipId);
+        if (!access.allowed || !access.canManage) {
+          return res.status(404).json({ error: "Mentorship not found" });
+        }
+
+        const input = createMentoringPackageSchema.parse(req.body);
+        const packageData = insertMentoringPackageSchema.parse({
+          mentorshipId,
+          title: input.title,
+          basePriceMinor: input.basePriceMinor,
+          currency: input.currency,
+          periodStart: input.periodStart,
+          periodEnd: input.periodEnd,
+          includedSessionCount: input.includedSessionCount,
+          includedSessionDurationMinutes:
+            input.includedSessionDurationMinutes ?? null,
+          sessionSchedule: input.sessionSchedule ?? null,
+          scopeDescription: input.scopeDescription,
+          createdByUserId: req.user!.id,
+        });
+
+        const mentoringPackage = await storage.createMentoringPackageWithScope(
+          packageData,
+          input.scopeItems.map(
+            (scopeItem: { title: string; description?: string | null }) => ({
+              title: scopeItem.title,
+              description: scopeItem.description ?? null,
+            }),
+          ),
+        );
+
+        res.status(201).json(mentoringPackage);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.get(
+    "/api/mentorships/:id/change-requests",
+    authMiddleware,
+    async (req: AuthRequest, res) => {
+      try {
+        const mentorshipId = Number(req.params.id);
+        if (!Number.isInteger(mentorshipId) || mentorshipId <= 0) {
+          return res.status(400).json({ error: "Invalid mentorship id" });
+        }
+
+        const access = await getMentorshipAccess(req, mentorshipId);
+        if (!access.allowed) {
+          return res.status(404).json({ error: "Mentorship not found" });
+        }
+
+        const requests = await storage.getChangeRequestsByMentorship(
+          mentorshipId,
+        );
+        res.json(requests);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/mentorships/:id/change-requests",
+    authMiddleware,
+    requireLearner,
+    async (req: AuthRequest, res) => {
+      try {
+        const mentorshipId = Number(req.params.id);
+        if (!Number.isInteger(mentorshipId) || mentorshipId <= 0) {
+          return res.status(400).json({ error: "Invalid mentorship id" });
+        }
+
+        const access = await getMentorshipAccess(req, mentorshipId);
+        if (!access.allowed || access.mentorship?.learnerId !== req.user!.id) {
+          return res.status(404).json({ error: "Mentorship not found" });
+        }
+
+        const input = createChangeRequestSchema.parse(req.body);
+        const mentoringPackage = await storage.getMentoringPackage(input.packageId);
+        if (
+          !mentoringPackage ||
+          mentoringPackage.mentorshipId !== mentorshipId
+        ) {
+          return res.status(400).json({
+            error: "packageId must belong to this mentorship",
+          });
+        }
+
+        const changeRequestData = insertChangeRequestSchema.parse({
+          mentorshipId,
+          packageId: mentoringPackage.id,
+          requestedByUserId: req.user!.id,
+          title: input.title,
+          description: input.description,
+          status: "PROPOSED",
+          quotedPriceMinor: null,
+          currency: mentoringPackage.currency,
+          linkedTaskId: null,
+        });
+
+        const changeRequest = await storage.createChangeRequest(
+          changeRequestData,
+        );
+        res.status(201).json(changeRequest);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/change-requests/:id/quote",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const changeRequestId = Number(req.params.id);
+        const changeRequest = Number.isInteger(changeRequestId)
+          ? await storage.getChangeRequest(changeRequestId)
+          : undefined;
+
+        if (!changeRequest) {
+          return res.status(404).json({ error: "Change request not found" });
+        }
+
+        const access = await getMentorshipAccess(
+          req,
+          changeRequest.mentorshipId,
+        );
+        if (!access.allowed || !access.canManage) {
+          return res.status(404).json({ error: "Change request not found" });
+        }
+
+        assertChangeRequestTransition(changeRequest.status, "QUOTED");
+        const input = quoteChangeRequestSchema.parse(req.body);
+
+        if (
+          !(await validateTaskBelongsToMentorshipRoadmap(
+            changeRequest.mentorshipId,
+            input.linkedTaskId,
+          ))
+        ) {
+          return res.status(400).json({
+            error: "linkedTaskId must belong to the mentorship roadmap",
+          });
+        }
+
+        const updated = await storage.updateChangeRequest(changeRequest.id, {
+          status: "QUOTED",
+          quotedPriceMinor: input.quotedPriceMinor,
+          currency: input.currency,
+          linkedTaskId: input.linkedTaskId,
+          quotedAt: new Date(),
+        });
+
+        res.json(updated);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.startsWith("Invalid change request transition")
+        ) {
+          return res.status(409).json({ error: error.message });
+        }
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/change-requests/:id/decision",
+    authMiddleware,
+    requireLearner,
+    async (req: AuthRequest, res) => {
+      try {
+        const changeRequestId = Number(req.params.id);
+        const changeRequest = Number.isInteger(changeRequestId)
+          ? await storage.getChangeRequest(changeRequestId)
+          : undefined;
+
+        if (!changeRequest) {
+          return res.status(404).json({ error: "Change request not found" });
+        }
+
+        const access = await getMentorshipAccess(
+          req,
+          changeRequest.mentorshipId,
+        );
+        if (
+          !access.allowed ||
+          access.mentorship?.learnerId !== req.user!.id
+        ) {
+          return res.status(404).json({ error: "Change request not found" });
+        }
+
+        const input = changeRequestDecisionSchema.parse(req.body);
+        const nextStatus =
+          input.decision === "ACCEPT" ? "ACCEPTED" : "REJECTED";
+
+        assertChangeRequestTransition(changeRequest.status, nextStatus);
+
+        if (
+          requiresLinkedRoadmapWork(nextStatus) &&
+          !changeRequest.linkedTaskId
+        ) {
+          return res.status(409).json({
+            error:
+              "Accepted scope changes must be linked to roadmap work before approval",
+          });
+        }
+
+        const updated = await storage.updateChangeRequest(changeRequest.id, {
+          status: nextStatus,
+          acceptedAt: nextStatus === "ACCEPTED" ? new Date() : null,
+          rejectedAt: nextStatus === "REJECTED" ? new Date() : null,
+        });
+
+        res.json(updated);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.startsWith("Invalid change request transition")
+        ) {
+          return res.status(409).json({ error: error.message });
+        }
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/change-requests/:id/deliver",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const changeRequestId = Number(req.params.id);
+        const changeRequest = Number.isInteger(changeRequestId)
+          ? await storage.getChangeRequest(changeRequestId)
+          : undefined;
+
+        if (!changeRequest) {
+          return res.status(404).json({ error: "Change request not found" });
+        }
+
+        const access = await getMentorshipAccess(
+          req,
+          changeRequest.mentorshipId,
+        );
+        if (!access.allowed || !access.canManage) {
+          return res.status(404).json({ error: "Change request not found" });
+        }
+
+        assertChangeRequestTransition(changeRequest.status, "DELIVERED");
+        if (!changeRequest.linkedTaskId) {
+          return res.status(409).json({
+            error: "Delivered scope changes must remain linked to roadmap work",
+          });
+        }
+
+        const updated = await storage.updateChangeRequest(changeRequest.id, {
+          status: "DELIVERED",
+          deliveredAt: new Date(),
+        });
+
+        res.json(updated);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.startsWith("Invalid change request transition")
+        ) {
+          return res.status(409).json({ error: error.message });
+        }
         handleError(res, error);
       }
     },

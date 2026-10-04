@@ -6,6 +6,9 @@ import {
   users,
   roadmaps,
   mentorships,
+  mentoringPackages,
+  mentoringPackageScopeItems,
+  changeRequests,
   weeks,
   objectives,
   tasks,
@@ -20,6 +23,13 @@ import {
   type InsertRoadmap,
   type Mentorship,
   type InsertMentorship,
+  type MentoringPackage,
+  type InsertMentoringPackage,
+  type MentoringPackageScopeItem,
+  type InsertMentoringPackageScopeItem,
+  type MentoringPackageWithScope,
+  type ChangeRequest,
+  type InsertChangeRequest,
   type Week,
   type InsertWeek,
   type Objective,
@@ -53,9 +63,24 @@ export interface IStorage {
   getRoadmapsForUser(userId: number, role: "MENTOR" | "LEARNER"): Promise<Roadmap[]>;
   createRoadmap(roadmap: InsertRoadmap): Promise<Roadmap>;
   createMentorship(mentorship: InsertMentorship): Promise<Mentorship>;
+  getMentorship(id: number): Promise<Mentorship | undefined>;
   findMentorship(roadmapId: number, mentorId: number, learnerId: number): Promise<Mentorship | undefined>;
   getMentorshipsByRoadmap(roadmapId: number): Promise<Mentorship[]>;
   userCanAccessRoadmap(userId: number, role: "MENTOR" | "LEARNER", roadmapId: number): Promise<boolean>;
+
+  // Mentoring package / scope methods
+  getMentoringPackage(id: number): Promise<MentoringPackage | undefined>;
+  getMentoringPackagesByMentorship(mentorshipId: number): Promise<MentoringPackageWithScope[]>;
+  createMentoringPackageWithScope(
+    packageData: InsertMentoringPackage,
+    scopeItems: Array<Omit<InsertMentoringPackageScopeItem, "packageId">>,
+  ): Promise<MentoringPackageWithScope>;
+
+  // Change request methods
+  getChangeRequest(id: number): Promise<ChangeRequest | undefined>;
+  getChangeRequestsByMentorship(mentorshipId: number): Promise<ChangeRequest[]>;
+  createChangeRequest(changeRequest: InsertChangeRequest): Promise<ChangeRequest>;
+  updateChangeRequest(id: number, patch: Partial<ChangeRequest>): Promise<ChangeRequest | undefined>;
 
   // Week methods
   getAccessibleWeeks(userId: number, role: "MENTOR" | "LEARNER"): Promise<Week[]>;
@@ -187,6 +212,15 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async getMentorship(id: number): Promise<Mentorship | undefined> {
+    const [mentorship] = await db
+      .select()
+      .from(mentorships)
+      .where(eq(mentorships.id, id))
+      .limit(1);
+    return mentorship || undefined;
+  }
+
   async findMentorship(
     roadmapId: number,
     mentorId: number,
@@ -231,6 +265,110 @@ export class DatabaseStorage implements IStorage {
       roadmap,
       memberships: roadmapMemberships,
     });
+  }
+
+  // Mentoring package / scope methods
+  async getMentoringPackage(id: number): Promise<MentoringPackage | undefined> {
+    const [mentoringPackage] = await db
+      .select()
+      .from(mentoringPackages)
+      .where(eq(mentoringPackages.id, id))
+      .limit(1);
+    return mentoringPackage || undefined;
+  }
+
+  async getMentoringPackagesByMentorship(
+    mentorshipId: number,
+  ): Promise<MentoringPackageWithScope[]> {
+    const packages = await db
+      .select()
+      .from(mentoringPackages)
+      .where(eq(mentoringPackages.mentorshipId, mentorshipId))
+      .orderBy(mentoringPackages.periodStart, mentoringPackages.id);
+
+    return await Promise.all(
+      packages.map(async (mentoringPackage) => {
+        const scopeItems = await db
+          .select()
+          .from(mentoringPackageScopeItems)
+          .where(eq(mentoringPackageScopeItems.packageId, mentoringPackage.id))
+          .orderBy(mentoringPackageScopeItems.id);
+
+        return { ...mentoringPackage, scopeItems };
+      }),
+    );
+  }
+
+  async createMentoringPackageWithScope(
+    packageData: InsertMentoringPackage,
+    scopeItems: Array<Omit<InsertMentoringPackageScopeItem, "packageId">>,
+  ): Promise<MentoringPackageWithScope> {
+    return await db.transaction(async (tx) => {
+      const [createdPackage] = await tx
+        .insert(mentoringPackages)
+        .values(packageData)
+        .returning();
+
+      const createdScopeItems: MentoringPackageScopeItem[] = scopeItems.length
+        ? await tx
+            .insert(mentoringPackageScopeItems)
+            .values(
+              scopeItems.map((scopeItem) => ({
+                ...scopeItem,
+                packageId: createdPackage.id,
+              })),
+            )
+            .returning()
+        : [];
+
+      return {
+        ...createdPackage,
+        scopeItems: createdScopeItems,
+      };
+    });
+  }
+
+  // Change request methods
+  async getChangeRequest(id: number): Promise<ChangeRequest | undefined> {
+    const [changeRequest] = await db
+      .select()
+      .from(changeRequests)
+      .where(eq(changeRequests.id, id))
+      .limit(1);
+    return changeRequest || undefined;
+  }
+
+  async getChangeRequestsByMentorship(
+    mentorshipId: number,
+  ): Promise<ChangeRequest[]> {
+    return await db
+      .select()
+      .from(changeRequests)
+      .where(eq(changeRequests.mentorshipId, mentorshipId))
+      .orderBy(desc(changeRequests.createdAt));
+  }
+
+  async createChangeRequest(
+    changeRequest: InsertChangeRequest,
+  ): Promise<ChangeRequest> {
+    const [created] = await db
+      .insert(changeRequests)
+      .values(changeRequest)
+      .returning();
+    return created;
+  }
+
+  async updateChangeRequest(
+    id: number,
+    patch: Partial<ChangeRequest>,
+  ): Promise<ChangeRequest | undefined> {
+    const { id: _id, createdAt: _createdAt, ...safePatch } = patch;
+    const [updated] = await db
+      .update(changeRequests)
+      .set({ ...safePatch, updatedAt: new Date() })
+      .where(eq(changeRequests.id, id))
+      .returning();
+    return updated || undefined;
   }
 
   // Week methods

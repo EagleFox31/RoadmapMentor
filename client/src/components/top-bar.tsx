@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, Rocket, Settings } from "lucide-react";
+import { BriefcaseBusiness, LogOut, Rocket, Settings } from "lucide-react";
 import { useLocation } from "wouter";
 import { getCurrentUser, logout as performLogout, isMentor } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,10 @@ export function TopBar() {
 
   const handleSettings = () => {
     setLocation("/preferences");
+  };
+
+  const handleMentoring = () => {
+    setLocation("/mentoring");
   };
 
   const getInitials = (name: string) => {
@@ -67,6 +71,17 @@ export function TopBar() {
               {user ? getInitials(user.fullName) : "U"}
             </AvatarFallback>
           </Avatar>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleMentoring}
+            className="glass border-white/20 glow-on-hover"
+            data-testid="button-mentoring"
+            title="Mentorat & scope"
+          >
+            <BriefcaseBusiness className="w-4 h-4 icon-hover" />
+          </Button>
 
           <Button
             variant="outline"
