@@ -13,6 +13,7 @@ module "network" {
   name          = "${local.name}-network"
   cidr_block    = var.network.cidr_block
   ingress_rules = var.network.ingress_rules
+  egress_rules  = var.network.egress_rules
   tags          = local.common_tags
 }
 
