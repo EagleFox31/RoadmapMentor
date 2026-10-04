@@ -287,6 +287,11 @@ export const insertEmailNotificationPreferencesSchema = createInsertSchema(email
   updatedAt: true,
 });
 
+export const updateEmailNotificationPreferencesSchema = insertEmailNotificationPreferencesSchema
+  .omit({ userId: true })
+  .partial()
+  .strict();
+
 export const insertEmailNotificationSchema = createInsertSchema(emailNotifications).omit({
   sentAt: true,
 });
@@ -318,6 +323,7 @@ export type InsertWeekComment = z.infer<typeof insertWeekCommentSchema>;
 
 export type EmailNotificationPreferences = typeof emailNotificationPreferences.$inferSelect;
 export type InsertEmailNotificationPreferences = z.infer<typeof insertEmailNotificationPreferencesSchema>;
+export type UpdateEmailNotificationPreferences = z.infer<typeof updateEmailNotificationPreferencesSchema>;
 
 export type EmailNotification = typeof emailNotifications.$inferSelect;
 export type InsertEmailNotification = z.infer<typeof insertEmailNotificationSchema>;
