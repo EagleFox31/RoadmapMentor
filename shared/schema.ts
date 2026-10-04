@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, pgEnum, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -7,6 +7,7 @@ import { z } from "zod";
 export const roleEnum = pgEnum("role", ["MENTOR", "LEARNER"]);
 export const objectiveTypeEnum = pgEnum("objective_type", ["CONCEPT", "ALGO", "PROJECT", "OTHER"]);
 export const resourceTypeEnum = pgEnum("resource_type", ["DOC", "VIDEO", "COURSE", "ARTICLE", "OTHER"]);
+export const mentorshipStatusEnum = pgEnum("mentorship_status", ["ACTIVE", "PAUSED", "COMPLETED", "CANCELLED"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -18,9 +19,43 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Roadmaps are first-class learning programs. Access is granted through mentorships.
+export const roadmaps = pgTable("roadmaps", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  title: text("title").notNull(),
+  description: text("description"),
+  createdByUserId: integer("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  isLegacy: boolean("is_legacy").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const mentorships = pgTable(
+  "mentorships",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    roadmapId: integer("roadmap_id").notNull().references(() => roadmaps.id, { onDelete: "cascade" }),
+    mentorId: integer("mentor_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    learnerId: integer("learner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    status: mentorshipStatusEnum("status").notNull().default("ACTIVE"),
+    startedAt: timestamp("started_at").notNull().defaultNow(),
+    endedAt: timestamp("ended_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    uniqueEngagement: uniqueIndex("mentorship_unique_engagement").on(
+      table.roadmapId,
+      table.mentorId,
+      table.learnerId,
+    ),
+  }),
+);
+
 // Weeks table
 export const weeks = pgTable("weeks", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  roadmapId: integer("roadmap_id").references(() => roadmaps.id, { onDelete: "cascade" }),
   number: integer("number").notNull(),
   title: text("title").notNull(),
   startDate: text("start_date").notNull(),
@@ -157,9 +192,42 @@ export const emailNotifications = pgTable("email_notifications", {
 export const usersRelations = relations(users, ({ many }) => ({
   taskProgress: many(taskProgress),
   weekComments: many(weekComments),
+  createdRoadmaps: many(roadmaps),
+  mentorMentorships: many(mentorships, { relationName: "mentorMentorships" }),
+  learnerMentorships: many(mentorships, { relationName: "learnerMentorships" }),
 }));
 
-export const weeksRelations = relations(weeks, ({ many }) => ({
+export const roadmapsRelations = relations(roadmaps, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [roadmaps.createdByUserId],
+    references: [users.id],
+  }),
+  weeks: many(weeks),
+  mentorships: many(mentorships),
+}));
+
+export const mentorshipsRelations = relations(mentorships, ({ one }) => ({
+  roadmap: one(roadmaps, {
+    fields: [mentorships.roadmapId],
+    references: [roadmaps.id],
+  }),
+  mentor: one(users, {
+    fields: [mentorships.mentorId],
+    references: [users.id],
+    relationName: "mentorMentorships",
+  }),
+  learner: one(users, {
+    fields: [mentorships.learnerId],
+    references: [users.id],
+    relationName: "learnerMentorships",
+  }),
+}));
+
+export const weeksRelations = relations(weeks, ({ one, many }) => ({
+  roadmap: one(roadmaps, {
+    fields: [weeks.roadmapId],
+    references: [roadmaps.id],
+  }),
   objectives: many(objectives),
   deliverables: many(deliverables),
   resources: many(resources),
@@ -226,6 +294,16 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export const publicRegistrationSchema = insertUserSchema
   .omit({ role: true })
   .strict();
+
+export const insertRoadmapSchema = createInsertSchema(roadmaps).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertMentorshipSchema = createInsertSchema(mentorships).omit({
+  createdAt: true,
+  updatedAt: true,
+});
 
 export const insertWeekSchema = createInsertSchema(weeks).omit({
   createdAt: true,
@@ -299,6 +377,12 @@ export const insertEmailNotificationSchema = createInsertSchema(emailNotificatio
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type Roadmap = typeof roadmaps.$inferSelect;
+export type InsertRoadmap = z.infer<typeof insertRoadmapSchema>;
+
+export type Mentorship = typeof mentorships.$inferSelect;
+export type InsertMentorship = z.infer<typeof insertMentorshipSchema>;
 
 export type Week = typeof weeks.$inferSelect;
 export type InsertWeek = z.infer<typeof insertWeekSchema>;
