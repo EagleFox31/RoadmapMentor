@@ -107,6 +107,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     );
   };
 
+  const getObjectiveAccess = async (req: AuthRequest, objectiveId: number) => {
+    const objective = await storage.getObjective(objectiveId);
+    if (!objective) {
+      return { objective: undefined, week: undefined, allowed: false };
+    }
+
+    const weekAccess = await canAccessWeek(req, objective.weekId);
+    return {
+      objective,
+      week: weekAccess.week,
+      allowed: weekAccess.allowed,
+    };
+  };
+
+  const getTaskAccess = async (req: AuthRequest, taskId: number) => {
+    const task = await storage.getTask(taskId);
+    if (!task) {
+      return {
+        task: undefined,
+        objective: undefined,
+        week: undefined,
+        allowed: false,
+      };
+    }
+
+    const objectiveAccess = await getObjectiveAccess(req, task.objectiveId);
+    return {
+      task,
+      objective: objectiveAccess.objective,
+      week: objectiveAccess.week,
+      allowed: objectiveAccess.allowed,
+    };
+  };
+
+  const getDeliverableAccess = async (req: AuthRequest, deliverableId: number) => {
+    const deliverable = await storage.getDeliverable(deliverableId);
+    if (!deliverable) {
+      return { deliverable: undefined, week: undefined, allowed: false };
+    }
+
+    const weekAccess = await canAccessWeek(req, deliverable.weekId);
+    return {
+      deliverable,
+      week: weekAccess.week,
+      allowed: weekAccess.allowed,
+    };
+  };
+
+  const getResourceAccess = async (req: AuthRequest, resourceId: number) => {
+    const resource = await storage.getResource(resourceId);
+    if (!resource) {
+      return { resource: undefined, week: undefined, allowed: false };
+    }
+
+    const weekAccess = await canAccessWeek(req, resource.weekId);
+    return {
+      resource,
+      week: weekAccess.week,
+      allowed: weekAccess.allowed,
+    };
+  };
+
   // ========== AUTH ROUTES ==========
 
   app.post("/api/auth/register", async (req, res) => {
