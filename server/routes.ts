@@ -1234,18 +1234,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Route pour envoyer manuellement les rappels de tâches
-  app.post("/api/jobs/send-task-reminders", authMiddleware, requireMentor, async (req, res) => {
+  app.post("/api/jobs/send-task-reminders", authMiddleware, requireMentor, async (_req, res) => {
     try {
       const { emailService } = await import("./services/emailService");
       const learners = await emailService.getAllLearners();
-      const weeks = await storage.getAllWeeks();
-      
+
       let sentCount = 0;
       let skippedCount = 0;
 
       for (const learner of learners) {
-        // Calculer les tâches en attente pour chaque semaine
-        for (const week of weeks) {
+        const learnerWeeks = (
+          await storage.getAccessibleWeeks(learner.id, "LEARNER")
+        ).filter((week) => week.isValidatedByMentor);
+
+        for (const week of learnerWeeks) {
           const objectives = await storage.getObjectivesByWeek(week.id);
           let pendingTasksCount = 0;
 
@@ -1259,16 +1261,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
-          // Envoyer le rappel si des tâches sont en attente
           if (pendingTasksCount > 0) {
             const sent = await emailService.sendTaskReminder(
               learner.id,
               learner.email,
               learner.fullName,
               week.number,
-              pendingTasksCount
+              pendingTasksCount,
             );
-            
+
             if (sent) {
               sentCount++;
             } else {
@@ -1278,11 +1279,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({ 
-        message: `Task reminders sent successfully.`,
+      res.json({
+        message: "Task reminders sent successfully.",
         sent: sentCount,
         skipped: skippedCount,
-        learners: learners.length
+        learners: learners.length,
       });
     } catch (error) {
       handleError(res, error);
