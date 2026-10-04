@@ -8,6 +8,9 @@ export const roleEnum = pgEnum("role", ["MENTOR", "LEARNER"]);
 export const objectiveTypeEnum = pgEnum("objective_type", ["CONCEPT", "ALGO", "PROJECT", "OTHER"]);
 export const resourceTypeEnum = pgEnum("resource_type", ["DOC", "VIDEO", "COURSE", "ARTICLE", "OTHER"]);
 export const mentorshipStatusEnum = pgEnum("mentorship_status", ["ACTIVE", "PAUSED", "COMPLETED", "CANCELLED"]);
+export const scopeItemKindEnum = pgEnum("scope_item_kind", ["INCLUDED", "EXCLUDED"]);
+export const scopeChangeStatusEnum = pgEnum("scope_change_status", ["PROPOSED", "QUOTED", "ACCEPTED", "REJECTED", "DELIVERED"]);
+export const scopeChangeEventTypeEnum = pgEnum("scope_change_event_type", ["PROPOSED", "QUOTED", "ACCEPTED", "REJECTED", "ROADMAP_LINKED", "DELIVERED"]);
 
 // Users table
 export const users = pgTable("users", {
@@ -103,6 +106,63 @@ export const resources = pgTable("resources", {
   label: text("label").notNull(),
   url: text("url").notNull(),
   resourceType: resourceTypeEnum("resource_type").notNull().default("OTHER"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// Immutable mentoring package terms for one engagement period.
+export const mentoringPackages = pgTable("mentoring_packages", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  mentorshipId: integer("mentorship_id").notNull().references(() => mentorships.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
+  priceAmount: integer("price_amount").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default("XAF"),
+  periodStart: text("period_start").notNull(),
+  periodEnd: text("period_end").notNull(),
+  includedSessionCount: integer("included_session_count").notNull().default(0),
+  sessionDurationMinutes: integer("session_duration_minutes"),
+  sessionRules: text("session_rules"),
+  scopeSummary: text("scope_summary"),
+  createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const mentoringPackageScopeItems = pgTable("mentoring_package_scope_items", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  packageId: integer("package_id").notNull().references(() => mentoringPackages.id, { onDelete: "cascade" }),
+  kind: scopeItemKindEnum("kind").notNull().default("INCLUDED"),
+  title: text("title").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const scopeChangeRequests = pgTable("scope_change_requests", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  mentorshipId: integer("mentorship_id").notNull().references(() => mentorships.id, { onDelete: "cascade" }),
+  packageId: integer("package_id").notNull().references(() => mentoringPackages.id, { onDelete: "restrict" }),
+  requestedByUserId: integer("requested_by_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  status: scopeChangeStatusEnum("status").notNull().default("PROPOSED"),
+  quotedPriceAmount: integer("quoted_price_amount"),
+  quotedCurrency: varchar("quoted_currency", { length: 3 }),
+  quotedAt: timestamp("quoted_at"),
+  acceptedAt: timestamp("accepted_at"),
+  rejectedAt: timestamp("rejected_at"),
+  deliveredAt: timestamp("delivered_at"),
+  roadmapWeekId: integer("roadmap_week_id").references(() => weeks.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const scopeChangeEvents = pgTable("scope_change_events", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  changeRequestId: integer("change_request_id").notNull().references(() => scopeChangeRequests.id, { onDelete: "cascade" }),
+  actorUserId: integer("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  eventType: scopeChangeEventTypeEnum("event_type").notNull(),
+  note: text("note"),
+  quotedPriceAmount: integer("quoted_price_amount"),
+  currency: varchar("currency", { length: 3 }),
+  roadmapWeekId: integer("roadmap_week_id").references(() => weeks.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -206,7 +266,7 @@ export const roadmapsRelations = relations(roadmaps, ({ one, many }) => ({
   mentorships: many(mentorships),
 }));
 
-export const mentorshipsRelations = relations(mentorships, ({ one }) => ({
+export const mentorshipsRelations = relations(mentorships, ({ one, many }) => ({
   roadmap: one(roadmaps, {
     fields: [mentorships.roadmapId],
     references: [roadmaps.id],
@@ -220,6 +280,63 @@ export const mentorshipsRelations = relations(mentorships, ({ one }) => ({
     fields: [mentorships.learnerId],
     references: [users.id],
     relationName: "learnerMentorships",
+  }),
+  packages: many(mentoringPackages),
+  scopeChangeRequests: many(scopeChangeRequests),
+}));
+
+export const mentoringPackagesRelations = relations(mentoringPackages, ({ one, many }) => ({
+  mentorship: one(mentorships, {
+    fields: [mentoringPackages.mentorshipId],
+    references: [mentorships.id],
+  }),
+  creator: one(users, {
+    fields: [mentoringPackages.createdByUserId],
+    references: [users.id],
+  }),
+  scopeItems: many(mentoringPackageScopeItems),
+  scopeChangeRequests: many(scopeChangeRequests),
+}));
+
+export const mentoringPackageScopeItemsRelations = relations(mentoringPackageScopeItems, ({ one }) => ({
+  package: one(mentoringPackages, {
+    fields: [mentoringPackageScopeItems.packageId],
+    references: [mentoringPackages.id],
+  }),
+}));
+
+export const scopeChangeRequestsRelations = relations(scopeChangeRequests, ({ one, many }) => ({
+  mentorship: one(mentorships, {
+    fields: [scopeChangeRequests.mentorshipId],
+    references: [mentorships.id],
+  }),
+  package: one(mentoringPackages, {
+    fields: [scopeChangeRequests.packageId],
+    references: [mentoringPackages.id],
+  }),
+  requester: one(users, {
+    fields: [scopeChangeRequests.requestedByUserId],
+    references: [users.id],
+  }),
+  roadmapWeek: one(weeks, {
+    fields: [scopeChangeRequests.roadmapWeekId],
+    references: [weeks.id],
+  }),
+  events: many(scopeChangeEvents),
+}));
+
+export const scopeChangeEventsRelations = relations(scopeChangeEvents, ({ one }) => ({
+  changeRequest: one(scopeChangeRequests, {
+    fields: [scopeChangeEvents.changeRequestId],
+    references: [scopeChangeRequests.id],
+  }),
+  actor: one(users, {
+    fields: [scopeChangeEvents.actorUserId],
+    references: [users.id],
+  }),
+  roadmapWeek: one(weeks, {
+    fields: [scopeChangeEvents.roadmapWeekId],
+    references: [weeks.id],
   }),
 }));
 
@@ -305,6 +422,71 @@ export const insertMentorshipSchema = createInsertSchema(mentorships).omit({
   updatedAt: true,
 });
 
+export const insertMentoringPackageSchema = createInsertSchema(mentoringPackages).omit({
+  createdAt: true,
+});
+
+export const insertMentoringPackageScopeItemSchema = createInsertSchema(mentoringPackageScopeItems).omit({
+  createdAt: true,
+});
+
+export const insertScopeChangeRequestSchema = createInsertSchema(scopeChangeRequests).omit({
+  createdAt: true,
+  updatedAt: true,
+  quotedAt: true,
+  acceptedAt: true,
+  rejectedAt: true,
+  deliveredAt: true,
+});
+
+export const insertScopeChangeEventSchema = createInsertSchema(scopeChangeEvents).omit({
+  createdAt: true,
+});
+
+const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD");
+const currencySchema = z.string().regex(/^[A-Za-z]{3}$/, "Currency must be a 3-letter code");
+
+export const mentoringPackageCreateSchema = z.object({
+  label: z.string().trim().min(1).max(120),
+  priceAmount: z.number().int().min(0),
+  currency: currencySchema.default("XAF"),
+  periodStart: isoDateSchema,
+  periodEnd: isoDateSchema,
+  includedSessionCount: z.number().int().min(0),
+  sessionDurationMinutes: z.number().int().positive().nullable().optional(),
+  sessionRules: z.string().trim().min(1).nullable().optional(),
+  scopeSummary: z.string().trim().min(1).nullable().optional(),
+  scopeItems: z.array(z.object({
+    kind: z.enum(["INCLUDED", "EXCLUDED"]).default("INCLUDED"),
+    title: z.string().trim().min(1).max(200),
+    description: z.string().trim().min(1).nullable().optional(),
+  }).strict()).min(1),
+}).strict().refine(
+  (data) => data.periodStart <= data.periodEnd,
+  { message: "periodEnd must be on or after periodStart", path: ["periodEnd"] },
+);
+
+export const scopeChangeCreateSchema = z.object({
+  packageId: z.number().int().positive(),
+  title: z.string().trim().min(1).max(200),
+  description: z.string().trim().min(1),
+}).strict();
+
+export const scopeChangeQuoteSchema = z.object({
+  quotedPriceAmount: z.number().int().min(0),
+  quotedCurrency: currencySchema,
+  note: z.string().trim().min(1).nullable().optional(),
+}).strict();
+
+export const scopeChangeDecisionSchema = z.object({
+  note: z.string().trim().min(1).nullable().optional(),
+}).strict();
+
+export const scopeChangeRoadmapLinkSchema = z.object({
+  weekId: z.number().int().positive(),
+  note: z.string().trim().min(1).nullable().optional(),
+}).strict();
+
 export const insertWeekSchema = createInsertSchema(weeks).omit({
   createdAt: true,
   isValidatedByMentor: true,
@@ -383,6 +565,26 @@ export type InsertRoadmap = z.infer<typeof insertRoadmapSchema>;
 
 export type Mentorship = typeof mentorships.$inferSelect;
 export type InsertMentorship = z.infer<typeof insertMentorshipSchema>;
+
+export type MentoringPackage = typeof mentoringPackages.$inferSelect;
+export type InsertMentoringPackage = z.infer<typeof insertMentoringPackageSchema>;
+
+export type MentoringPackageScopeItem = typeof mentoringPackageScopeItems.$inferSelect;
+export type InsertMentoringPackageScopeItem = z.infer<typeof insertMentoringPackageScopeItemSchema>;
+
+export type ScopeChangeRequest = typeof scopeChangeRequests.$inferSelect;
+export type InsertScopeChangeRequest = z.infer<typeof insertScopeChangeRequestSchema>;
+
+export type ScopeChangeEvent = typeof scopeChangeEvents.$inferSelect;
+export type InsertScopeChangeEvent = z.infer<typeof insertScopeChangeEventSchema>;
+
+export type MentoringPackageCreate = z.infer<typeof mentoringPackageCreateSchema>;
+export type ScopeChangeCreate = z.infer<typeof scopeChangeCreateSchema>;
+export type ScopeChangeQuote = z.infer<typeof scopeChangeQuoteSchema>;
+
+export type MentoringPackageWithScope = MentoringPackage & {
+  scopeItems: MentoringPackageScopeItem[];
+};
 
 export type Week = typeof weeks.$inferSelect;
 export type InsertWeek = z.infer<typeof insertWeekSchema>;
