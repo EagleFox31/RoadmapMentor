@@ -24,9 +24,11 @@ if (!process.env.MAIL_HOST || !process.env.MAIL_USER || !process.env.MAIL_PASS) 
 
 const FROM_EMAIL = process.env.MAIL_FROM || "Roadmap Mentor <support@xeptionetwork.shop>";
 const APP_NAME = "Roadmap Mentor";
-const APP_URL = process.env.REPL_SLUG 
-  ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
-  : "http://localhost:5000";
+const APP_URL =
+  process.env.APP_URL?.replace(/\/$/, "") ||
+  (process.env.REPL_SLUG && process.env.REPL_OWNER
+    ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`
+    : "http://localhost:5000");
 
 interface EmailTemplateData {
   userName: string;
