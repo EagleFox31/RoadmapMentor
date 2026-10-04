@@ -9,6 +9,7 @@ import {
   mentoringPackages,
   mentoringPackageScopeItems,
   changeRequests,
+  mentoringSessions,
   weeks,
   objectives,
   tasks,
@@ -30,6 +31,8 @@ import {
   type MentoringPackageWithScope,
   type ChangeRequest,
   type InsertChangeRequest,
+  type MentoringSession,
+  type InsertMentoringSession,
   type Week,
   type InsertWeek,
   type Objective,
@@ -81,6 +84,12 @@ export interface IStorage {
   getChangeRequestsByMentorship(mentorshipId: number): Promise<ChangeRequest[]>;
   createChangeRequest(changeRequest: InsertChangeRequest): Promise<ChangeRequest>;
   updateChangeRequest(id: number, patch: Partial<ChangeRequest>): Promise<ChangeRequest | undefined>;
+
+  // Mentoring session methods
+  getMentoringSession(id: number): Promise<MentoringSession | undefined>;
+  getMentoringSessionsByMentorship(mentorshipId: number): Promise<MentoringSession[]>;
+  createMentoringSession(session: InsertMentoringSession): Promise<MentoringSession>;
+  updateMentoringSession(id: number, patch: Partial<MentoringSession>): Promise<MentoringSession | undefined>;
 
   // Week methods
   getAccessibleWeeks(userId: number, role: "MENTOR" | "LEARNER"): Promise<Week[]>;
@@ -367,6 +376,49 @@ export class DatabaseStorage implements IStorage {
       .update(changeRequests)
       .set({ ...safePatch, updatedAt: new Date() })
       .where(eq(changeRequests.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  // Mentoring session methods
+  async getMentoringSession(id: number): Promise<MentoringSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(mentoringSessions)
+      .where(eq(mentoringSessions.id, id))
+      .limit(1);
+    return session || undefined;
+  }
+
+  async getMentoringSessionsByMentorship(
+    mentorshipId: number,
+  ): Promise<MentoringSession[]> {
+    return await db
+      .select()
+      .from(mentoringSessions)
+      .where(eq(mentoringSessions.mentorshipId, mentorshipId))
+      .orderBy(desc(mentoringSessions.startsAt), desc(mentoringSessions.id));
+  }
+
+  async createMentoringSession(
+    session: InsertMentoringSession,
+  ): Promise<MentoringSession> {
+    const [created] = await db
+      .insert(mentoringSessions)
+      .values(session)
+      .returning();
+    return created;
+  }
+
+  async updateMentoringSession(
+    id: number,
+    patch: Partial<MentoringSession>,
+  ): Promise<MentoringSession | undefined> {
+    const { id: _id, createdAt: _createdAt, ...safePatch } = patch;
+    const [updated] = await db
+      .update(mentoringSessions)
+      .set({ ...safePatch, updatedAt: new Date() })
+      .where(eq(mentoringSessions.id, id))
       .returning();
     return updated || undefined;
   }
