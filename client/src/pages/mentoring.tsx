@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isLearner, isMentor } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { MentoringSessions } from "@/components/mentoring-sessions";
 import type { ChangeRequest, MentoringPackageWithScope, WeekWithDetails } from "@shared/schema";
 
 type MentorshipView = {
@@ -243,6 +244,12 @@ export default function MentoringPage() {
                 })}
               </div>
             </div>
+
+            <MentoringSessions
+              mentorshipId={selected.id}
+              packages={packages}
+              weeks={weeks}
+            />
           </>}
         </section>
       </main>
