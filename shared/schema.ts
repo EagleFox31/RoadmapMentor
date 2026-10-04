@@ -413,10 +413,6 @@ export const insertMentoringPackageSchema = createInsertSchema(mentoringPackages
     includedSessionDurationMinutes: z.number().int().positive().nullable().optional(),
     sessionSchedule: z.string().trim().min(1).nullable().optional(),
     scopeDescription: z.string().trim().min(1),
-  })
-  .refine((data) => data.periodEnd >= data.periodStart, {
-    message: "periodEnd must be on or after periodStart",
-    path: ["periodEnd"],
   });
 
 export const insertMentoringPackageScopeItemSchema = createInsertSchema(mentoringPackageScopeItems).omit({
@@ -433,7 +429,11 @@ export const createMentoringPackageSchema = insertMentoringPackageSchema
       }),
     ).min(1, "At least one included scope item is required"),
   })
-  .strict();
+  .strict()
+  .refine((data) => data.periodEnd >= data.periodStart, {
+    message: "periodEnd must be on or after periodStart",
+    path: ["periodEnd"],
+  });
 
 export const insertChangeRequestSchema = createInsertSchema(changeRequests).omit({
   quotedAt: true,
