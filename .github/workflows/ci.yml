@@ -4,13 +4,25 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  impact:
+    name: impact
+    uses: EagleFox31/appfactory-project-automation/.github/workflows/reusable-impact-analysis.yml@9e351696d594c99059563f93140b492814f00679
+    with:
+      appfactory_ref: 9e351696d594c99059563f93140b492814f00679
+      config_path: .github/appfactory-impact.json
+      checkout_ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      mode: ${{ github.event_name == 'workflow_dispatch' && 'all' || 'auto' }}
+
   verify:
     name: verify
+    needs: impact
+    if: ${{ contains(fromJSON(needs.impact.outputs.gates), 'verify') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -35,12 +47,17 @@ jobs:
 
   container-build:
     name: container-build
+    needs: impact
+    if: ${{ contains(fromJSON(needs.impact.outputs.gates), 'container-build') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
 
       - name: Build production image
         run: docker build --target runtime -t roadmapmentor-ci .
