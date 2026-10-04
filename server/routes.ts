@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { emailService } from "./services/emailService";
@@ -468,12 +468,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/objects/upload", authMiddleware, async (req: AuthRequest, res) => {
     try {
       const objectStorageService = new ObjectStorageService();
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
+      const uploadTarget =
+        await objectStorageService.getObjectEntityUploadTarget();
+      res.json(uploadTarget);
     } catch (error) {
       handleError(res, error);
     }
   });
+
+  app.put(
+    "/api/objects/local-upload/:objectId",
+    authMiddleware,
+    express.raw({ type: "image/*", limit: "5mb" }),
+    async (req: AuthRequest, res) => {
+      try {
+        const objectStorageService = new ObjectStorageService();
+        if (objectStorageService.getProviderName() !== "filesystem") {
+          return res.sendStatus(404);
+        }
+
+        if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+          return res.status(400).json({ error: "Image body is required" });
+        }
+
+        const contentType = req.headers["content-type"] || "";
+        if (!contentType.startsWith("image/")) {
+          return res.status(415).json({ error: "Only image uploads are allowed" });
+        }
+
+        await objectStorageService.writeDirectUpload(
+          req.params.objectId,
+          req.body,
+          contentType,
+        );
+
+        const objectPath = "/objects/uploads/" + req.params.objectId;
+        await objectStorageService.trySetObjectEntityAclPolicy(objectPath, {
+          owner: req.user!.id.toString(),
+          visibility: "private",
+        });
+
+        res.status(201).json({ objectPath });
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
 
   // Serve uploaded screenshots (public and private)
   app.get("/objects/:objectPath(*)", async (req, res) => {
