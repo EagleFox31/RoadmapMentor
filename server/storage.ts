@@ -52,6 +52,7 @@ export interface IStorage {
   getRoadmapsForUser(userId: number, role: "MENTOR" | "LEARNER"): Promise<Roadmap[]>;
   createRoadmap(roadmap: InsertRoadmap): Promise<Roadmap>;
   createMentorship(mentorship: InsertMentorship): Promise<Mentorship>;
+  findMentorship(roadmapId: number, mentorId: number, learnerId: number): Promise<Mentorship | undefined>;
   getMentorshipsByRoadmap(roadmapId: number): Promise<Mentorship[]>;
   userCanAccessRoadmap(userId: number, role: "MENTOR" | "LEARNER", roadmapId: number): Promise<boolean>;
 
@@ -185,6 +186,25 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
+  async findMentorship(
+    roadmapId: number,
+    mentorId: number,
+    learnerId: number,
+  ): Promise<Mentorship | undefined> {
+    const [mentorship] = await db
+      .select()
+      .from(mentorships)
+      .where(
+        and(
+          eq(mentorships.roadmapId, roadmapId),
+          eq(mentorships.mentorId, mentorId),
+          eq(mentorships.learnerId, learnerId),
+        ),
+      )
+      .limit(1);
+    return mentorship || undefined;
+  }
+
   async getMentorshipsByRoadmap(roadmapId: number): Promise<Mentorship[]> {
     return await db
       .select()
@@ -305,6 +325,7 @@ export class DatabaseStorage implements IStorage {
     const [newWeek] = await db
       .insert(weeks)
       .values({
+        roadmapId: originalWeek.roadmapId,
         number: newNumber,
         title: `${originalWeek.title} (Copie)`,
         startDate: originalWeek.startDate,
@@ -374,6 +395,7 @@ export class DatabaseStorage implements IStorage {
         const [insertedWeek] = await tx
           .insert(weeks)
           .values({
+            roadmapId: weekData.roadmapId ?? null,
             number: weekData.number,
             title: weekData.title,
             startDate: weekData.startDate,
