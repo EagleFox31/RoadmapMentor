@@ -1,0 +1,77 @@
+name: roadmapmentor
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: roadmapmentor
+      POSTGRES_PASSWORD: roadmapmentor
+      POSTGRES_DB: roadmapmentor
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roadmapmentor -d roadmapmentor"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  db-proxy:
+    image: ghcr.io/neondatabase/wsproxy:latest
+    environment:
+      APPEND_PORT: "postgres:5432"
+      ALLOW_ADDR_REGEX: ".*"
+      LOG_TRAFFIC: "false"
+      LOG_CONN_INFO: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      target: build
+    command: ["npm", "run", "db:push"]
+    environment:
+      DATABASE_URL: postgresql://roadmapmentor:roadmapmentor@postgres:5432/roadmapmentor
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: runtime
+    environment:
+      PORT: "5000"
+      APP_URL: http://localhost:5000
+      DATABASE_URL: postgresql://roadmapmentor:roadmapmentor@postgres:5432/roadmapmentor
+      DATABASE_WS_PROXY: db-proxy:80/v1
+      DATABASE_WS_PROXY_INSECURE: "true"
+      JWT_SECRET: ${JWT_SECRET:-docker-local-secret-change-me}
+      OBJECT_STORAGE_PROVIDER: filesystem
+      OBJECT_STORAGE_LOCAL_DIR: /app/data/object-storage
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-465}
+      MAIL_USER: ${MAIL_USER:-}
+      MAIL_PASS: ${MAIL_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-Roadmap Mentor <support@example.com>}
+    ports:
+      - "5000:5000"
+    volumes:
+      - evidence_data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-proxy:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  evidence_data:
