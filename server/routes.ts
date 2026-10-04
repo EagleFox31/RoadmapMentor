@@ -977,96 +977,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tasks/:taskId/toggle-progress", authMiddleware, requireLearner, async (req: AuthRequest, res) => {
     try {
-      // SECURITY CRITICAL: Always use learnerId from JWT token (req.user.id)
-      // NEVER accept learnerId from request body - prevents privilege escalation
       const authenticatedLearnerId = req.user!.id;
-      const taskId = parseInt(req.params.taskId);
-      const { screenshotUrl } = req.body;
-      
-      // Verify task exists before toggling
-      const task = await storage.getTask(taskId);
-      if (!task) {
+      const taskId = parseInt(req.params.taskId, 10);
+      const taskAccess = await getTaskAccess(req, taskId);
+
+      if (
+        !taskAccess.task ||
+        !taskAccess.objective ||
+        !taskAccess.week ||
+        !taskAccess.allowed
+      ) {
         return res.status(404).json({ error: "Task not found" });
       }
-      
-      // If screenshot URL is provided, set ACL policy
+
+      const { screenshotUrl } = req.body;
       let normalizedScreenshotUrl = screenshotUrl;
+
       if (screenshotUrl) {
         const objectStorageService = new ObjectStorageService();
-        normalizedScreenshotUrl = await objectStorageService.trySetObjectEntityAclPolicy(
-          screenshotUrl,
-          {
-            owner: authenticatedLearnerId.toString(),
-            visibility: "public",
-          }
-        );
+        normalizedScreenshotUrl =
+          await objectStorageService.trySetObjectEntityAclPolicy(
+            screenshotUrl,
+            {
+              owner: authenticatedLearnerId.toString(),
+              visibility: "public",
+            },
+          );
       }
-      
-      // Storage.toggleTaskProgress will create/update progress ONLY for the authenticated learner
-      const progress = await storage.toggleTaskProgress(taskId, authenticatedLearnerId, normalizedScreenshotUrl);
-      
-      // Email notifications
+
+      const progress = await storage.toggleTaskProgress(
+        taskId,
+        authenticatedLearnerId,
+        normalizedScreenshotUrl,
+      );
+
       if (progress.isDone || normalizedScreenshotUrl) {
-        console.log(`[EMAIL] Task ${taskId} - Triggering email notifications (isDone: ${progress.isDone}, hasScreenshot: ${!!normalizedScreenshotUrl})`);
-        
-        // Get objective to find week
-        const objective = await storage.getObjective(task.objectiveId);
-        if (objective) {
-          const week = await storage.getWeek(objective.weekId);
-          const learner = await storage.getUser(authenticatedLearnerId);
-          
-          if (week && learner) {
-            const mentors = await emailService.getAllMentors();
-            console.log(`[EMAIL] Found ${mentors.length} mentors to notify`);
-            
-            // Notification de screenshot uploadé (si screenshot fourni)
-            if (normalizedScreenshotUrl && progress.isDone) {
-              for (const mentor of mentors) {
-                await emailService.sendScreenshotUploaded(
+        const learner = await storage.getUser(authenticatedLearnerId);
+        if (learner) {
+          const mentors = await getMentorsForWeek(taskAccess.week);
+
+          if (normalizedScreenshotUrl && progress.isDone) {
+            for (const mentor of mentors) {
+              await emailService
+                .sendScreenshotUploaded(
                   mentor.id,
                   mentor.email,
                   mentor.fullName,
                   learner.fullName,
-                  task.label,
-                  week.number
-                ).catch(err => console.error("Failed to send screenshot notification:", err));
-              }
+                  taskAccess.task.label,
+                  taskAccess.week.number,
+                )
+                .catch((err) =>
+                  console.error("Failed to send screenshot notification:", err),
+                );
             }
-            
-            // Notification de progression (si tâche complétée)
-            if (progress.isDone) {
-              // Calculate completion percentage for this week
-              const allObjectives = await storage.getObjectivesByWeek(week.id);
-              let totalTasks = 0;
-              let completedTasks = 0;
-              
-              for (const obj of allObjectives) {
-                const tasks = await storage.getTasksByObjective(obj.id);
-                totalTasks += tasks.length;
-                for (const t of tasks) {
-                  const prog = await storage.getTaskProgress(t.id, authenticatedLearnerId);
-                  if (prog?.isDone) completedTasks++;
+          }
+
+          if (progress.isDone) {
+            const allObjectives = await storage.getObjectivesByWeek(
+              taskAccess.week.id,
+            );
+            let totalTasks = 0;
+            let completedTasks = 0;
+
+            for (const objective of allObjectives) {
+              const tasks = await storage.getTasksByObjective(objective.id);
+              totalTasks += tasks.length;
+
+              for (const task of tasks) {
+                const learnerProgress = await storage.getTaskProgress(
+                  task.id,
+                  authenticatedLearnerId,
+                );
+                if (learnerProgress?.isDone) {
+                  completedTasks++;
                 }
               }
-              
-              const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-              
-              // Notify all mentors of progress update
-              for (const mentor of mentors) {
-                await emailService.sendProgressUpdate(
+            }
+
+            const completionPercentage =
+              totalTasks > 0
+                ? Math.round((completedTasks / totalTasks) * 100)
+                : 0;
+
+            for (const mentor of mentors) {
+              await emailService
+                .sendProgressUpdate(
                   mentor.id,
                   mentor.email,
                   mentor.fullName,
                   learner.fullName,
-                  week.number,
-                  completionPercentage
-                ).catch(err => console.error("Failed to send progress update:", err));
-              }
+                  taskAccess.week.number,
+                  completionPercentage,
+                )
+                .catch((err) =>
+                  console.error("Failed to send progress update:", err),
+                );
             }
           }
         }
       }
-      
+
       res.json(progress);
     } catch (error) {
       handleError(res, error);
@@ -1075,16 +1086,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/progress/summary", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      let weeks = await storage.getAllWeeks();
+      let weeks = await storage.getAccessibleWeeks(
+        req.user!.id,
+        req.user!.role,
+      );
       let totalTasks = 0;
       let completedTasks = 0;
 
-      if (req.user?.role === "LEARNER") {
-        // For learners: scope progress to the authenticated learner only AND only validated weeks
-        const authenticatedLearnerId = req.user.id;
-        
-        // BUSINESS RULE: Learners can only see validated weeks
-        weeks = weeks.filter(week => week.isValidatedByMentor);
+      if (req.user!.role === "LEARNER") {
+        const authenticatedLearnerId = req.user!.id;
+        weeks = weeks.filter((week) => week.isValidatedByMentor);
 
         for (const week of weeks) {
           const objectives = await storage.getObjectivesByWeek(week.id);
@@ -1093,7 +1104,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalTasks += tasks.length;
 
             for (const task of tasks) {
-              const progress = await storage.getTaskProgress(task.id, authenticatedLearnerId);
+              const progress = await storage.getTaskProgress(
+                task.id,
+                authenticatedLearnerId,
+              );
               if (progress?.isDone) {
                 completedTasks++;
               }
@@ -1101,16 +1115,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       } else {
-        // For mentors: count tasks completed by ANY learner
         for (const week of weeks) {
+          const roadmapLearnerIds = await getLearnerIdsForWeek(week);
           const objectives = await storage.getObjectivesByWeek(week.id);
+
           for (const objective of objectives) {
             const tasks = await storage.getTasksByObjective(objective.id);
             totalTasks += tasks.length;
 
             for (const task of tasks) {
               const allProgress = await storage.getAllTaskProgress(task.id);
-              if (allProgress.some(p => p.isDone)) {
+              const scopedProgress =
+                roadmapLearnerIds === null
+                  ? allProgress
+                  : allProgress.filter((progress) =>
+                      roadmapLearnerIds.has(progress.learnerId),
+                    );
+
+              if (scopedProgress.some((progress) => progress.isDone)) {
                 completedTasks++;
               }
             }
@@ -1118,7 +1140,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const globalPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      const globalPercentage =
+        totalTasks > 0
+          ? Math.round((completedTasks / totalTasks) * 100)
+          : 0;
 
       res.json({
         globalPercentage,
@@ -1134,42 +1159,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/weeks/:weekId/comments", authMiddleware, requireLearner, async (req: AuthRequest, res) => {
     try {
+      const weekId = parseInt(req.params.weekId, 10);
+      const weekAccess = await canAccessWeek(req, weekId);
+      if (!weekAccess.week || !weekAccess.allowed) {
+        return res.status(404).json({ error: "Week not found" });
+      }
+
       const commentData = insertWeekCommentSchema.parse({
         ...req.body,
-        weekId: parseInt(req.params.weekId),
+        weekId,
         learnerId: req.user!.id,
       });
       const comment = await storage.createComment(commentData);
-      
-      // Email notification: notify mentors when learner comments
-      const { emailService } = await import("./services/emailService");
-      const week = await storage.getWeek(comment.weekId);
       const learner = await storage.getUser(comment.learnerId);
-      
-      if (week && learner) {
-        const mentors = await emailService.getAllMentors();
+
+      if (learner) {
+        const mentors = await getMentorsForWeek(weekAccess.week);
         for (const mentor of mentors) {
           await emailService.sendCommentNotification(
             mentor.id,
             mentor.email,
             mentor.fullName,
             learner.fullName,
-            week.number,
-            comment.content
+            weekAccess.week.number,
+            comment.content,
           );
         }
       }
-      
+
       res.status(201).json(comment);
     } catch (error) {
       handleError(res, error);
     }
   });
 
-  app.get("/api/weeks/:weekId/comments", authMiddleware, async (req, res) => {
+  app.get("/api/weeks/:weekId/comments", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const comments = await storage.getCommentsByWeek(parseInt(req.params.weekId));
-      res.json(comments);
+      const weekId = parseInt(req.params.weekId, 10);
+      const weekAccess = await canAccessWeek(req, weekId);
+      if (!weekAccess.week || !weekAccess.allowed) {
+        return res.status(404).json({ error: "Week not found" });
+      }
+
+      const comments = await storage.getCommentsByWeek(weekId);
+      if (req.user!.role === "LEARNER") {
+        return res.json(
+          comments.filter((comment) => comment.learnerId === req.user!.id),
+        );
+      }
+
+      const roadmapLearnerIds = await getLearnerIdsForWeek(weekAccess.week);
+      res.json(
+        roadmapLearnerIds === null
+          ? comments
+          : comments.filter((comment) =>
+              roadmapLearnerIds.has(comment.learnerId),
+            ),
+      );
     } catch (error) {
       handleError(res, error);
     }
