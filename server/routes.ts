@@ -85,7 +85,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const mentors = await Promise.all(
-      [...mentorIds].map((mentorId) => storage.getUser(mentorId)),
+      Array.from(mentorIds).map((mentorId) => storage.getUser(mentorId)),
     );
 
     return mentors.filter(
