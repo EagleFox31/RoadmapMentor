@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "fallback": "all",
+  "ignorePaths": [
+    "README.md",
+    "docs/**",
+    ".github/ISSUE_TEMPLATE/**"
+  ],
+  "surfaces": {
+    "shared-contracts": {
+      "paths": [
+        "shared/**"
+      ],
+      "gates": [
+        "verify"
+      ]
+    },
+    "database-schema": {
+      "paths": [
+        "shared/schema.ts",
+        "drizzle.config.ts",
+        "migrations/**",
+        "scripts/migrate-*.ts"
+      ],
+      "gates": [
+        "verify",
+        "container-build"
+      ]
+    },
+    "frontend": {
+      "paths": [
+        "client/**",
+        "index.html",
+        "vite.config.*",
+        "tailwind.config.*",
+        "postcss.config.*"
+      ],
+      "gates": [
+        "verify"
+      ],
+      "dependsOn": [
+        "shared-contracts"
+      ]
+    },
+    "backend": {
+      "paths": [
+        "server/**",
+        "scripts/**"
+      ],
+      "gates": [
+        "verify",
+        "container-build"
+      ],
+      "dependsOn": [
+        "shared-contracts",
+        "database-schema"
+      ]
+    },
+    "container-platform": {
+      "paths": [
+        "Dockerfile",
+        "docker-compose.yml",
+        ".dockerignore"
+      ],
+      "gates": [
+        "container-build"
+      ]
+    },
+    "tooling": {
+      "paths": [
+        "package.json",
+        "package-lock.json",
+        "tsconfig*.json",
+        "components.json",
+        ".github/workflows/ci.yml",
+        ".github/appfactory-impact.json"
+      ],
+      "gates": [
+        "verify",
+        "container-build"
+      ]
+    }
+  }
+}
