@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { emailService } from "./services/emailService";
 import { authMiddleware, requireMentor, requireLearner, generateToken, hashPassword, comparePassword, verifyToken, type AuthRequest } from "./auth";
-import { publicRegistrationSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema, updateEmailNotificationPreferencesSchema } from "@shared/schema";
+import { publicRegistrationSchema, insertRoadmapSchema, insertMentorshipSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema, updateEmailNotificationPreferencesSchema, type Week } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { isDevelopmentEnvironment } from "./security";
@@ -13,6 +13,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const handleError = (res: any, error: any) => {
     console.error("API Error:", error);
     res.status(500).json({ error: error.message || "Internal server error" });
+  };
+
+  const canAccessWeek = async (req: AuthRequest, weekId: number) => {
+    const week = await storage.getWeek(weekId);
+    if (!week) {
+      return { week: undefined, allowed: false };
+    }
+
+    // Transitional compatibility: pre-domain weeks stay reachable until the
+    // explicit legacy migration attaches them to the legacy roadmap.
+    if (week.roadmapId === null) {
+      return { week, allowed: true };
+    }
+
+    const allowed = await storage.userCanAccessRoadmap(
+      req.user!.id,
+      req.user!.role,
+      week.roadmapId,
+    );
+    return { week, allowed };
+  };
+
+  const resolveRoadmapIdForNewWeek = async (
+    req: AuthRequest,
+    requestedRoadmapId: unknown,
+  ): Promise<number | null> => {
+    if (requestedRoadmapId !== undefined && requestedRoadmapId !== null) {
+      const roadmapId = Number(requestedRoadmapId);
+      if (!Number.isInteger(roadmapId) || roadmapId <= 0) {
+        throw new Error("roadmapId must be a positive integer");
+      }
+
+      if (!(await storage.userCanAccessRoadmap(req.user!.id, req.user!.role, roadmapId))) {
+        throw new Error("Roadmap not found");
+      }
+      return roadmapId;
+    }
+
+    const accessibleRoadmaps = await storage.getRoadmapsForUser(
+      req.user!.id,
+      req.user!.role,
+    );
+
+    if (accessibleRoadmaps.length === 1) {
+      return accessibleRoadmaps[0].id;
+    }
+
+    if (accessibleRoadmaps.length > 1) {
+      throw new Error("roadmapId is required when more than one roadmap is accessible");
+    }
+
+    return null;
+  };
+
+  const getMentorsForWeek = async (week: Week) => {
+    if (week.roadmapId === null) {
+      return await emailService.getAllMentors();
+    }
+
+    const roadmap = await storage.getRoadmap(week.roadmapId);
+    const memberships = await storage.getMentorshipsByRoadmap(week.roadmapId);
+    const mentorIds = new Set(
+      memberships
+        .filter((membership) => membership.status !== "CANCELLED")
+        .map((membership) => membership.mentorId),
+    );
+
+    if (roadmap?.createdByUserId) {
+      mentorIds.add(roadmap.createdByUserId);
+    }
+
+    const mentors = await Promise.all(
+      [...mentorIds].map((mentorId) => storage.getUser(mentorId)),
+    );
+
+    return mentors.filter(
+      (mentor): mentor is NonNullable<typeof mentor> =>
+        Boolean(mentor && mentor.role === "MENTOR"),
+    );
+  };
+
+  const getLearnerIdsForWeek = async (week: Week): Promise<Set<number> | null> => {
+    if (week.roadmapId === null) {
+      return null;
+    }
+
+    const memberships = await storage.getMentorshipsByRoadmap(week.roadmapId);
+    return new Set(
+      memberships
+        .filter((membership) => membership.status !== "CANCELLED")
+        .map((membership) => membership.learnerId),
+    );
   };
 
   // ========== AUTH ROUTES ==========
@@ -183,6 +275,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.sendStatus(500);
     }
   });
+
+  // ========== ROADMAP / MENTORSHIP ROUTES ==========
+
+  app.get("/api/roadmaps", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const roadmaps = await storage.getRoadmapsForUser(
+        req.user!.id,
+        req.user!.role,
+      );
+      res.json(roadmaps);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/roadmaps/:id", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const roadmapId = parseInt(req.params.id, 10);
+      const roadmap = await storage.getRoadmap(roadmapId);
+      if (
+        !roadmap ||
+        !(await storage.userCanAccessRoadmap(req.user!.id, req.user!.role, roadmapId))
+      ) {
+        return res.status(404).json({ error: "Roadmap not found" });
+      }
+
+      res.json(roadmap);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/roadmaps", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
+    try {
+      const roadmapData = insertRoadmapSchema.parse({
+        ...req.body,
+        createdByUserId: req.user!.id,
+        isLegacy: false,
+      });
+      const roadmap = await storage.createRoadmap(roadmapData);
+      res.status(201).json(roadmap);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get(
+    "/api/roadmaps/:id/mentorships",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const roadmapId = parseInt(req.params.id, 10);
+        if (
+          !(await storage.userCanAccessRoadmap(
+            req.user!.id,
+            req.user!.role,
+            roadmapId,
+          ))
+        ) {
+          return res.status(404).json({ error: "Roadmap not found" });
+        }
+
+        const memberships = await storage.getMentorshipsByRoadmap(roadmapId);
+        res.json(memberships);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/roadmaps/:id/mentorships",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const roadmapId = parseInt(req.params.id, 10);
+        if (
+          !(await storage.userCanAccessRoadmap(
+            req.user!.id,
+            req.user!.role,
+            roadmapId,
+          ))
+        ) {
+          return res.status(404).json({ error: "Roadmap not found" });
+        }
+
+        const learnerId = Number(req.body.learnerId);
+        const learner = Number.isInteger(learnerId)
+          ? await storage.getUser(learnerId)
+          : undefined;
+
+        if (!learner || learner.role !== "LEARNER") {
+          return res.status(400).json({ error: "A valid learnerId is required" });
+        }
+
+        const existing = await storage.findMentorship(
+          roadmapId,
+          req.user!.id,
+          learnerId,
+        );
+        if (existing) {
+          return res.status(200).json(existing);
+        }
+
+        const mentorshipData = insertMentorshipSchema.parse({
+          roadmapId,
+          mentorId: req.user!.id,
+          learnerId,
+          status: "ACTIVE",
+          startedAt: new Date(),
+          endedAt: null,
+        });
+
+        const mentorship = await storage.createMentorship(mentorshipData);
+        res.status(201).json(mentorship);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
 
   // ========== WEEK ROUTES ==========
 
