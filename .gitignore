@@ -5,3 +5,16 @@ server/public
 vite.config.ts.*
 *.tar.gz
 .env
+
+# Local tool / Replit agent state
+.local/
+
+# Generated review/debug screenshots kept out of source control
+/badge_card_union.png
+/card-week-1-element.png
+/objective-card-zoom.png
+/objective_card*.png
+/roadmap*.png
+/week-card*.png
+/week_card_sidebar.png
+/week_detail_image.png
