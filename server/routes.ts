@@ -190,8 +190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const canManage =
       mentorship.mentorId === req.user!.id ||
-      roadmap.createdByUserId === req.user!.id ||
-      roadmap.isLegacy;
+      roadmap.createdByUserId === req.user!.id;
 
     return { mentorship, allowed: canManage, canManage };
   };
@@ -444,8 +443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const belongsToCurrentUser =
             req.user!.role === "MENTOR"
               ? mentorship.mentorId === req.user!.id ||
-                roadmap.createdByUserId === req.user!.id ||
-                roadmap.isLegacy
+                roadmap.createdByUserId === req.user!.id
               : mentorship.learnerId === req.user!.id;
 
           if (!belongsToCurrentUser || mentorship.status === "CANCELLED") {
