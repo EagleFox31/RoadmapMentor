@@ -21,3 +21,13 @@ vite.config.ts.*
 
 # Local filesystem object storage
 .data/
+
+# Terraform / OpenTofu local state and plans
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example
+.terraformrc
+terraform.rc
