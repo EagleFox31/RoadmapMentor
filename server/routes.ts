@@ -3,10 +3,14 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { emailService } from "./services/emailService";
 import { authMiddleware, requireMentor, requireLearner, generateToken, hashPassword, comparePassword, verifyToken, type AuthRequest } from "./auth";
-import { publicRegistrationSchema, insertRoadmapSchema, insertMentorshipSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema, updateEmailNotificationPreferencesSchema, type Week } from "@shared/schema";
+import { publicRegistrationSchema, insertRoadmapSchema, insertMentorshipSchema, mentoringPackageCreateSchema, scopeChangeCreateSchema, scopeChangeQuoteSchema, scopeChangeDecisionSchema, scopeChangeRoadmapLinkSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema, updateEmailNotificationPreferencesSchema, type Week } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { isDevelopmentEnvironment } from "./security";
+import {
+  InvalidScopeChangeTransitionError,
+  nextScopeChangeStatus,
+} from "./domain/scopeChangeWorkflow";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Helper to send errors
@@ -167,6 +171,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       week: weekAccess.week,
       allowed: weekAccess.allowed,
     };
+  };
+
+  const getMentorshipAccess = async (
+    req: AuthRequest,
+    mentorshipId: number,
+  ) => {
+    const mentorship = await storage.getMentorship(mentorshipId);
+    if (!mentorship) {
+      return {
+        mentorship: undefined,
+        allowed: false,
+        isMentor: false,
+        isLearner: false,
+      };
+    }
+
+    const isMentor =
+      req.user!.role === "MENTOR" && mentorship.mentorId === req.user!.id;
+    const isLearner =
+      req.user!.role === "LEARNER" && mentorship.learnerId === req.user!.id;
+
+    return {
+      mentorship,
+      allowed: isMentor || isLearner,
+      isMentor,
+      isLearner,
+    };
+  };
+
+  const getScopeChangeAccess = async (
+    req: AuthRequest,
+    changeRequestId: number,
+  ) => {
+    const changeRequest = await storage.getScopeChangeRequest(changeRequestId);
+    if (!changeRequest) {
+      return {
+        changeRequest: undefined,
+        mentorship: undefined,
+        allowed: false,
+        isMentor: false,
+        isLearner: false,
+      };
+    }
+
+    const access = await getMentorshipAccess(req, changeRequest.mentorshipId);
+    return {
+      changeRequest,
+      ...access,
+    };
+  };
+
+  const handleScopeChangeError = (res: any, error: unknown) => {
+    if (error instanceof InvalidScopeChangeTransitionError) {
+      return res.status(409).json({ error: error.message });
+    }
+    return handleError(res, error);
   };
 
   // ========== AUTH ROUTES ==========
@@ -456,6 +516,392 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(201).json(mentorship);
       } catch (error) {
         handleError(res, error);
+      }
+    },
+  );
+
+  // ========== MENTORING PACKAGE / SCOPE ROUTES ==========
+
+  app.get("/api/mentorships", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const memberships = await storage.getMentorshipsForUser(
+        req.user!.id,
+        req.user!.role,
+      );
+      res.json(memberships);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get(
+    "/api/mentorships/:id/packages",
+    authMiddleware,
+    async (req: AuthRequest, res) => {
+      try {
+        const mentorshipId = parseInt(req.params.id, 10);
+        const access = await getMentorshipAccess(req, mentorshipId);
+        if (!access.mentorship || !access.allowed) {
+          return res.status(404).json({ error: "Mentorship not found" });
+        }
+
+        const packages =
+          await storage.getMentoringPackagesByMentorship(mentorshipId);
+        res.json(packages);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/mentorships/:id/packages",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const mentorshipId = parseInt(req.params.id, 10);
+        const access = await getMentorshipAccess(req, mentorshipId);
+        if (!access.mentorship || !access.isMentor) {
+          return res.status(404).json({ error: "Mentorship not found" });
+        }
+
+        const packageData = mentoringPackageCreateSchema.parse(req.body);
+        const mentoringPackage = await storage.createMentoringPackage(
+          mentorshipId,
+          req.user!.id,
+          {
+            ...packageData,
+            currency: packageData.currency.toUpperCase(),
+          },
+        );
+
+        res.status(201).json(mentoringPackage);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.get(
+    "/api/mentorships/:id/scope-changes",
+    authMiddleware,
+    async (req: AuthRequest, res) => {
+      try {
+        const mentorshipId = parseInt(req.params.id, 10);
+        const access = await getMentorshipAccess(req, mentorshipId);
+        if (!access.mentorship || !access.allowed) {
+          return res.status(404).json({ error: "Mentorship not found" });
+        }
+
+        const requests =
+          await storage.getScopeChangeRequestsByMentorship(mentorshipId);
+        res.json(requests);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/mentorships/:id/scope-changes",
+    authMiddleware,
+    requireLearner,
+    async (req: AuthRequest, res) => {
+      try {
+        const mentorshipId = parseInt(req.params.id, 10);
+        const access = await getMentorshipAccess(req, mentorshipId);
+        if (!access.mentorship || !access.isLearner) {
+          return res.status(404).json({ error: "Mentorship not found" });
+        }
+
+        const input = scopeChangeCreateSchema.parse(req.body);
+        const mentoringPackage = await storage.getMentoringPackage(
+          input.packageId,
+        );
+        if (
+          !mentoringPackage ||
+          mentoringPackage.mentorshipId !== mentorshipId
+        ) {
+          return res.status(400).json({
+            error: "The selected package does not belong to this mentorship",
+          });
+        }
+
+        const request = await storage.createScopeChangeRequest(
+          {
+            mentorshipId,
+            packageId: input.packageId,
+            requestedByUserId: req.user!.id,
+            title: input.title,
+            description: input.description,
+            status: "PROPOSED",
+            quotedPriceAmount: null,
+            quotedCurrency: null,
+            roadmapWeekId: null,
+          },
+          {
+            actorUserId: req.user!.id,
+            eventType: "PROPOSED",
+            note: input.description,
+            quotedPriceAmount: null,
+            currency: null,
+            roadmapWeekId: null,
+          },
+        );
+
+        res.status(201).json(request);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.get(
+    "/api/scope-changes/:id/events",
+    authMiddleware,
+    async (req: AuthRequest, res) => {
+      try {
+        const changeRequestId = parseInt(req.params.id, 10);
+        const access = await getScopeChangeAccess(req, changeRequestId);
+        if (!access.changeRequest || !access.allowed) {
+          return res.status(404).json({ error: "Scope change not found" });
+        }
+
+        const events = await storage.getScopeChangeEvents(changeRequestId);
+        res.json(events);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/scope-changes/:id/quote",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const changeRequestId = parseInt(req.params.id, 10);
+        const access = await getScopeChangeAccess(req, changeRequestId);
+        if (!access.changeRequest || !access.isMentor) {
+          return res.status(404).json({ error: "Scope change not found" });
+        }
+
+        const input = scopeChangeQuoteSchema.parse(req.body);
+        const status = nextScopeChangeStatus(
+          access.changeRequest.status,
+          "QUOTE",
+          req.user!.role,
+        );
+        const now = new Date();
+        const quotedCurrency = input.quotedCurrency.toUpperCase();
+
+        const updated = await storage.transitionScopeChangeRequest(
+          changeRequestId,
+          {
+            status,
+            quotedPriceAmount: input.quotedPriceAmount,
+            quotedCurrency,
+            quotedAt: now,
+          },
+          {
+            actorUserId: req.user!.id,
+            eventType: "QUOTED",
+            note: input.note ?? null,
+            quotedPriceAmount: input.quotedPriceAmount,
+            currency: quotedCurrency,
+            roadmapWeekId: access.changeRequest.roadmapWeekId,
+          },
+        );
+
+        res.json(updated);
+      } catch (error) {
+        handleScopeChangeError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/scope-changes/:id/accept",
+    authMiddleware,
+    requireLearner,
+    async (req: AuthRequest, res) => {
+      try {
+        const changeRequestId = parseInt(req.params.id, 10);
+        const access = await getScopeChangeAccess(req, changeRequestId);
+        if (!access.changeRequest || !access.isLearner) {
+          return res.status(404).json({ error: "Scope change not found" });
+        }
+
+        const input = scopeChangeDecisionSchema.parse(req.body);
+        const status = nextScopeChangeStatus(
+          access.changeRequest.status,
+          "ACCEPT",
+          req.user!.role,
+        );
+        const now = new Date();
+
+        const updated = await storage.transitionScopeChangeRequest(
+          changeRequestId,
+          { status, acceptedAt: now, rejectedAt: null },
+          {
+            actorUserId: req.user!.id,
+            eventType: "ACCEPTED",
+            note: input.note ?? null,
+            quotedPriceAmount: access.changeRequest.quotedPriceAmount,
+            currency: access.changeRequest.quotedCurrency,
+            roadmapWeekId: access.changeRequest.roadmapWeekId,
+          },
+        );
+
+        res.json(updated);
+      } catch (error) {
+        handleScopeChangeError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/scope-changes/:id/reject",
+    authMiddleware,
+    requireLearner,
+    async (req: AuthRequest, res) => {
+      try {
+        const changeRequestId = parseInt(req.params.id, 10);
+        const access = await getScopeChangeAccess(req, changeRequestId);
+        if (!access.changeRequest || !access.isLearner) {
+          return res.status(404).json({ error: "Scope change not found" });
+        }
+
+        const input = scopeChangeDecisionSchema.parse(req.body);
+        const status = nextScopeChangeStatus(
+          access.changeRequest.status,
+          "REJECT",
+          req.user!.role,
+        );
+        const now = new Date();
+
+        const updated = await storage.transitionScopeChangeRequest(
+          changeRequestId,
+          { status, rejectedAt: now, acceptedAt: null },
+          {
+            actorUserId: req.user!.id,
+            eventType: "REJECTED",
+            note: input.note ?? null,
+            quotedPriceAmount: access.changeRequest.quotedPriceAmount,
+            currency: access.changeRequest.quotedCurrency,
+            roadmapWeekId: access.changeRequest.roadmapWeekId,
+          },
+        );
+
+        res.json(updated);
+      } catch (error) {
+        handleScopeChangeError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/scope-changes/:id/link-roadmap",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const changeRequestId = parseInt(req.params.id, 10);
+        const access = await getScopeChangeAccess(req, changeRequestId);
+        if (
+          !access.changeRequest ||
+          !access.mentorship ||
+          !access.isMentor
+        ) {
+          return res.status(404).json({ error: "Scope change not found" });
+        }
+
+        const input = scopeChangeRoadmapLinkSchema.parse(req.body);
+        nextScopeChangeStatus(
+          access.changeRequest.status,
+          "LINK_ROADMAP",
+          req.user!.role,
+        );
+
+        const week = await storage.getWeek(input.weekId);
+        if (
+          !week ||
+          week.roadmapId !== access.mentorship.roadmapId ||
+          !(await storage.userCanAccessRoadmap(
+            req.user!.id,
+            req.user!.role,
+            access.mentorship.roadmapId,
+          ))
+        ) {
+          return res.status(400).json({
+            error: "Roadmap week must belong to this mentorship",
+          });
+        }
+
+        const updated = await storage.transitionScopeChangeRequest(
+          changeRequestId,
+          { roadmapWeekId: week.id },
+          {
+            actorUserId: req.user!.id,
+            eventType: "ROADMAP_LINKED",
+            note: input.note ?? null,
+            quotedPriceAmount: access.changeRequest.quotedPriceAmount,
+            currency: access.changeRequest.quotedCurrency,
+            roadmapWeekId: week.id,
+          },
+        );
+
+        res.json(updated);
+      } catch (error) {
+        handleScopeChangeError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/scope-changes/:id/deliver",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const changeRequestId = parseInt(req.params.id, 10);
+        const access = await getScopeChangeAccess(req, changeRequestId);
+        if (!access.changeRequest || !access.isMentor) {
+          return res.status(404).json({ error: "Scope change not found" });
+        }
+
+        if (!access.changeRequest.roadmapWeekId) {
+          return res.status(409).json({
+            error: "Link the accepted scope change to roadmap work before delivery",
+          });
+        }
+
+        const input = scopeChangeDecisionSchema.parse(req.body);
+        const status = nextScopeChangeStatus(
+          access.changeRequest.status,
+          "DELIVER",
+          req.user!.role,
+        );
+        const now = new Date();
+
+        const updated = await storage.transitionScopeChangeRequest(
+          changeRequestId,
+          { status, deliveredAt: now },
+          {
+            actorUserId: req.user!.id,
+            eventType: "DELIVERED",
+            note: input.note ?? null,
+            quotedPriceAmount: access.changeRequest.quotedPriceAmount,
+            currency: access.changeRequest.quotedCurrency,
+            roadmapWeekId: access.changeRequest.roadmapWeekId,
+          },
+        );
+
+        res.json(updated);
+      } catch (error) {
+        handleScopeChangeError(res, error);
       }
     },
   );
