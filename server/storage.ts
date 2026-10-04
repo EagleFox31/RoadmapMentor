@@ -1,8 +1,11 @@
 // From javascript_database blueprint - using DatabaseStorage
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { hasRoadmapAccess } from "./domain/roadmapAccess";
+import { eq, and, desc, inArray, isNull, ne } from "drizzle-orm";
 import {
   users,
+  roadmaps,
+  mentorships,
   weeks,
   objectives,
   tasks,
@@ -13,6 +16,10 @@ import {
   emailNotificationPreferences,
   type User,
   type InsertUser,
+  type Roadmap,
+  type InsertRoadmap,
+  type Mentorship,
+  type InsertMentorship,
   type Week,
   type InsertWeek,
   type Objective,
@@ -39,8 +46,20 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  getUsersByRole(role: "MENTOR" | "LEARNER"): Promise<User[]>;
+
+  // Roadmap / mentorship methods
+  getRoadmap(id: number): Promise<Roadmap | undefined>;
+  getRoadmapsForUser(userId: number, role: "MENTOR" | "LEARNER"): Promise<Roadmap[]>;
+  createRoadmap(roadmap: InsertRoadmap): Promise<Roadmap>;
+  createMentorship(mentorship: InsertMentorship): Promise<Mentorship>;
+  findMentorship(roadmapId: number, mentorId: number, learnerId: number): Promise<Mentorship | undefined>;
+  getMentorshipsByRoadmap(roadmapId: number): Promise<Mentorship[]>;
+  userCanAccessRoadmap(userId: number, role: "MENTOR" | "LEARNER", roadmapId: number): Promise<boolean>;
 
   // Week methods
+  getAccessibleWeeks(userId: number, role: "MENTOR" | "LEARNER"): Promise<Week[]>;
+  getWeeksByRoadmap(roadmapId: number): Promise<Week[]>;
   getAllWeeks(): Promise<Week[]>;
   getWeek(id: number): Promise<Week | undefined>;
   createWeek(week: InsertWeek): Promise<Week>;
@@ -114,7 +133,142 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUsersByRole(role: "MENTOR" | "LEARNER"): Promise<User[]> {
+    return await db.select().from(users).where(eq(users.role, role)).orderBy(users.id);
+  }
+
+  // Roadmap / mentorship methods
+  async getRoadmap(id: number): Promise<Roadmap | undefined> {
+    const [roadmap] = await db.select().from(roadmaps).where(eq(roadmaps.id, id));
+    return roadmap || undefined;
+  }
+
+  async getRoadmapsForUser(userId: number, role: "MENTOR" | "LEARNER"): Promise<Roadmap[]> {
+    const collected = new Map<number, Roadmap>();
+
+    if (role === "MENTOR") {
+      const owned = await db
+        .select()
+        .from(roadmaps)
+        .where(eq(roadmaps.createdByUserId, userId));
+      owned.forEach((roadmap) => collected.set(roadmap.id, roadmap));
+
+      const legacy = await db
+        .select()
+        .from(roadmaps)
+        .where(eq(roadmaps.isLegacy, true));
+      legacy.forEach((roadmap) => collected.set(roadmap.id, roadmap));
+    }
+
+    const membershipRows = await db
+      .select({ roadmap: roadmaps })
+      .from(mentorships)
+      .innerJoin(roadmaps, eq(mentorships.roadmapId, roadmaps.id))
+      .where(
+        and(
+          role === "MENTOR"
+            ? eq(mentorships.mentorId, userId)
+            : eq(mentorships.learnerId, userId),
+          ne(mentorships.status, "CANCELLED"),
+        ),
+      );
+
+    membershipRows.forEach(({ roadmap }) => collected.set(roadmap.id, roadmap));
+    return Array.from(collected.values()).sort((a, b) => a.id - b.id);
+  }
+
+  async createRoadmap(roadmap: InsertRoadmap): Promise<Roadmap> {
+    const [created] = await db.insert(roadmaps).values(roadmap).returning();
+    return created;
+  }
+
+  async createMentorship(mentorship: InsertMentorship): Promise<Mentorship> {
+    const [created] = await db.insert(mentorships).values(mentorship).returning();
+    return created;
+  }
+
+  async findMentorship(
+    roadmapId: number,
+    mentorId: number,
+    learnerId: number,
+  ): Promise<Mentorship | undefined> {
+    const [mentorship] = await db
+      .select()
+      .from(mentorships)
+      .where(
+        and(
+          eq(mentorships.roadmapId, roadmapId),
+          eq(mentorships.mentorId, mentorId),
+          eq(mentorships.learnerId, learnerId),
+        ),
+      )
+      .limit(1);
+    return mentorship || undefined;
+  }
+
+  async getMentorshipsByRoadmap(roadmapId: number): Promise<Mentorship[]> {
+    return await db
+      .select()
+      .from(mentorships)
+      .where(eq(mentorships.roadmapId, roadmapId))
+      .orderBy(mentorships.id);
+  }
+
+  async userCanAccessRoadmap(
+    userId: number,
+    role: "MENTOR" | "LEARNER",
+    roadmapId: number,
+  ): Promise<boolean> {
+    const roadmap = await this.getRoadmap(roadmapId);
+    if (!roadmap) {
+      return false;
+    }
+
+    const roadmapMemberships = await this.getMentorshipsByRoadmap(roadmapId);
+    return hasRoadmapAccess({
+      userId,
+      role,
+      roadmap,
+      memberships: roadmapMemberships,
+    });
+  }
+
   // Week methods
+  async getAccessibleWeeks(userId: number, role: "MENTOR" | "LEARNER"): Promise<Week[]> {
+    const accessibleRoadmaps = await this.getRoadmapsForUser(userId, role);
+    const roadmapIds = accessibleRoadmaps.map((roadmap) => roadmap.id);
+
+    if (roadmapIds.length === 0) {
+      return await db
+        .select()
+        .from(weeks)
+        .where(isNull(weeks.roadmapId))
+        .orderBy(weeks.number);
+    }
+
+    const assignedWeeks = await db
+      .select()
+      .from(weeks)
+      .where(inArray(weeks.roadmapId, roadmapIds))
+      .orderBy(weeks.number);
+
+    const unassignedLegacyWeeks = await db
+      .select()
+      .from(weeks)
+      .where(isNull(weeks.roadmapId))
+      .orderBy(weeks.number);
+
+    return [...unassignedLegacyWeeks, ...assignedWeeks];
+  }
+
+  async getWeeksByRoadmap(roadmapId: number): Promise<Week[]> {
+    return await db
+      .select()
+      .from(weeks)
+      .where(eq(weeks.roadmapId, roadmapId))
+      .orderBy(weeks.number);
+  }
+
   async getAllWeeks(): Promise<Week[]> {
     return await db.select().from(weeks).orderBy(weeks.number);
   }
@@ -157,6 +311,7 @@ export class DatabaseStorage implements IStorage {
     const [newWeek] = await db
       .insert(weeks)
       .values({
+        roadmapId: originalWeek.roadmapId,
         number: newNumber,
         title: `${originalWeek.title} (Copie)`,
         startDate: originalWeek.startDate,
@@ -226,6 +381,7 @@ export class DatabaseStorage implements IStorage {
         const [insertedWeek] = await tx
           .insert(weeks)
           .values({
+            roadmapId: weekData.roadmapId ?? null,
             number: weekData.number,
             title: weekData.title,
             startDate: weekData.startDate,

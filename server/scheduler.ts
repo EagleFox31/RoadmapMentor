@@ -12,8 +12,7 @@ async function sendTaskReminders() {
   
   try {
     const learners = await emailService.getAllLearners();
-    const weeks = await storage.getAllWeeks();
-    
+
     let sentCount = 0;
     let skippedCount = 0;
 
@@ -23,7 +22,11 @@ async function sendTaskReminders() {
       let weekWithMostPendingTasks = 0;
       let maxPendingInWeek = 0;
 
-      // Parcourir toutes les semaines pour cet apprenant
+      const weeks = (
+        await storage.getAccessibleWeeks(learner.id, "LEARNER")
+      ).filter((week) => week.isValidatedByMentor);
+
+      // Parcourir uniquement les semaines accessibles à cet apprenant
       for (const week of weeks) {
         const objectives = await storage.getObjectivesByWeek(week.id);
         let pendingTasksInWeek = 0;

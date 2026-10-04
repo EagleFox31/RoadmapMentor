@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { emailService } from "./services/emailService";
 import { authMiddleware, requireMentor, requireLearner, generateToken, hashPassword, comparePassword, verifyToken, type AuthRequest } from "./auth";
-import { publicRegistrationSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema, updateEmailNotificationPreferencesSchema } from "@shared/schema";
+import { publicRegistrationSchema, insertRoadmapSchema, insertMentorshipSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema, updateEmailNotificationPreferencesSchema, type Week } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { isDevelopmentEnvironment } from "./security";
@@ -13,6 +13,160 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const handleError = (res: any, error: any) => {
     console.error("API Error:", error);
     res.status(500).json({ error: error.message || "Internal server error" });
+  };
+
+  const canAccessWeek = async (req: AuthRequest, weekId: number) => {
+    const week = await storage.getWeek(weekId);
+    if (!week) {
+      return { week: undefined, allowed: false };
+    }
+
+    // Transitional compatibility: pre-domain weeks stay reachable until the
+    // explicit legacy migration attaches them to the legacy roadmap.
+    if (week.roadmapId === null) {
+      return { week, allowed: true };
+    }
+
+    const allowed = await storage.userCanAccessRoadmap(
+      req.user!.id,
+      req.user!.role,
+      week.roadmapId,
+    );
+    return { week, allowed };
+  };
+
+  const resolveRoadmapIdForNewWeek = async (
+    req: AuthRequest,
+    requestedRoadmapId: unknown,
+  ): Promise<number | null> => {
+    if (requestedRoadmapId !== undefined && requestedRoadmapId !== null) {
+      const roadmapId = Number(requestedRoadmapId);
+      if (!Number.isInteger(roadmapId) || roadmapId <= 0) {
+        throw new Error("roadmapId must be a positive integer");
+      }
+
+      if (!(await storage.userCanAccessRoadmap(req.user!.id, req.user!.role, roadmapId))) {
+        throw new Error("Roadmap not found");
+      }
+      return roadmapId;
+    }
+
+    const accessibleRoadmaps = await storage.getRoadmapsForUser(
+      req.user!.id,
+      req.user!.role,
+    );
+
+    if (accessibleRoadmaps.length === 1) {
+      return accessibleRoadmaps[0].id;
+    }
+
+    if (accessibleRoadmaps.length > 1) {
+      throw new Error("roadmapId is required when more than one roadmap is accessible");
+    }
+
+    return null;
+  };
+
+  const getMentorsForWeek = async (week: Week) => {
+    if (week.roadmapId === null) {
+      return await emailService.getAllMentors();
+    }
+
+    const roadmap = await storage.getRoadmap(week.roadmapId);
+    const memberships = await storage.getMentorshipsByRoadmap(week.roadmapId);
+    const mentorIds = new Set(
+      memberships
+        .filter((membership) => membership.status !== "CANCELLED")
+        .map((membership) => membership.mentorId),
+    );
+
+    if (roadmap?.createdByUserId) {
+      mentorIds.add(roadmap.createdByUserId);
+    }
+
+    const mentors = await Promise.all(
+      Array.from(mentorIds).map((mentorId) => storage.getUser(mentorId)),
+    );
+
+    return mentors.filter(
+      (mentor): mentor is NonNullable<typeof mentor> =>
+        Boolean(mentor && mentor.role === "MENTOR"),
+    );
+  };
+
+  const getLearnerIdsForWeek = async (week: Week): Promise<Set<number> | null> => {
+    if (week.roadmapId === null) {
+      return null;
+    }
+
+    const memberships = await storage.getMentorshipsByRoadmap(week.roadmapId);
+    return new Set(
+      memberships
+        .filter((membership) => membership.status !== "CANCELLED")
+        .map((membership) => membership.learnerId),
+    );
+  };
+
+  const getObjectiveAccess = async (req: AuthRequest, objectiveId: number) => {
+    const objective = await storage.getObjective(objectiveId);
+    if (!objective) {
+      return { objective: undefined, week: undefined, allowed: false };
+    }
+
+    const weekAccess = await canAccessWeek(req, objective.weekId);
+    return {
+      objective,
+      week: weekAccess.week,
+      allowed: weekAccess.allowed,
+    };
+  };
+
+  const getTaskAccess = async (req: AuthRequest, taskId: number) => {
+    const task = await storage.getTask(taskId);
+    if (!task) {
+      return {
+        task: undefined,
+        objective: undefined,
+        week: undefined,
+        allowed: false,
+      };
+    }
+
+    const objectiveAccess = await getObjectiveAccess(req, task.objectiveId);
+    return {
+      task,
+      objective: objectiveAccess.objective,
+      week: objectiveAccess.week,
+      allowed: objectiveAccess.allowed,
+    };
+  };
+
+  const getDeliverableAccess = async (req: AuthRequest, deliverableId: number) => {
+    const deliverable = await storage.getDeliverable(deliverableId);
+    if (!deliverable) {
+      return { deliverable: undefined, week: undefined, allowed: false };
+    }
+
+    const weekAccess = await canAccessWeek(req, deliverable.weekId);
+    return {
+      deliverable,
+      week: weekAccess.week,
+      allowed: weekAccess.allowed,
+    };
+  };
+
+  const getResourceAccess = async (req: AuthRequest, resourceId: number) => {
+    const resource = await storage.getResource(resourceId);
+    if (!resource) {
+      return { resource: undefined, week: undefined, allowed: false };
+    }
+
+    const weekAccess = await canAccessWeek(req, resource.weekId);
+    return {
+      resource,
+      week: weekAccess.week,
+      allowed: weekAccess.allowed,
+    };
   };
 
   // ========== AUTH ROUTES ==========
@@ -184,62 +338,216 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ========== ROADMAP / MENTORSHIP ROUTES ==========
+
+  app.get("/api/roadmaps", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const roadmaps = await storage.getRoadmapsForUser(
+        req.user!.id,
+        req.user!.role,
+      );
+      res.json(roadmaps);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get("/api/roadmaps/:id", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const roadmapId = parseInt(req.params.id, 10);
+      const roadmap = await storage.getRoadmap(roadmapId);
+      if (
+        !roadmap ||
+        !(await storage.userCanAccessRoadmap(req.user!.id, req.user!.role, roadmapId))
+      ) {
+        return res.status(404).json({ error: "Roadmap not found" });
+      }
+
+      res.json(roadmap);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/roadmaps", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
+    try {
+      const roadmapData = insertRoadmapSchema.parse({
+        ...req.body,
+        createdByUserId: req.user!.id,
+        isLegacy: false,
+      });
+      const roadmap = await storage.createRoadmap(roadmapData);
+      res.status(201).json(roadmap);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.get(
+    "/api/roadmaps/:id/mentorships",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const roadmapId = parseInt(req.params.id, 10);
+        if (
+          !(await storage.userCanAccessRoadmap(
+            req.user!.id,
+            req.user!.role,
+            roadmapId,
+          ))
+        ) {
+          return res.status(404).json({ error: "Roadmap not found" });
+        }
+
+        const memberships = await storage.getMentorshipsByRoadmap(roadmapId);
+        res.json(memberships);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/roadmaps/:id/mentorships",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const roadmapId = parseInt(req.params.id, 10);
+        if (
+          !(await storage.userCanAccessRoadmap(
+            req.user!.id,
+            req.user!.role,
+            roadmapId,
+          ))
+        ) {
+          return res.status(404).json({ error: "Roadmap not found" });
+        }
+
+        const learnerId = Number(req.body.learnerId);
+        const learner = Number.isInteger(learnerId)
+          ? await storage.getUser(learnerId)
+          : undefined;
+
+        if (!learner || learner.role !== "LEARNER") {
+          return res.status(400).json({ error: "A valid learnerId is required" });
+        }
+
+        const existing = await storage.findMentorship(
+          roadmapId,
+          req.user!.id,
+          learnerId,
+        );
+        if (existing) {
+          return res.status(200).json(existing);
+        }
+
+        const mentorshipData = insertMentorshipSchema.parse({
+          roadmapId,
+          mentorId: req.user!.id,
+          learnerId,
+          status: "ACTIVE",
+          startedAt: new Date(),
+          endedAt: null,
+        });
+
+        const mentorship = await storage.createMentorship(mentorshipData);
+        res.status(201).json(mentorship);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
   // ========== WEEK ROUTES ==========
 
   app.get("/api/weeks", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      let weeks = await storage.getAllWeeks();
-      
-      // SECURITY: Progress is ONLY returned for the authenticated learner (req.user.id)
-      // Mentors receive no progress data. Learners only see their own progress.
-      const currentUserId = req.user!.id;
-      const isLearner = req.user?.role === "LEARNER";
-      
-      // BUSINESS RULE: Learners can only see validated weeks
-      if (isLearner) {
-        console.log(`[LEARNER VIEW] Total weeks: ${weeks.length}, Validated weeks:`, weeks.filter(w => w.isValidatedByMentor).map(w => ({id: w.id, number: w.number, isValidatedByMentor: w.isValidatedByMentor})));
-        weeks = weeks.filter(week => week.isValidatedByMentor);
+      let weeks: Week[];
+      const requestedRoadmapId = req.query.roadmapId;
+
+      if (requestedRoadmapId !== undefined) {
+        const roadmapId = Number(requestedRoadmapId);
+        if (!Number.isInteger(roadmapId) || roadmapId <= 0) {
+          return res.status(400).json({ error: "roadmapId must be a positive integer" });
+        }
+
+        if (
+          !(await storage.userCanAccessRoadmap(
+            req.user!.id,
+            req.user!.role,
+            roadmapId,
+          ))
+        ) {
+          return res.status(404).json({ error: "Roadmap not found" });
+        }
+
+        weeks = await storage.getWeeksByRoadmap(roadmapId);
+      } else {
+        weeks = await storage.getAccessibleWeeks(
+          req.user!.id,
+          req.user!.role,
+        );
       }
-      
-      // Get all nested data for each week
+
+      const currentUserId = req.user!.id;
+      const isLearner = req.user!.role === "LEARNER";
+
+      if (isLearner) {
+        weeks = weeks.filter((week) => week.isValidatedByMentor);
+      }
+
       const weeksWithDetails = await Promise.all(
         weeks.map(async (week) => {
           const objectives = await storage.getObjectivesByWeek(week.id);
           const deliverables = await storage.getDeliverablesByWeek(week.id);
           const resources = await storage.getResourcesByWeek(week.id);
           const comments = await storage.getCommentsByWeek(week.id);
+          const roadmapLearnerIds = await getLearnerIdsForWeek(week);
 
-          // Get tasks for each objective with progress
           const objectivesWithTasks = await Promise.all(
             objectives.map(async (objective) => {
               const taskList = await storage.getTasksByObjective(objective.id);
-              
-              // SECURITY: Learners see only their own progress, Mentors see all learners' progress
-              // Storage.getTaskProgress filters by BOTH taskId AND learnerId
+
               const tasksWithProgress = await Promise.all(
                 taskList.map(async (task) => {
                   if (isLearner) {
-                    // CRITICAL: Use req.user.id (from JWT) - never from request body
-                    const progress = await storage.getTaskProgress(task.id, currentUserId);
+                    const progress = await storage.getTaskProgress(
+                      task.id,
+                      currentUserId,
+                    );
                     return { ...task, progress: progress ? [progress] : [] };
-                  } else {
-                    // Mentors see progress from ALL learners
-                    const allProgress = await storage.getAllTaskProgress(task.id);
-                    return { ...task, progress: allProgress };
                   }
-                })
+
+                  const allProgress = await storage.getAllTaskProgress(task.id);
+                  const scopedProgress =
+                    roadmapLearnerIds === null
+                      ? allProgress
+                      : allProgress.filter((progress) =>
+                          roadmapLearnerIds.has(progress.learnerId),
+                        );
+                  return { ...task, progress: scopedProgress };
+                }),
               );
 
               return { ...objective, tasks: tasksWithProgress };
-            })
+            }),
           );
 
-          // Get learner info for comments
+          const scopedComments = isLearner
+            ? comments.filter((comment) => comment.learnerId === currentUserId)
+            : roadmapLearnerIds === null
+              ? comments
+              : comments.filter((comment) =>
+                  roadmapLearnerIds.has(comment.learnerId),
+                );
+
           const commentsWithLearner = await Promise.all(
-            comments.map(async (comment) => {
+            scopedComments.map(async (comment) => {
               const learner = await storage.getUser(comment.learnerId);
               return { ...comment, learner: learner! };
-            })
+            }),
           );
 
           return {
@@ -249,7 +557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             resources,
             comments: commentsWithLearner,
           };
-        })
+        }),
       );
 
       res.json(weeksWithDetails);
@@ -258,96 +566,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/weeks/:id", authMiddleware, async (req, res) => {
+  app.get("/api/weeks/:id", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const week = await storage.getWeek(parseInt(req.params.id));
-      if (!week) {
+      const weekId = parseInt(req.params.id, 10);
+      const { week, allowed } = await canAccessWeek(req, weekId);
+      if (!week || !allowed) {
         return res.status(404).json({ error: "Week not found" });
       }
+
       res.json(week);
     } catch (error) {
       handleError(res, error);
     }
   });
 
-  app.post("/api/weeks", authMiddleware, requireMentor, async (req, res) => {
+  app.post("/api/weeks", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      const weekData = insertWeekSchema.parse(req.body);
+      const roadmapId = await resolveRoadmapIdForNewWeek(
+        req,
+        req.body.roadmapId,
+      );
+      const weekData = insertWeekSchema.parse({
+        ...req.body,
+        roadmapId,
+      });
       const week = await storage.createWeek(weekData);
       res.status(201).json(week);
     } catch (error) {
+      if (error instanceof Error && error.message === "Roadmap not found") {
+        return res.status(404).json({ error: error.message });
+      }
+      if (
+        error instanceof Error &&
+        (error.message.includes("roadmapId is required") ||
+          error.message.includes("roadmapId must be"))
+      ) {
+        return res.status(400).json({ error: error.message });
+      }
       handleError(res, error);
     }
   });
 
-  // Bulk roadmap creation endpoint (transactional)
-  app.post("/api/weeks/bulk", authMiddleware, requireMentor, async (req, res) => {
+  app.post("/api/weeks/bulk", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      // Validate the entire roadmap data with nested validation
       const validatedData = insertRoadmapBulkSchema.parse(req.body);
-      
-      // Create all weeks, objectives, tasks, deliverables, and resources in a single transaction
-      const result = await storage.createRoadmapBulk(validatedData);
-      
+      const scopedData = await Promise.all(
+        validatedData.map(async (week) => ({
+          ...week,
+          roadmapId: await resolveRoadmapIdForNewWeek(req, week.roadmapId),
+        })),
+      );
+
+      const result = await storage.createRoadmapBulk(scopedData);
       res.status(201).json(result);
     } catch (error) {
-      // Return detailed error for validation failures
-      if (error instanceof Error && error.name === 'ZodError') {
-        return res.status(400).json({ 
-          error: "Validation error", 
-          details: error.message 
+      if (error instanceof Error && error.name === "ZodError") {
+        return res.status(400).json({
+          error: "Validation error",
+          details: error.message,
         });
+      }
+      if (error instanceof Error && error.message === "Roadmap not found") {
+        return res.status(404).json({ error: error.message });
+      }
+      if (
+        error instanceof Error &&
+        (error.message.includes("roadmapId is required") ||
+          error.message.includes("roadmapId must be"))
+      ) {
+        return res.status(400).json({ error: error.message });
       }
       handleError(res, error);
     }
   });
 
-  app.put("/api/weeks/:id", authMiddleware, requireMentor, async (req, res) => {
+  app.put("/api/weeks/:id", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      const weekData = insertWeekSchema.partial().parse(req.body);
-      const week = await storage.updateWeek(parseInt(req.params.id), weekData);
-      if (!week) {
+      const weekId = parseInt(req.params.id, 10);
+      const { week: existingWeek, allowed } = await canAccessWeek(req, weekId);
+      if (!existingWeek || !allowed) {
         return res.status(404).json({ error: "Week not found" });
       }
+
+      const weekData = insertWeekSchema
+        .omit({ roadmapId: true })
+        .partial()
+        .parse(req.body);
+      const week = await storage.updateWeek(weekId, weekData);
       res.json(week);
     } catch (error) {
       handleError(res, error);
     }
   });
 
-  app.delete("/api/weeks/:id", authMiddleware, requireMentor, async (req, res) => {
+  app.delete("/api/weeks/:id", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      await storage.deleteWeek(parseInt(req.params.id));
+      const weekId = parseInt(req.params.id, 10);
+      const { week, allowed } = await canAccessWeek(req, weekId);
+      if (!week || !allowed) {
+        return res.status(404).json({ error: "Week not found" });
+      }
+
+      await storage.deleteWeek(weekId);
       res.status(204).send();
     } catch (error) {
       handleError(res, error);
     }
   });
 
-  app.post("/api/weeks/:id/validate", authMiddleware, requireMentor, async (req, res) => {
+  app.post("/api/weeks/:id/validate", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      const week = await storage.validateWeek(parseInt(req.params.id));
-      if (!week) {
+      const weekId = parseInt(req.params.id, 10);
+      const { week: existingWeek, allowed } = await canAccessWeek(req, weekId);
+      if (!existingWeek || !allowed) {
         return res.status(404).json({ error: "Week not found" });
       }
+
+      const week = await storage.validateWeek(weekId);
       res.json(week);
     } catch (error) {
       handleError(res, error);
     }
   });
 
-  app.post("/api/weeks/:id/clone", authMiddleware, requireMentor, async (req, res) => {
+  app.post("/api/weeks/:id/clone", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      const { newNumber } = req.body;
-      if (typeof newNumber !== "number") {
-        return res.status(400).json({ error: "newNumber is required and must be a number" });
-      }
-      const clonedWeek = await storage.cloneWeek(parseInt(req.params.id), newNumber);
-      if (!clonedWeek) {
+      const weekId = parseInt(req.params.id, 10);
+      const { week: existingWeek, allowed } = await canAccessWeek(req, weekId);
+      if (!existingWeek || !allowed) {
         return res.status(404).json({ error: "Week not found" });
       }
-      // Invalidate cache and return with full details
-      const weeks = await storage.getAllWeeks();
+
+      const { newNumber } = req.body;
+      if (typeof newNumber !== "number") {
+        return res.status(400).json({
+          error: "newNumber is required and must be a number",
+        });
+      }
+
+      const clonedWeek = await storage.cloneWeek(weekId, newNumber);
       res.status(201).json(clonedWeek);
     } catch (error) {
       handleError(res, error);
@@ -356,11 +713,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ========== OBJECTIVE ROUTES ==========
 
-  app.post("/api/weeks/:weekId/objectives", authMiddleware, requireMentor, async (req, res) => {
+  app.post("/api/weeks/:weekId/objectives", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
+      const weekId = parseInt(req.params.weekId, 10);
+      const { week, allowed } = await canAccessWeek(req, weekId);
+      if (!week || !allowed) {
+        return res.status(404).json({ error: "Week not found" });
+      }
+
       const objectiveData = insertObjectiveSchema.parse({
         ...req.body,
-        weekId: parseInt(req.params.weekId),
+        weekId,
       });
       const objective = await storage.createObjective(objectiveData);
       res.status(201).json(objective);
@@ -369,38 +732,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/objectives/:id", authMiddleware, requireMentor, async (req, res) => {
+  app.put("/api/objectives/:id", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      const objectiveData = insertObjectiveSchema.partial().parse(req.body);
-      const objective = await storage.updateObjective(parseInt(req.params.id), objectiveData);
-      if (!objective) {
+      const objectiveId = parseInt(req.params.id, 10);
+      const { objective: existingObjective, allowed } = await getObjectiveAccess(
+        req,
+        objectiveId,
+      );
+      if (!existingObjective || !allowed) {
         return res.status(404).json({ error: "Objective not found" });
       }
+
+      const objectiveData = insertObjectiveSchema
+        .omit({ weekId: true })
+        .partial()
+        .parse(req.body);
+      const objective = await storage.updateObjective(objectiveId, objectiveData);
       res.json(objective);
     } catch (error) {
       handleError(res, error);
     }
   });
 
-  app.delete("/api/objectives/:id", authMiddleware, requireMentor, async (req, res) => {
+  app.delete("/api/objectives/:id", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      await storage.deleteObjective(parseInt(req.params.id));
+      const objectiveId = parseInt(req.params.id, 10);
+      const { objective, allowed } = await getObjectiveAccess(req, objectiveId);
+      if (!objective || !allowed) {
+        return res.status(404).json({ error: "Objective not found" });
+      }
+
+      await storage.deleteObjective(objectiveId);
       res.status(204).send();
     } catch (error) {
       handleError(res, error);
     }
   });
 
-  app.post("/api/objectives/:id/clone", authMiddleware, requireMentor, async (req, res) => {
+  app.post("/api/objectives/:id/clone", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      const { targetWeekId } = req.body;
-      const clonedObjective = await storage.cloneObjective(
-        parseInt(req.params.id), 
-        targetWeekId ? parseInt(targetWeekId) : undefined
-      );
-      if (!clonedObjective) {
+      const objectiveId = parseInt(req.params.id, 10);
+      const sourceAccess = await getObjectiveAccess(req, objectiveId);
+      if (!sourceAccess.objective || !sourceAccess.allowed) {
         return res.status(404).json({ error: "Objective not found" });
       }
+
+      const targetWeekId = req.body.targetWeekId
+        ? parseInt(req.body.targetWeekId, 10)
+        : undefined;
+
+      if (targetWeekId !== undefined) {
+        const targetAccess = await canAccessWeek(req, targetWeekId);
+        if (!targetAccess.week || !targetAccess.allowed) {
+          return res.status(404).json({ error: "Target week not found" });
+        }
+      }
+
+      const clonedObjective = await storage.cloneObjective(
+        objectiveId,
+        targetWeekId,
+      );
       res.status(201).json(clonedObjective);
     } catch (error) {
       handleError(res, error);
@@ -409,11 +800,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ========== TASK ROUTES ==========
 
-  app.post("/api/objectives/:objectiveId/tasks", authMiddleware, requireMentor, async (req, res) => {
+  app.post("/api/objectives/:objectiveId/tasks", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
+      const objectiveId = parseInt(req.params.objectiveId, 10);
+      const { objective, allowed } = await getObjectiveAccess(req, objectiveId);
+      if (!objective || !allowed) {
+        return res.status(404).json({ error: "Objective not found" });
+      }
+
       const taskData = insertTaskSchema.parse({
         ...req.body,
-        objectiveId: parseInt(req.params.objectiveId),
+        objectiveId,
       });
       const task = await storage.createTask(taskData);
       res.status(201).json(task);
@@ -422,22 +819,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/tasks/:id", authMiddleware, requireMentor, async (req, res) => {
+  app.put("/api/tasks/:id", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      const taskData = insertTaskSchema.partial().parse(req.body);
-      const task = await storage.updateTask(parseInt(req.params.id), taskData);
-      if (!task) {
+      const taskId = parseInt(req.params.id, 10);
+      const { task: existingTask, allowed } = await getTaskAccess(req, taskId);
+      if (!existingTask || !allowed) {
         return res.status(404).json({ error: "Task not found" });
       }
+
+      const taskData = insertTaskSchema
+        .omit({ objectiveId: true })
+        .partial()
+        .parse(req.body);
+      const task = await storage.updateTask(taskId, taskData);
       res.json(task);
     } catch (error) {
       handleError(res, error);
     }
   });
 
-  app.delete("/api/tasks/:id", authMiddleware, requireMentor, async (req, res) => {
+  app.delete("/api/tasks/:id", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      await storage.deleteTask(parseInt(req.params.id));
+      const taskId = parseInt(req.params.id, 10);
+      const { task, allowed } = await getTaskAccess(req, taskId);
+      if (!task || !allowed) {
+        return res.status(404).json({ error: "Task not found" });
+      }
+
+      await storage.deleteTask(taskId);
       res.status(204).send();
     } catch (error) {
       handleError(res, error);
@@ -446,11 +855,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ========== DELIVERABLE ROUTES ==========
 
-  app.post("/api/weeks/:weekId/deliverables", authMiddleware, requireMentor, async (req, res) => {
+  app.post("/api/weeks/:weekId/deliverables", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
+      const weekId = parseInt(req.params.weekId, 10);
+      const { week, allowed } = await canAccessWeek(req, weekId);
+      if (!week || !allowed) {
+        return res.status(404).json({ error: "Week not found" });
+      }
+
       const deliverableData = insertDeliverableSchema.parse({
         ...req.body,
-        weekId: parseInt(req.params.weekId),
+        weekId,
       });
       const deliverable = await storage.createDeliverable(deliverableData);
       res.status(201).json(deliverable);
@@ -459,22 +874,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/deliverables/:id", authMiddleware, requireMentor, async (req, res) => {
+  app.put("/api/deliverables/:id", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      const deliverableData = insertDeliverableSchema.partial().parse(req.body);
-      const deliverable = await storage.updateDeliverable(parseInt(req.params.id), deliverableData);
-      if (!deliverable) {
+      const deliverableId = parseInt(req.params.id, 10);
+      const { deliverable: existingDeliverable, allowed } =
+        await getDeliverableAccess(req, deliverableId);
+      if (!existingDeliverable || !allowed) {
         return res.status(404).json({ error: "Deliverable not found" });
       }
+
+      const deliverableData = insertDeliverableSchema
+        .omit({ weekId: true })
+        .partial()
+        .parse(req.body);
+      const deliverable = await storage.updateDeliverable(
+        deliverableId,
+        deliverableData,
+      );
       res.json(deliverable);
     } catch (error) {
       handleError(res, error);
     }
   });
 
-  app.delete("/api/deliverables/:id", authMiddleware, requireMentor, async (req, res) => {
+  app.delete("/api/deliverables/:id", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      await storage.deleteDeliverable(parseInt(req.params.id));
+      const deliverableId = parseInt(req.params.id, 10);
+      const { deliverable, allowed } = await getDeliverableAccess(
+        req,
+        deliverableId,
+      );
+      if (!deliverable || !allowed) {
+        return res.status(404).json({ error: "Deliverable not found" });
+      }
+
+      await storage.deleteDeliverable(deliverableId);
       res.status(204).send();
     } catch (error) {
       handleError(res, error);
@@ -483,11 +917,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ========== RESOURCE ROUTES ==========
 
-  app.post("/api/weeks/:weekId/resources", authMiddleware, requireMentor, async (req, res) => {
+  app.post("/api/weeks/:weekId/resources", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
+      const weekId = parseInt(req.params.weekId, 10);
+      const { week, allowed } = await canAccessWeek(req, weekId);
+      if (!week || !allowed) {
+        return res.status(404).json({ error: "Week not found" });
+      }
+
       const resourceData = insertResourceSchema.parse({
         ...req.body,
-        weekId: parseInt(req.params.weekId),
+        weekId,
       });
       const resource = await storage.createResource(resourceData);
       res.status(201).json(resource);
@@ -496,22 +936,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/resources/:id", authMiddleware, requireMentor, async (req, res) => {
+  app.put("/api/resources/:id", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      const resourceData = insertResourceSchema.partial().parse(req.body);
-      const resource = await storage.updateResource(parseInt(req.params.id), resourceData);
-      if (!resource) {
+      const resourceId = parseInt(req.params.id, 10);
+      const { resource: existingResource, allowed } = await getResourceAccess(
+        req,
+        resourceId,
+      );
+      if (!existingResource || !allowed) {
         return res.status(404).json({ error: "Resource not found" });
       }
+
+      const resourceData = insertResourceSchema
+        .omit({ weekId: true })
+        .partial()
+        .parse(req.body);
+      const resource = await storage.updateResource(resourceId, resourceData);
       res.json(resource);
     } catch (error) {
       handleError(res, error);
     }
   });
 
-  app.delete("/api/resources/:id", authMiddleware, requireMentor, async (req, res) => {
+  app.delete("/api/resources/:id", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
-      await storage.deleteResource(parseInt(req.params.id));
+      const resourceId = parseInt(req.params.id, 10);
+      const { resource, allowed } = await getResourceAccess(req, resourceId);
+      if (!resource || !allowed) {
+        return res.status(404).json({ error: "Resource not found" });
+      }
+
+      await storage.deleteResource(resourceId);
       res.status(204).send();
     } catch (error) {
       handleError(res, error);
@@ -522,96 +977,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tasks/:taskId/toggle-progress", authMiddleware, requireLearner, async (req: AuthRequest, res) => {
     try {
-      // SECURITY CRITICAL: Always use learnerId from JWT token (req.user.id)
-      // NEVER accept learnerId from request body - prevents privilege escalation
       const authenticatedLearnerId = req.user!.id;
-      const taskId = parseInt(req.params.taskId);
-      const { screenshotUrl } = req.body;
-      
-      // Verify task exists before toggling
-      const task = await storage.getTask(taskId);
-      if (!task) {
+      const taskId = parseInt(req.params.taskId, 10);
+      const taskAccess = await getTaskAccess(req, taskId);
+
+      if (
+        !taskAccess.task ||
+        !taskAccess.objective ||
+        !taskAccess.week ||
+        !taskAccess.allowed
+      ) {
         return res.status(404).json({ error: "Task not found" });
       }
-      
-      // If screenshot URL is provided, set ACL policy
+
+      const { screenshotUrl } = req.body;
       let normalizedScreenshotUrl = screenshotUrl;
+
       if (screenshotUrl) {
         const objectStorageService = new ObjectStorageService();
-        normalizedScreenshotUrl = await objectStorageService.trySetObjectEntityAclPolicy(
-          screenshotUrl,
-          {
-            owner: authenticatedLearnerId.toString(),
-            visibility: "public",
-          }
-        );
+        normalizedScreenshotUrl =
+          await objectStorageService.trySetObjectEntityAclPolicy(
+            screenshotUrl,
+            {
+              owner: authenticatedLearnerId.toString(),
+              visibility: "public",
+            },
+          );
       }
-      
-      // Storage.toggleTaskProgress will create/update progress ONLY for the authenticated learner
-      const progress = await storage.toggleTaskProgress(taskId, authenticatedLearnerId, normalizedScreenshotUrl);
-      
-      // Email notifications
+
+      const progress = await storage.toggleTaskProgress(
+        taskId,
+        authenticatedLearnerId,
+        normalizedScreenshotUrl,
+      );
+
       if (progress.isDone || normalizedScreenshotUrl) {
-        console.log(`[EMAIL] Task ${taskId} - Triggering email notifications (isDone: ${progress.isDone}, hasScreenshot: ${!!normalizedScreenshotUrl})`);
-        
-        // Get objective to find week
-        const objective = await storage.getObjective(task.objectiveId);
-        if (objective) {
-          const week = await storage.getWeek(objective.weekId);
-          const learner = await storage.getUser(authenticatedLearnerId);
-          
-          if (week && learner) {
-            const mentors = await emailService.getAllMentors();
-            console.log(`[EMAIL] Found ${mentors.length} mentors to notify`);
-            
-            // Notification de screenshot uploadé (si screenshot fourni)
-            if (normalizedScreenshotUrl && progress.isDone) {
-              for (const mentor of mentors) {
-                await emailService.sendScreenshotUploaded(
+        const learner = await storage.getUser(authenticatedLearnerId);
+        if (learner) {
+          const mentors = await getMentorsForWeek(taskAccess.week);
+
+          if (normalizedScreenshotUrl && progress.isDone) {
+            for (const mentor of mentors) {
+              await emailService
+                .sendScreenshotUploaded(
                   mentor.id,
                   mentor.email,
                   mentor.fullName,
                   learner.fullName,
-                  task.label,
-                  week.number
-                ).catch(err => console.error("Failed to send screenshot notification:", err));
-              }
+                  taskAccess.task.label,
+                  taskAccess.week.number,
+                )
+                .catch((err) =>
+                  console.error("Failed to send screenshot notification:", err),
+                );
             }
-            
-            // Notification de progression (si tâche complétée)
-            if (progress.isDone) {
-              // Calculate completion percentage for this week
-              const allObjectives = await storage.getObjectivesByWeek(week.id);
-              let totalTasks = 0;
-              let completedTasks = 0;
-              
-              for (const obj of allObjectives) {
-                const tasks = await storage.getTasksByObjective(obj.id);
-                totalTasks += tasks.length;
-                for (const t of tasks) {
-                  const prog = await storage.getTaskProgress(t.id, authenticatedLearnerId);
-                  if (prog?.isDone) completedTasks++;
+          }
+
+          if (progress.isDone) {
+            const allObjectives = await storage.getObjectivesByWeek(
+              taskAccess.week.id,
+            );
+            let totalTasks = 0;
+            let completedTasks = 0;
+
+            for (const objective of allObjectives) {
+              const tasks = await storage.getTasksByObjective(objective.id);
+              totalTasks += tasks.length;
+
+              for (const task of tasks) {
+                const learnerProgress = await storage.getTaskProgress(
+                  task.id,
+                  authenticatedLearnerId,
+                );
+                if (learnerProgress?.isDone) {
+                  completedTasks++;
                 }
               }
-              
-              const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-              
-              // Notify all mentors of progress update
-              for (const mentor of mentors) {
-                await emailService.sendProgressUpdate(
+            }
+
+            const completionPercentage =
+              totalTasks > 0
+                ? Math.round((completedTasks / totalTasks) * 100)
+                : 0;
+
+            for (const mentor of mentors) {
+              await emailService
+                .sendProgressUpdate(
                   mentor.id,
                   mentor.email,
                   mentor.fullName,
                   learner.fullName,
-                  week.number,
-                  completionPercentage
-                ).catch(err => console.error("Failed to send progress update:", err));
-              }
+                  taskAccess.week.number,
+                  completionPercentage,
+                )
+                .catch((err) =>
+                  console.error("Failed to send progress update:", err),
+                );
             }
           }
         }
       }
-      
+
       res.json(progress);
     } catch (error) {
       handleError(res, error);
@@ -620,16 +1086,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/progress/summary", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      let weeks = await storage.getAllWeeks();
+      let weeks = await storage.getAccessibleWeeks(
+        req.user!.id,
+        req.user!.role,
+      );
       let totalTasks = 0;
       let completedTasks = 0;
 
-      if (req.user?.role === "LEARNER") {
-        // For learners: scope progress to the authenticated learner only AND only validated weeks
-        const authenticatedLearnerId = req.user.id;
-        
-        // BUSINESS RULE: Learners can only see validated weeks
-        weeks = weeks.filter(week => week.isValidatedByMentor);
+      if (req.user!.role === "LEARNER") {
+        const authenticatedLearnerId = req.user!.id;
+        weeks = weeks.filter((week) => week.isValidatedByMentor);
 
         for (const week of weeks) {
           const objectives = await storage.getObjectivesByWeek(week.id);
@@ -638,7 +1104,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalTasks += tasks.length;
 
             for (const task of tasks) {
-              const progress = await storage.getTaskProgress(task.id, authenticatedLearnerId);
+              const progress = await storage.getTaskProgress(
+                task.id,
+                authenticatedLearnerId,
+              );
               if (progress?.isDone) {
                 completedTasks++;
               }
@@ -646,16 +1115,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       } else {
-        // For mentors: count tasks completed by ANY learner
         for (const week of weeks) {
+          const roadmapLearnerIds = await getLearnerIdsForWeek(week);
           const objectives = await storage.getObjectivesByWeek(week.id);
+
           for (const objective of objectives) {
             const tasks = await storage.getTasksByObjective(objective.id);
             totalTasks += tasks.length;
 
             for (const task of tasks) {
               const allProgress = await storage.getAllTaskProgress(task.id);
-              if (allProgress.some(p => p.isDone)) {
+              const scopedProgress =
+                roadmapLearnerIds === null
+                  ? allProgress
+                  : allProgress.filter((progress) =>
+                      roadmapLearnerIds.has(progress.learnerId),
+                    );
+
+              if (scopedProgress.some((progress) => progress.isDone)) {
                 completedTasks++;
               }
             }
@@ -663,7 +1140,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const globalPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      const globalPercentage =
+        totalTasks > 0
+          ? Math.round((completedTasks / totalTasks) * 100)
+          : 0;
 
       res.json({
         globalPercentage,
@@ -679,42 +1159,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/weeks/:weekId/comments", authMiddleware, requireLearner, async (req: AuthRequest, res) => {
     try {
+      const weekId = parseInt(req.params.weekId, 10);
+      const weekAccess = await canAccessWeek(req, weekId);
+      if (!weekAccess.week || !weekAccess.allowed) {
+        return res.status(404).json({ error: "Week not found" });
+      }
+
       const commentData = insertWeekCommentSchema.parse({
         ...req.body,
-        weekId: parseInt(req.params.weekId),
+        weekId,
         learnerId: req.user!.id,
       });
       const comment = await storage.createComment(commentData);
-      
-      // Email notification: notify mentors when learner comments
-      const { emailService } = await import("./services/emailService");
-      const week = await storage.getWeek(comment.weekId);
       const learner = await storage.getUser(comment.learnerId);
-      
-      if (week && learner) {
-        const mentors = await emailService.getAllMentors();
+
+      if (learner) {
+        const mentors = await getMentorsForWeek(weekAccess.week);
         for (const mentor of mentors) {
           await emailService.sendCommentNotification(
             mentor.id,
             mentor.email,
             mentor.fullName,
             learner.fullName,
-            week.number,
-            comment.content
+            weekAccess.week.number,
+            comment.content,
           );
         }
       }
-      
+
       res.status(201).json(comment);
     } catch (error) {
       handleError(res, error);
     }
   });
 
-  app.get("/api/weeks/:weekId/comments", authMiddleware, async (req, res) => {
+  app.get("/api/weeks/:weekId/comments", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const comments = await storage.getCommentsByWeek(parseInt(req.params.weekId));
-      res.json(comments);
+      const weekId = parseInt(req.params.weekId, 10);
+      const weekAccess = await canAccessWeek(req, weekId);
+      if (!weekAccess.week || !weekAccess.allowed) {
+        return res.status(404).json({ error: "Week not found" });
+      }
+
+      const comments = await storage.getCommentsByWeek(weekId);
+      if (req.user!.role === "LEARNER") {
+        return res.json(
+          comments.filter((comment) => comment.learnerId === req.user!.id),
+        );
+      }
+
+      const roadmapLearnerIds = await getLearnerIdsForWeek(weekAccess.week);
+      res.json(
+        roadmapLearnerIds === null
+          ? comments
+          : comments.filter((comment) =>
+              roadmapLearnerIds.has(comment.learnerId),
+            ),
+      );
     } catch (error) {
       handleError(res, error);
     }
@@ -733,18 +1234,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Route pour envoyer manuellement les rappels de tâches
-  app.post("/api/jobs/send-task-reminders", authMiddleware, requireMentor, async (req, res) => {
+  app.post("/api/jobs/send-task-reminders", authMiddleware, requireMentor, async (_req, res) => {
     try {
       const { emailService } = await import("./services/emailService");
       const learners = await emailService.getAllLearners();
-      const weeks = await storage.getAllWeeks();
-      
+
       let sentCount = 0;
       let skippedCount = 0;
 
       for (const learner of learners) {
-        // Calculer les tâches en attente pour chaque semaine
-        for (const week of weeks) {
+        const learnerWeeks = (
+          await storage.getAccessibleWeeks(learner.id, "LEARNER")
+        ).filter((week) => week.isValidatedByMentor);
+
+        for (const week of learnerWeeks) {
           const objectives = await storage.getObjectivesByWeek(week.id);
           let pendingTasksCount = 0;
 
@@ -758,16 +1261,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
-          // Envoyer le rappel si des tâches sont en attente
           if (pendingTasksCount > 0) {
             const sent = await emailService.sendTaskReminder(
               learner.id,
               learner.email,
               learner.fullName,
               week.number,
-              pendingTasksCount
+              pendingTasksCount,
             );
-            
+
             if (sent) {
               sentCount++;
             } else {
@@ -777,11 +1279,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({ 
-        message: `Task reminders sent successfully.`,
+      res.json({
+        message: "Task reminders sent successfully.",
         sent: sentCount,
         skipped: skippedCount,
-        learners: learners.length
+        learners: learners.length,
       });
     } catch (error) {
       handleError(res, error);

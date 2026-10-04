@@ -10,9 +10,12 @@ export async function sendTaskReminders() {
   
   try {
     const learners = await emailService.getAllLearners();
-    const weeks = await storage.getAllWeeks();
-    
+
     for (const learner of learners) {
+      const weeks = (
+        await storage.getAccessibleWeeks(learner.id, "LEARNER")
+      ).filter((week) => week.isValidatedByMentor);
+
       for (const week of weeks) {
         // Calculer le nombre de tâches en attente pour cette semaine
         const objectives = await storage.getObjectivesByWeek(week.id);
@@ -58,13 +61,15 @@ export async function sendWeekPreparationReminders() {
   
   try {
     const mentors = await emailService.getAllMentors();
-    const weeks = await storage.getAllWeeks();
-    
-    // Trouver le numéro de la prochaine semaine à créer
-    const maxWeekNumber = weeks.reduce((max, week) => Math.max(max, week.number), 0);
-    const nextWeekNumber = maxWeekNumber + 1;
-    
+
     for (const mentor of mentors) {
+      const weeks = await storage.getAccessibleWeeks(mentor.id, "MENTOR");
+      const maxWeekNumber = weeks.reduce(
+        (max, week) => Math.max(max, week.number),
+        0,
+      );
+      const nextWeekNumber = maxWeekNumber + 1;
+
       await emailService.sendWeekPreparationReminder(
         mentor.id,
         mentor.email,
