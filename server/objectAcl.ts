@@ -1,7 +1,4 @@
-// Referenced from blueprint:javascript_object_storage
-import { File } from "@google-cloud/storage";
-
-const ACL_POLICY_METADATA_KEY = "custom:aclPolicy";
+export const ACL_POLICY_METADATA_KEY = "custom:aclPolicy";
 
 export enum ObjectPermission {
   READ = "read",
@@ -13,43 +10,15 @@ export interface ObjectAclPolicy {
   visibility: "public" | "private";
 }
 
-export async function setObjectAclPolicy(
-  objectFile: File,
-  aclPolicy: ObjectAclPolicy,
-): Promise<void> {
-  const [exists] = await objectFile.exists();
-  if (!exists) {
-    throw new Error(`Object not found: ${objectFile.name}`);
-  }
-
-  await objectFile.setMetadata({
-    metadata: {
-      [ACL_POLICY_METADATA_KEY]: JSON.stringify(aclPolicy),
-    },
-  });
-}
-
-export async function getObjectAclPolicy(
-  objectFile: File,
-): Promise<ObjectAclPolicy | null> {
-  const [metadata] = await objectFile.getMetadata();
-  const aclPolicy = metadata?.metadata?.[ACL_POLICY_METADATA_KEY];
-  if (!aclPolicy) {
-    return null;
-  }
-  return JSON.parse(aclPolicy as string);
-}
-
-export async function canAccessObject({
+export function canAccessObjectPolicy({
   userId,
-  objectFile,
+  aclPolicy,
   requestedPermission,
 }: {
   userId?: string;
-  objectFile: File;
+  aclPolicy: ObjectAclPolicy | null;
   requestedPermission: ObjectPermission;
-}): Promise<boolean> {
-  const aclPolicy = await getObjectAclPolicy(objectFile);
+}): boolean {
   if (!aclPolicy) {
     return false;
   }
@@ -65,9 +34,5 @@ export async function canAccessObject({
     return false;
   }
 
-  if (aclPolicy.owner === userId) {
-    return true;
-  }
-
-  return false;
+  return aclPolicy.owner === userId;
 }

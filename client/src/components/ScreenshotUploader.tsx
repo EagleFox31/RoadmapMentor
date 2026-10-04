@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { getAuthToken } from "@/lib/auth";
 
 interface ScreenshotUploaderProps {
   onUploadComplete: (url: string) => void;
@@ -32,24 +33,36 @@ export function ScreenshotUploader({ onUploadComplete, currentUrl }: ScreenshotU
     setError(null);
 
     try {
-      // Get presigned upload URL
-      const { uploadURL } = await apiRequest("POST", "/api/objects/upload", {});
+      // Get a provider-specific upload target. The application does not need
+      // to know whether storage is Replit-backed or local/filesystem-backed.
+      const { uploadURL, objectPath, requiresAuth } = await apiRequest(
+        "POST",
+        "/api/objects/upload",
+        {},
+      );
 
-      // Upload file to object storage
+      const headers: Record<string, string> = {
+        "Content-Type": file.type,
+      };
+      if (requiresAuth) {
+        const token = getAuthToken();
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+      }
+
       const uploadResponse = await fetch(uploadURL, {
         method: "PUT",
         body: file,
-        headers: {
-          "Content-Type": file.type,
-        },
+        headers,
       });
 
       if (!uploadResponse.ok) {
         throw new Error("Upload failed");
       }
 
-      // Call completion handler with the upload URL
-      onUploadComplete(uploadURL.split("?")[0]);
+      // Persist the canonical application path, not a provider URL.
+      onUploadComplete(objectPath || uploadURL.split("?")[0]);
     } catch (err) {
       console.error("Upload error:", err);
       setError("Erreur lors de l'upload");
