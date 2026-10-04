@@ -119,7 +119,9 @@ No source-code modification should be required between machines; differences bel
 | `MAIL_HOST`, `MAIL_USER`, `MAIL_PASS` | For email delivery | SMTP transport |
 | `MAIL_PORT` | No | SMTP port; defaults to `465` |
 | `MAIL_FROM` | No | Sender identity |
-| `PRIVATE_OBJECT_DIR` | For screenshot uploads | Current Replit object-storage location |
+| `OBJECT_STORAGE_PROVIDER` | For screenshot uploads | `filesystem` or `replit`; local/VPS default in `.env.example` is `filesystem` |
+| `OBJECT_STORAGE_LOCAL_DIR` | Filesystem provider | Directory for uploaded evidence; defaults to `.data/object-storage` |
+| `PRIVATE_OBJECT_DIR` | Replit provider | Replit object-storage bucket/prefix |
 
 Use `.env.example` as the canonical list. Never commit the populated `.env`.
 
@@ -156,14 +158,37 @@ npm run build
 
 GitHub Actions currently enforces type checking and regression tests on pull requests and pushes to `main`.
 
+## Object storage
+
+Screenshot/evidence storage is selected through `OBJECT_STORAGE_PROVIDER`; application routes and UI do not depend on a Replit-specific URL.
+
+### Filesystem provider
+
+Use this for local development or a standard Linux/VPS host:
+
+```env
+OBJECT_STORAGE_PROVIDER=filesystem
+OBJECT_STORAGE_LOCAL_DIR=.data/object-storage
+```
+
+Uploads go through the authenticated application endpoint and are stored below the configured directory. ACL metadata is stored alongside each object. The application persists canonical `/objects/...` paths, so changing providers does not change database URLs.
+
+### Replit compatibility provider
+
+Existing Replit deployments can keep the original sidecar-backed storage:
+
+```env
+OBJECT_STORAGE_PROVIDER=replit
+PRIVATE_OBJECT_DIR=/bucket-name/private
+```
+
+The Replit sidecar is now isolated inside the Replit adapter rather than being referenced by application routes.
+
 ## Current portability limits
 
-The repository can now be configured without editing source files, but two infrastructure adapters are still intentionally documented as brownfield constraints:
+The remaining infrastructure portability constraint is the database driver: the current adapter is `@neondatabase/serverless`, so a generic local PostgreSQL container is not yet guaranteed. Containerization and database portability are tracked in the platform backlog.
 
-1. **Database** — the current driver is `@neondatabase/serverless`; a generic local PostgreSQL container is not yet guaranteed by this adapter.
-2. **Screenshot storage** — signing and credentials still use the Replit object-storage sidecar.
-
-Those constraints are tracked separately so this cleanup does not silently change infrastructure behavior. The existing `.replit` deployment configuration is therefore retained until the provider-agnostic containerization/storage work lands.
+The existing `.replit` deployment configuration remains available as a compatibility path while provider-agnostic deployment work continues.
 
 ## AI roadmap generation
 
