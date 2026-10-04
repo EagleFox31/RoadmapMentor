@@ -567,10 +567,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const mentoringPackage = await storage.createMentoringPackageWithScope(
           packageData,
-          input.scopeItems.map((scopeItem) => ({
-            title: scopeItem.title,
-            description: scopeItem.description ?? null,
-          })),
+          input.scopeItems.map(
+            (scopeItem: { title: string; description?: string | null }) => ({
+              title: scopeItem.title,
+              description: scopeItem.description ?? null,
+            }),
+          ),
         );
 
         res.status(201).json(mentoringPackage);
