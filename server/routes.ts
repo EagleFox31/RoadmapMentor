@@ -954,6 +954,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rejectedAt: nextStatus === "REJECTED" ? new Date() : null,
         });
 
+        if (nextStatus === "ACCEPTED" && changeRequest.packageId) {
+          const billingPeriod = await storage.findBillingPeriodByPackage(
+            changeRequest.packageId,
+          );
+          if (billingPeriod) {
+            await reconcileBillingPeriod(billingPeriod);
+          }
+        }
+
         res.json(updated);
       } catch (error) {
         if (
@@ -1183,6 +1192,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           learnerAttended: input.learnerAttended,
           mentorNotes: input.mentorNotes ?? null,
         });
+
+        if (
+          updated?.isAdditional &&
+          updated.additionalPriceMinor !== null &&
+          updated.additionalPriceCurrency
+        ) {
+          const sessionDate = updated.startsAt.toISOString().slice(0, 10);
+          const billingPeriods = await storage.getBillingPeriodsByMentorship(
+            updated.mentorshipId,
+          );
+
+          for (const billingPeriod of billingPeriods) {
+            if (
+              billingPeriod.status !== "VOID" &&
+              sessionDate >= billingPeriod.periodStart &&
+              sessionDate <= billingPeriod.periodEnd &&
+              billingPeriod.currency.toUpperCase() ===
+                updated.additionalPriceCurrency.toUpperCase()
+            ) {
+              await reconcileBillingPeriod(billingPeriod);
+            }
+          }
+        }
 
         res.json(updated);
       } catch (error) {
