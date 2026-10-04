@@ -33,6 +33,14 @@ variable "network" {
       cidr_blocks = list(string)
       purpose     = string
     }))
+    egress_rules = list(object({
+      name        = string
+      protocol    = string
+      from_port   = number
+      to_port     = number
+      cidr_blocks = list(string)
+      purpose     = string
+    }))
   })
 }
 
