@@ -114,8 +114,12 @@ export default function MentoringPage() {
     mutationFn: (id: number) => {
       const draft = quoteDrafts[id];
       if (!draft?.price || !draft?.taskId) throw new Error("Prix et tâche liée requis.");
+      const request = changes.find((item) => item.id === id);
+      const packageItem = packages.find((item) => item.id === request?.packageId);
       return apiRequest("POST", "/api/change-requests/" + id + "/quote", {
-        quotedPriceMinor: Number(draft.price), currency: "XAF", linkedTaskId: Number(draft.taskId),
+        quotedPriceMinor: Number(draft.price),
+        currency: packageItem?.currency || "XAF",
+        linkedTaskId: Number(draft.taskId),
       });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: changesKey }),
@@ -187,7 +191,10 @@ export default function MentoringPage() {
                   <h3 className="mb-4 font-semibold">Nouveau forfait</h3>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Input placeholder="Nom du forfait" value={packageForm.title} onChange={(e) => setPackageForm({ ...packageForm, title: e.target.value })} className="border-white/10 bg-black/20" />
-                    <Input type="number" placeholder="Prix" value={packageForm.price} onChange={(e) => setPackageForm({ ...packageForm, price: e.target.value })} className="border-white/10 bg-black/20" />
+                    <div className="grid grid-cols-[1fr_90px] gap-2">
+                      <Input type="number" placeholder="Prix" value={packageForm.price} onChange={(e) => setPackageForm({ ...packageForm, price: e.target.value })} className="border-white/10 bg-black/20" />
+                      <Input maxLength={3} value={packageForm.currency} onChange={(e) => setPackageForm({ ...packageForm, currency: e.target.value.toUpperCase() })} className="border-white/10 bg-black/20" />
+                    </div>
                     <Input type="date" value={packageForm.periodStart} onChange={(e) => setPackageForm({ ...packageForm, periodStart: e.target.value })} className="border-white/10 bg-black/20" />
                     <Input type="date" value={packageForm.periodEnd} onChange={(e) => setPackageForm({ ...packageForm, periodEnd: e.target.value })} className="border-white/10 bg-black/20" />
                     <Input type="number" placeholder="Séances incluses" value={packageForm.sessions} onChange={(e) => setPackageForm({ ...packageForm, sessions: e.target.value })} className="border-white/10 bg-black/20" />
