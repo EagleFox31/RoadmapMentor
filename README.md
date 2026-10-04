@@ -18,6 +18,9 @@ RoadmapMentor structures a learning plan into weeks, objectives, tasks, delivera
 
 ```text
 Roadmap
+  ├── Mentorship
+  │    ├── Mentor
+  │    └── Learner
   └── Week
        ├── Objectives
        │    └── Tasks
@@ -27,7 +30,7 @@ Roadmap
        └── Comments
 ```
 
-> The persisted domain is still being evolved toward first-class Roadmap and Mentorship entities. See the repository backlog for the current migration work.
+A roadmap is an independent learning program. Access is explicit through a mentorship linking a mentor and a learner to that roadmap.
 
 ## Stack
 
@@ -119,6 +122,27 @@ No source-code modification should be required between machines; differences bel
 | `PRIVATE_OBJECT_DIR` | For screenshot uploads | Current Replit object-storage location |
 
 Use `.env.example` as the canonical list. Never commit the populated `.env`.
+
+## Upgrade an existing pre-roadmap database
+
+Issue #6 introduces first-class `roadmaps` and `mentorships` while preserving existing data.
+
+Back up the database first. Then apply the schema and run the compatibility migration:
+
+```bash
+npm run db:push
+npm run migrate:roadmap-domain
+```
+
+The migration is intentionally idempotent. It:
+
+- creates or reuses one **Legacy Roadmap**;
+- attaches every pre-existing week whose `roadmap_id` is still null;
+- preserves the old global visibility model by creating a legacy mentorship for every existing mentor/learner pair;
+- refuses to guess if more than one legacy roadmap exists;
+- can be run again after a partial deployment without duplicating memberships.
+
+New roadmaps do **not** inherit that global compatibility behavior. Their access is restricted to the roadmap creator and explicit, non-cancelled mentorships.
 
 ## Validate a change
 
