@@ -80,11 +80,17 @@ export interface IStorage {
   getMentoringPackage(id: number): Promise<MentoringPackage | undefined>;
   getMentoringPackagesByMentorship(mentorshipId: number): Promise<MentoringPackageWithScope[]>;
   getPackageScopeItems(packageId: number): Promise<MentoringPackageScopeItem[]>;
-  createScopeChangeRequest(data: InsertScopeChangeRequest): Promise<ScopeChangeRequest>;
+  createScopeChangeRequest(
+    data: InsertScopeChangeRequest,
+    event: Omit<InsertScopeChangeEvent, "changeRequestId">,
+  ): Promise<ScopeChangeRequest>;
   getScopeChangeRequest(id: number): Promise<ScopeChangeRequest | undefined>;
   getScopeChangeRequestsByMentorship(mentorshipId: number): Promise<ScopeChangeRequest[]>;
-  updateScopeChangeRequest(id: number, changes: Partial<ScopeChangeRequest>): Promise<ScopeChangeRequest | undefined>;
-  createScopeChangeEvent(data: InsertScopeChangeEvent): Promise<ScopeChangeEvent>;
+  transitionScopeChangeRequest(
+    id: number,
+    changes: Partial<ScopeChangeRequest>,
+    event: Omit<InsertScopeChangeEvent, "changeRequestId">,
+  ): Promise<ScopeChangeRequest | undefined>;
   getScopeChangeEvents(changeRequestId: number): Promise<ScopeChangeEvent[]>;
 
   // Week methods
@@ -367,12 +373,21 @@ export class DatabaseStorage implements IStorage {
 
   async createScopeChangeRequest(
     data: InsertScopeChangeRequest,
+    event: Omit<InsertScopeChangeEvent, "changeRequestId">,
   ): Promise<ScopeChangeRequest> {
-    const [created] = await db
-      .insert(scopeChangeRequests)
-      .values(data)
-      .returning();
-    return created;
+    return await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(scopeChangeRequests)
+        .values(data)
+        .returning();
+
+      await tx.insert(scopeChangeEvents).values({
+        ...event,
+        changeRequestId: created.id,
+      });
+
+      return created;
+    });
   }
 
   async getScopeChangeRequest(id: number): Promise<ScopeChangeRequest | undefined> {
@@ -393,28 +408,38 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(scopeChangeRequests.createdAt), desc(scopeChangeRequests.id));
   }
 
-  async updateScopeChangeRequest(
+  async transitionScopeChangeRequest(
     id: number,
     changes: Partial<ScopeChangeRequest>,
+    event: Omit<InsertScopeChangeEvent, "changeRequestId">,
   ): Promise<ScopeChangeRequest | undefined> {
-    const { id: _id, mentorshipId: _mentorshipId, packageId: _packageId, requestedByUserId: _requestedByUserId, createdAt: _createdAt, ...safeChanges } = changes;
+    return await db.transaction(async (tx) => {
+      const {
+        id: _id,
+        mentorshipId: _mentorshipId,
+        packageId: _packageId,
+        requestedByUserId: _requestedByUserId,
+        createdAt: _createdAt,
+        ...safeChanges
+      } = changes;
 
-    const [updated] = await db
-      .update(scopeChangeRequests)
-      .set({ ...safeChanges, updatedAt: new Date() })
-      .where(eq(scopeChangeRequests.id, id))
-      .returning();
-    return updated || undefined;
-  }
+      const [updated] = await tx
+        .update(scopeChangeRequests)
+        .set({ ...safeChanges, updatedAt: new Date() })
+        .where(eq(scopeChangeRequests.id, id))
+        .returning();
 
-  async createScopeChangeEvent(
-    data: InsertScopeChangeEvent,
-  ): Promise<ScopeChangeEvent> {
-    const [created] = await db
-      .insert(scopeChangeEvents)
-      .values(data)
-      .returning();
-    return created;
+      if (!updated) {
+        return undefined;
+      }
+
+      await tx.insert(scopeChangeEvents).values({
+        ...event,
+        changeRequestId: id,
+      });
+
+      return updated;
+    });
   }
 
   async getScopeChangeEvents(changeRequestId: number): Promise<ScopeChangeEvent[]> {
