@@ -10,6 +10,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isLearner, isMentor } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { MentoringSessions } from "@/components/mentoring-sessions";
+import { MentoringBilling } from "@/components/mentoring-billing";
 import type { ChangeRequest, MentoringPackageWithScope, WeekWithDetails } from "@shared/schema";
 
 type MentorshipView = {
@@ -249,6 +250,11 @@ export default function MentoringPage() {
               mentorshipId={selected.id}
               packages={packages}
               weeks={weeks}
+            />
+
+            <MentoringBilling
+              mentorshipId={selected.id}
+              packages={packages}
             />
           </>}
         </section>

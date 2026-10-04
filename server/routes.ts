@@ -3,12 +3,14 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { emailService } from "./services/emailService";
 import { authMiddleware, requireMentor, requireLearner, generateToken, hashPassword, comparePassword, verifyToken, type AuthRequest } from "./auth";
-import { publicRegistrationSchema, insertRoadmapSchema, insertMentorshipSchema, createMentoringPackageSchema, insertMentoringPackageSchema, createChangeRequestSchema, insertChangeRequestSchema, quoteChangeRequestSchema, changeRequestDecisionSchema, scheduleMentoringSessionSchema, insertMentoringSessionSchema, completeMentoringSessionSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema, updateEmailNotificationPreferencesSchema, type Week } from "@shared/schema";
+import { publicRegistrationSchema, insertRoadmapSchema, insertMentorshipSchema, createMentoringPackageSchema, insertMentoringPackageSchema, createChangeRequestSchema, insertChangeRequestSchema, quoteChangeRequestSchema, changeRequestDecisionSchema, scheduleMentoringSessionSchema, insertMentoringSessionSchema, completeMentoringSessionSchema, createBillingPeriodSchema, insertBillingPeriodSchema, insertBillingChargeSchema, manualBillingChargeSchema, insertPaymentSchema, recordManualPaymentSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema, updateEmailNotificationPreferencesSchema, type BillingPeriod, type Week } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { isDevelopmentEnvironment } from "./security";
 import { assertChangeRequestTransition, requiresLinkedRoadmapWork } from "./domain/changeRequest";
 import { canFinalizeMentoringSession, finalStatusForAttendance } from "./domain/mentoringSession";
+import { assertCurrencyMatches, summarizeBilling } from "./domain/billing";
+import { manualPaymentAdapter } from "./payments/provider";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Helper to send errors
@@ -213,6 +215,138 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const week = await storage.getWeek(objective.weekId);
     return Boolean(week && week.roadmapId === mentorship.roadmapId);
+  };
+
+  const getBillingPeriodAccess = async (
+    req: AuthRequest,
+    billingPeriodId: number,
+  ) => {
+    const billingPeriod = await storage.getBillingPeriod(billingPeriodId);
+    if (!billingPeriod) {
+      return { billingPeriod: undefined, allowed: false, canManage: false };
+    }
+
+    const mentorshipAccess = await getMentorshipAccess(
+      req,
+      billingPeriod.mentorshipId,
+    );
+
+    return {
+      billingPeriod,
+      allowed: mentorshipAccess.allowed,
+      canManage: mentorshipAccess.canManage,
+    };
+  };
+
+  const buildBillingPeriodDetails = async (billingPeriod: BillingPeriod) => {
+    const [charges, payments] = await Promise.all([
+      storage.getBillingChargesByPeriod(billingPeriod.id),
+      storage.getPaymentsByBillingPeriod(billingPeriod.id),
+    ]);
+
+    const summary = summarizeBilling({
+      baseAmountMinor: billingPeriod.baseAmountMinor,
+      charges,
+      payments,
+      isVoid: billingPeriod.status === "VOID",
+    });
+
+    return {
+      ...billingPeriod,
+      charges,
+      payments,
+      ...summary,
+    };
+  };
+
+  const refreshBillingPeriodStatus = async (billingPeriod: BillingPeriod) => {
+    const details = await buildBillingPeriodDetails(billingPeriod);
+    if (
+      billingPeriod.status !== "VOID" &&
+      details.status !== billingPeriod.status
+    ) {
+      const updated = await storage.updateBillingPeriod(billingPeriod.id, {
+        status: details.status,
+      });
+      return updated ? await buildBillingPeriodDetails(updated) : details;
+    }
+    return details;
+  };
+
+  const reconcileBillingPeriod = async (billingPeriod: BillingPeriod) => {
+    if (billingPeriod.status === "VOID") {
+      return await buildBillingPeriodDetails(billingPeriod);
+    }
+
+    const requests = await storage.getChangeRequestsByMentorship(
+      billingPeriod.mentorshipId,
+    );
+
+    for (const request of requests) {
+      if (
+        request.packageId !== billingPeriod.packageId ||
+        (request.status !== "ACCEPTED" && request.status !== "DELIVERED") ||
+        request.quotedPriceMinor === null
+      ) {
+        continue;
+      }
+
+      assertCurrencyMatches(billingPeriod.currency, request.currency);
+      const existing = await storage.findBillingChargeByChangeRequest(
+        request.id,
+      );
+      if (!existing) {
+        const charge = insertBillingChargeSchema.parse({
+          billingPeriodId: billingPeriod.id,
+          type: "CHANGE_REQUEST",
+          description: "Scope additionnel · " + request.title,
+          amountMinor: request.quotedPriceMinor,
+          changeRequestId: request.id,
+          sessionId: null,
+        });
+        await storage.createBillingCharge(charge);
+      }
+    }
+
+    const sessions = await storage.getMentoringSessionsByMentorship(
+      billingPeriod.mentorshipId,
+    );
+
+    for (const session of sessions) {
+      const sessionDate = session.startsAt.toISOString().slice(0, 10);
+      const billableStatus =
+        session.status === "COMPLETED" || session.status === "NO_SHOW";
+
+      if (
+        !session.isAdditional ||
+        !billableStatus ||
+        sessionDate < billingPeriod.periodStart ||
+        sessionDate > billingPeriod.periodEnd ||
+        session.additionalPriceMinor === null ||
+        !session.additionalPriceCurrency
+      ) {
+        continue;
+      }
+
+      assertCurrencyMatches(
+        billingPeriod.currency,
+        session.additionalPriceCurrency,
+      );
+      const existing = await storage.findBillingChargeBySession(session.id);
+      if (!existing) {
+        const charge = insertBillingChargeSchema.parse({
+          billingPeriodId: billingPeriod.id,
+          type: "ADDITIONAL_SESSION",
+          description: "Séance additionnelle · " + session.title,
+          amountMinor: session.additionalPriceMinor,
+          changeRequestId: null,
+          sessionId: session.id,
+        });
+        await storage.createBillingCharge(charge);
+      }
+    }
+
+    return await refreshBillingPeriodStatus(billingPeriod);
   };
 
   // ========== AUTH ROUTES ==========
@@ -820,6 +954,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rejectedAt: nextStatus === "REJECTED" ? new Date() : null,
         });
 
+        if (nextStatus === "ACCEPTED" && changeRequest.packageId) {
+          const billingPeriod = await storage.findBillingPeriodByPackage(
+            changeRequest.packageId,
+          );
+          if (billingPeriod) {
+            await reconcileBillingPeriod(billingPeriod);
+          }
+        }
+
         res.json(updated);
       } catch (error) {
         if (
@@ -1000,6 +1143,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           endsAt: new Date(input.endsAt),
           status: "SCHEDULED",
           isAdditional: input.isAdditional,
+          additionalPriceMinor: input.additionalPriceMinor ?? null,
+          additionalPriceCurrency: input.additionalPriceCurrency ?? null,
           learnerAttended: null,
           mentorNotes: null,
           calendarProvider: input.calendarProvider ?? null,
@@ -1048,6 +1193,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           mentorNotes: input.mentorNotes ?? null,
         });
 
+        if (
+          updated?.isAdditional &&
+          updated.additionalPriceMinor !== null &&
+          updated.additionalPriceCurrency
+        ) {
+          const sessionDate = updated.startsAt.toISOString().slice(0, 10);
+          const billingPeriods = await storage.getBillingPeriodsByMentorship(
+            updated.mentorshipId,
+          );
+
+          for (const billingPeriod of billingPeriods) {
+            if (
+              billingPeriod.status !== "VOID" &&
+              sessionDate >= billingPeriod.periodStart &&
+              sessionDate <= billingPeriod.periodEnd &&
+              billingPeriod.currency.toUpperCase() ===
+                updated.additionalPriceCurrency.toUpperCase()
+            ) {
+              await reconcileBillingPeriod(billingPeriod);
+            }
+          }
+        }
+
         res.json(updated);
       } catch (error) {
         handleError(res, error);
@@ -1085,6 +1253,239 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: "CANCELLED",
         });
         res.json(updated);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  // ========== BILLING / PAYMENT ROUTES ==========
+
+  app.get(
+    "/api/mentorships/:id/billing",
+    authMiddleware,
+    async (req: AuthRequest, res) => {
+      try {
+        const mentorshipId = Number(req.params.id);
+        if (!Number.isInteger(mentorshipId) || mentorshipId <= 0) {
+          return res.status(400).json({ error: "Invalid mentorship id" });
+        }
+
+        const access = await getMentorshipAccess(req, mentorshipId);
+        if (!access.allowed) {
+          return res.status(404).json({ error: "Mentorship not found" });
+        }
+
+        const periods = await storage.getBillingPeriodsByMentorship(
+          mentorshipId,
+        );
+        const details = await Promise.all(
+          periods.map((period) => buildBillingPeriodDetails(period)),
+        );
+
+        res.json(details);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/mentorships/:id/billing-periods",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const mentorshipId = Number(req.params.id);
+        if (!Number.isInteger(mentorshipId) || mentorshipId <= 0) {
+          return res.status(400).json({ error: "Invalid mentorship id" });
+        }
+
+        const access = await getMentorshipAccess(req, mentorshipId);
+        if (!access.allowed || !access.canManage) {
+          return res.status(404).json({ error: "Mentorship not found" });
+        }
+
+        const input = createBillingPeriodSchema.parse(req.body);
+        const mentoringPackage = await storage.getMentoringPackage(
+          input.packageId,
+        );
+        if (
+          !mentoringPackage ||
+          mentoringPackage.mentorshipId !== mentorshipId
+        ) {
+          return res.status(400).json({
+            error: "packageId must belong to this mentorship",
+          });
+        }
+
+        const existing = await storage.findBillingPeriodByPackage(
+          mentoringPackage.id,
+        );
+        if (existing) {
+          return res.status(200).json(
+            await reconcileBillingPeriod(existing),
+          );
+        }
+
+        const billingPeriodData = insertBillingPeriodSchema.parse({
+          mentorshipId,
+          packageId: mentoringPackage.id,
+          title: mentoringPackage.title,
+          currency: mentoringPackage.currency,
+          periodStart: mentoringPackage.periodStart,
+          periodEnd: mentoringPackage.periodEnd,
+          dueDate: input.dueDate,
+          baseAmountMinor: mentoringPackage.basePriceMinor,
+          status: "DUE",
+          createdByUserId: req.user!.id,
+        });
+
+        const billingPeriod = await storage.createBillingPeriod(
+          billingPeriodData,
+        );
+        res.status(201).json(
+          await reconcileBillingPeriod(billingPeriod),
+        );
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/billing-periods/:id/reconcile",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const billingPeriodId = Number(req.params.id);
+        const access = Number.isInteger(billingPeriodId)
+          ? await getBillingPeriodAccess(req, billingPeriodId)
+          : { billingPeriod: undefined, allowed: false, canManage: false };
+
+        if (
+          !access.billingPeriod ||
+          !access.allowed ||
+          !access.canManage
+        ) {
+          return res.status(404).json({ error: "Billing period not found" });
+        }
+
+        res.json(await reconcileBillingPeriod(access.billingPeriod));
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message.startsWith("Currency mismatch")
+        ) {
+          return res.status(409).json({ error: error.message });
+        }
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/billing-periods/:id/charges",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const billingPeriodId = Number(req.params.id);
+        const access = Number.isInteger(billingPeriodId)
+          ? await getBillingPeriodAccess(req, billingPeriodId)
+          : { billingPeriod: undefined, allowed: false, canManage: false };
+
+        if (
+          !access.billingPeriod ||
+          !access.allowed ||
+          !access.canManage
+        ) {
+          return res.status(404).json({ error: "Billing period not found" });
+        }
+
+        if (access.billingPeriod.status === "VOID") {
+          return res.status(409).json({ error: "Billing period is void" });
+        }
+
+        const input = manualBillingChargeSchema.parse(req.body);
+        const charge = insertBillingChargeSchema.parse({
+          billingPeriodId: access.billingPeriod.id,
+          type: "MANUAL",
+          description: input.description,
+          amountMinor: input.amountMinor,
+          changeRequestId: null,
+          sessionId: null,
+        });
+
+        await storage.createBillingCharge(charge);
+        res.status(201).json(
+          await refreshBillingPeriodStatus(access.billingPeriod),
+        );
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  app.post(
+    "/api/billing-periods/:id/payments",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const billingPeriodId = Number(req.params.id);
+        const access = Number.isInteger(billingPeriodId)
+          ? await getBillingPeriodAccess(req, billingPeriodId)
+          : { billingPeriod: undefined, allowed: false, canManage: false };
+
+        if (
+          !access.billingPeriod ||
+          !access.allowed ||
+          !access.canManage
+        ) {
+          return res.status(404).json({ error: "Billing period not found" });
+        }
+
+        if (access.billingPeriod.status === "VOID") {
+          return res.status(409).json({ error: "Billing period is void" });
+        }
+
+        const input = recordManualPaymentSchema.parse(req.body);
+        const current = await buildBillingPeriodDetails(
+          access.billingPeriod,
+        );
+        if (input.amountMinor > current.outstandingMinor) {
+          return res.status(409).json({
+            error: "Payment exceeds the outstanding amount",
+          });
+        }
+
+        const capture = await manualPaymentAdapter.capture({
+          amountMinor: input.amountMinor,
+          currency: access.billingPeriod.currency,
+          paidAt: input.paidAt ? new Date(input.paidAt) : new Date(),
+          method: input.method ?? null,
+          providerReference: input.providerReference ?? null,
+          note: input.note ?? null,
+        });
+
+        const payment = insertPaymentSchema.parse({
+          billingPeriodId: access.billingPeriod.id,
+          amountMinor: capture.amountMinor,
+          currency: capture.currency,
+          provider: manualPaymentAdapter.name,
+          providerReference: capture.providerReference,
+          method: capture.method,
+          note: capture.note,
+          paidAt: capture.paidAt,
+          recordedByUserId: req.user!.id,
+        });
+
+        await storage.createPayment(payment);
+        res.status(201).json(
+          await refreshBillingPeriodStatus(access.billingPeriod),
+        );
       } catch (error) {
         handleError(res, error);
       }

@@ -53,6 +53,8 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
     startTime: "16:00",
     endTime: "19:00",
     isAdditional: false,
+    additionalPrice: "",
+    additionalCurrency: "XAF",
   });
 
   const queryKey = ["/api/mentorships", mentorshipId, "sessions", month];
@@ -93,6 +95,12 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
           startsAt,
           endsAt,
           isAdditional: form.isAdditional,
+          additionalPriceMinor: form.isAdditional
+            ? Number(form.additionalPrice)
+            : null,
+          additionalPriceCurrency: form.isAdditional
+            ? form.additionalCurrency
+            : null,
         },
       );
     },
@@ -108,6 +116,8 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
         startTime: "16:00",
         endTime: "19:00",
         isAdditional: false,
+        additionalPrice: "",
+        additionalCurrency: "XAF",
       });
       toast({
         title: "Séance planifiée",
@@ -259,6 +269,32 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
             Séance additionnelle — ne pas la décompter du forfait inclus
           </label>
 
+          {form.isAdditional && (
+            <div className="mt-3 grid max-w-md grid-cols-[1fr_90px] gap-2">
+              <Input
+                type="number"
+                min="1"
+                placeholder="Prix de la séance"
+                value={form.additionalPrice}
+                onChange={(e) =>
+                  setForm({ ...form, additionalPrice: e.target.value })
+                }
+                className="border-amber-300/20 bg-black/20"
+              />
+              <Input
+                maxLength={3}
+                value={form.additionalCurrency}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    additionalCurrency: e.target.value.toUpperCase(),
+                  })
+                }
+                className="border-amber-300/20 bg-black/20"
+              />
+            </div>
+          )}
+
           <Button
             className="mt-4"
             onClick={() => createSession.mutate()}
@@ -266,7 +302,9 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
               createSession.isPending ||
               !form.title ||
               !form.date ||
-              (!form.isAdditional && !form.packageId)
+              (!form.isAdditional && !form.packageId) ||
+              (form.isAdditional &&
+                (!form.additionalPrice || !form.additionalCurrency))
             }
           >
             {createSession.isPending && (
@@ -303,6 +341,18 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
                     >
                       {session.isAdditional ? "Additionnelle" : "Incluse"}
                     </Badge>
+                    {session.isAdditional &&
+                      session.additionalPriceMinor !== null &&
+                      session.additionalPriceCurrency && (
+                        <Badge className="bg-amber-300/10 text-amber-100">
+                          {new Intl.NumberFormat("fr-FR", {
+                            style: "currency",
+                            currency: session.additionalPriceCurrency,
+                            maximumFractionDigits:
+                              session.additionalPriceCurrency === "XAF" ? 0 : 2,
+                          }).format(session.additionalPriceMinor)}
+                        </Badge>
+                      )}
                   </div>
                   <p className="mt-2 flex items-center gap-2 text-sm text-slate-400">
                     <Clock3 className="h-4 w-4" />
