@@ -817,6 +817,7 @@ export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 export type BillingPeriodWithDetails = BillingPeriod & {
   charges: BillingCharge[];
   payments: Payment[];
+  extrasMinor: number;
   subtotalMinor: number;
   paidMinor: number;
   outstandingMinor: number;
