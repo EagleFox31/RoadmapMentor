@@ -85,31 +85,22 @@ async function run() {
     learners.map(({ id }) => id),
   );
 
+  const existingMemberships = await db
+    .select()
+    .from(mentorships)
+    .where(eq(mentorships.roadmapId, legacyRoadmap.id));
+
+  const existingPairs = new Set(
+    existingMemberships.map(
+      (membership) => `${membership.mentorId}:${membership.learnerId}`,
+    ),
+  );
+
   let createdMemberships = 0;
 
   for (const pair of pairs) {
-    const [existing] = await db
-      .select({ id: mentorships.id })
-      .from(mentorships)
-      .where(
-        eq(mentorships.roadmapId, legacyRoadmap.id),
-      )
-      .orderBy(mentorships.id);
-
-    // The legacy roadmap intentionally preserves the old global access model.
-    // Only insert the exact mentor/learner pair when it is missing.
-    const allForRoadmap = await db
-      .select()
-      .from(mentorships)
-      .where(eq(mentorships.roadmapId, legacyRoadmap.id));
-
-    const alreadyExists = allForRoadmap.some(
-      (membership) =>
-        membership.mentorId === pair.mentorId &&
-        membership.learnerId === pair.learnerId,
-    );
-
-    if (alreadyExists) {
+    const pairKey = `${pair.mentorId}:${pair.learnerId}`;
+    if (existingPairs.has(pairKey)) {
       continue;
     }
 
@@ -119,6 +110,7 @@ async function run() {
       learnerId: pair.learnerId,
       status: "ACTIVE",
     });
+    existingPairs.add(pairKey);
     createdMemberships++;
   }
 
