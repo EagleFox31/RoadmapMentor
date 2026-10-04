@@ -61,3 +61,42 @@ jobs:
 
       - name: Build production image
         run: docker build --target runtime -t roadmapmentor-ci .
+
+  terraform-checks:
+    name: terraform-checks
+    needs: impact
+    if: ${{ contains(fromJSON(needs.impact.outputs.gates), 'terraform-checks') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.5
+          terraform_wrapper: false
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v6
+        with:
+          tflint_version: v0.64.0
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive infra/terraform
+
+      - name: Validate staging contract
+        run: |
+          terraform -chdir=infra/terraform/environments/staging init -backend=false
+          terraform -chdir=infra/terraform/environments/staging validate
+
+      - name: Validate production contract
+        run: |
+          terraform -chdir=infra/terraform/environments/production init -backend=false
+          terraform -chdir=infra/terraform/environments/production validate
+
+      - name: Static Terraform lint
+        working-directory: infra/terraform
+        run: tflint --recursive --config "$GITHUB_WORKSPACE/infra/terraform/.tflint.hcl"
