@@ -21,6 +21,20 @@ export const mentoringSessionStatusEnum = pgEnum("mentoring_session_status", [
   "CANCELLED",
   "NO_SHOW",
 ]);
+export const billingStatusEnum = pgEnum("billing_status", [
+  "DUE",
+  "PARTIALLY_PAID",
+  "PAID",
+  "VOID",
+]);
+export const billingChargeTypeEnum = pgEnum("billing_charge_type", [
+  "CHANGE_REQUEST",
+  "ADDITIONAL_SESSION",
+  "MANUAL",
+]);
+export const paymentProviderEnum = pgEnum("payment_provider", [
+  "MANUAL",
+]);
 
 // Users table
 export const users = pgTable("users", {
@@ -156,6 +170,8 @@ export const mentoringSessions = pgTable("mentoring_sessions", {
   endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
   status: mentoringSessionStatusEnum("status").notNull().default("SCHEDULED"),
   isAdditional: boolean("is_additional").notNull().default(false),
+  additionalPriceMinor: integer("additional_price_minor"),
+  additionalPriceCurrency: text("additional_price_currency"),
   learnerAttended: boolean("learner_attended"),
   mentorNotes: text("mentor_notes"),
   calendarProvider: text("calendar_provider"),
@@ -163,6 +179,60 @@ export const mentoringSessions = pgTable("mentoring_sessions", {
   createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const billingPeriods = pgTable(
+  "billing_periods",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    mentorshipId: integer("mentorship_id").notNull().references(() => mentorships.id, { onDelete: "cascade" }),
+    packageId: integer("package_id").references(() => mentoringPackages.id, { onDelete: "set null" }),
+    title: text("title").notNull(),
+    currency: text("currency").notNull().default("XAF"),
+    periodStart: text("period_start").notNull(),
+    periodEnd: text("period_end").notNull(),
+    dueDate: text("due_date").notNull(),
+    baseAmountMinor: integer("base_amount_minor").notNull(),
+    status: billingStatusEnum("status").notNull().default("DUE"),
+    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    uniquePackageBilling: uniqueIndex("billing_period_package_unique").on(table.packageId),
+  }),
+);
+
+export const billingCharges = pgTable(
+  "billing_charges",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    billingPeriodId: integer("billing_period_id").notNull().references(() => billingPeriods.id, { onDelete: "cascade" }),
+    type: billingChargeTypeEnum("type").notNull(),
+    description: text("description").notNull(),
+    amountMinor: integer("amount_minor").notNull(),
+    changeRequestId: integer("change_request_id").references(() => changeRequests.id, { onDelete: "set null" }),
+    sessionId: integer("session_id").references(() => mentoringSessions.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    uniqueChangeRequestCharge: uniqueIndex("billing_charge_change_request_unique").on(table.changeRequestId),
+    uniqueSessionCharge: uniqueIndex("billing_charge_session_unique").on(table.sessionId),
+  }),
+);
+
+export const payments = pgTable("payments", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  billingPeriodId: integer("billing_period_id").notNull().references(() => billingPeriods.id, { onDelete: "cascade" }),
+  amountMinor: integer("amount_minor").notNull(),
+  currency: text("currency").notNull().default("XAF"),
+  provider: paymentProviderEnum("provider").notNull().default("MANUAL"),
+  providerReference: text("provider_reference"),
+  method: text("method"),
+  note: text("note"),
+  paidAt: timestamp("paid_at", { withTimezone: true }).notNull().defaultNow(),
+  recordedByUserId: integer("recorded_by_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // Deliverables table
@@ -277,6 +347,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   createdMentoringPackages: many(mentoringPackages),
   requestedChangeRequests: many(changeRequests),
   createdMentoringSessions: many(mentoringSessions),
+  createdBillingPeriods: many(billingPeriods),
+  recordedPayments: many(payments),
 }));
 
 export const roadmapsRelations = relations(roadmaps, ({ one, many }) => ({
@@ -306,6 +378,7 @@ export const mentorshipsRelations = relations(mentorships, ({ one, many }) => ({
   packages: many(mentoringPackages),
   changeRequests: many(changeRequests),
   sessions: many(mentoringSessions),
+  billingPeriods: many(billingPeriods),
 }));
 
 export const mentoringPackagesRelations = relations(mentoringPackages, ({ one, many }) => ({
@@ -320,6 +393,7 @@ export const mentoringPackagesRelations = relations(mentoringPackages, ({ one, m
   scopeItems: many(mentoringPackageScopeItems),
   changeRequests: many(changeRequests),
   sessions: many(mentoringSessions),
+  billingPeriods: many(billingPeriods),
 }));
 
 export const mentoringPackageScopeItemsRelations = relations(mentoringPackageScopeItems, ({ one }) => ({
@@ -390,6 +464,49 @@ export const mentoringSessionsRelations = relations(mentoringSessions, ({ one })
   }),
   createdBy: one(users, {
     fields: [mentoringSessions.createdByUserId],
+    references: [users.id],
+  }),
+}));
+
+export const billingPeriodsRelations = relations(billingPeriods, ({ one, many }) => ({
+  mentorship: one(mentorships, {
+    fields: [billingPeriods.mentorshipId],
+    references: [mentorships.id],
+  }),
+  package: one(mentoringPackages, {
+    fields: [billingPeriods.packageId],
+    references: [mentoringPackages.id],
+  }),
+  createdBy: one(users, {
+    fields: [billingPeriods.createdByUserId],
+    references: [users.id],
+  }),
+  charges: many(billingCharges),
+  payments: many(payments),
+}));
+
+export const billingChargesRelations = relations(billingCharges, ({ one }) => ({
+  billingPeriod: one(billingPeriods, {
+    fields: [billingCharges.billingPeriodId],
+    references: [billingPeriods.id],
+  }),
+  changeRequest: one(changeRequests, {
+    fields: [billingCharges.changeRequestId],
+    references: [changeRequests.id],
+  }),
+  session: one(mentoringSessions, {
+    fields: [billingCharges.sessionId],
+    references: [mentoringSessions.id],
+  }),
+}));
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  billingPeriod: one(billingPeriods, {
+    fields: [payments.billingPeriodId],
+    references: [billingPeriods.id],
+  }),
+  recordedBy: one(users, {
+    fields: [payments.recordedByUserId],
     references: [users.id],
   }),
 }));
@@ -557,6 +674,8 @@ export const scheduleMentoringSessionSchema = z.object({
   startsAt: z.string().datetime({ offset: true }),
   endsAt: z.string().datetime({ offset: true }),
   isAdditional: z.boolean().default(false),
+  additionalPriceMinor: z.number().int().positive().nullable().optional(),
+  additionalPriceCurrency: z.string().trim().min(3).max(3).transform((value) => value.toUpperCase()).nullable().optional(),
   calendarProvider: z.string().trim().min(1).nullable().optional(),
   calendarEventId: z.string().trim().min(1).nullable().optional(),
 })
@@ -568,11 +687,56 @@ export const scheduleMentoringSessionSchema = z.object({
   .refine((data) => data.isAdditional || Boolean(data.packageId), {
     message: "packageId is required for an included session",
     path: ["packageId"],
-  });
+  })
+  .refine(
+    (data) =>
+      !data.isAdditional ||
+      (Boolean(data.additionalPriceMinor) && Boolean(data.additionalPriceCurrency)),
+    {
+      message: "additionalPriceMinor and additionalPriceCurrency are required for an additional session",
+      path: ["additionalPriceMinor"],
+    },
+  );
 
 export const completeMentoringSessionSchema = z.object({
   learnerAttended: z.boolean(),
   mentorNotes: z.string().trim().max(5000).nullable().optional(),
+}).strict();
+
+export const insertBillingPeriodSchema = createInsertSchema(billingPeriods)
+  .omit({ createdAt: true, updatedAt: true })
+  .extend({
+    currency: z.string().trim().min(3).max(3).transform((value) => value.toUpperCase()),
+    periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    periodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    baseAmountMinor: z.number().int().nonnegative(),
+  });
+
+export const createBillingPeriodSchema = z.object({
+  packageId: z.number().int().positive(),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+}).strict();
+
+export const insertBillingChargeSchema = createInsertSchema(billingCharges).omit({
+  createdAt: true,
+});
+
+export const manualBillingChargeSchema = z.object({
+  description: z.string().trim().min(1),
+  amountMinor: z.number().int().positive(),
+}).strict();
+
+export const insertPaymentSchema = createInsertSchema(payments).omit({
+  createdAt: true,
+});
+
+export const recordManualPaymentSchema = z.object({
+  amountMinor: z.number().int().positive(),
+  paidAt: z.string().datetime({ offset: true }).optional(),
+  method: z.string().trim().min(1).max(100).nullable().optional(),
+  providerReference: z.string().trim().min(1).max(200).nullable().optional(),
+  note: z.string().trim().max(1000).nullable().optional(),
 }).strict();
 
 export const insertDeliverableSchema = createInsertSchema(deliverables).omit({
@@ -640,6 +804,23 @@ export type InsertTask = z.infer<typeof insertTaskSchema>;
 
 export type MentoringSession = typeof mentoringSessions.$inferSelect;
 export type InsertMentoringSession = z.infer<typeof insertMentoringSessionSchema>;
+
+export type BillingPeriod = typeof billingPeriods.$inferSelect;
+export type InsertBillingPeriod = z.infer<typeof insertBillingPeriodSchema>;
+
+export type BillingCharge = typeof billingCharges.$inferSelect;
+export type InsertBillingCharge = z.infer<typeof insertBillingChargeSchema>;
+
+export type Payment = typeof payments.$inferSelect;
+export type InsertPayment = z.infer<typeof insertPaymentSchema>;
+
+export type BillingPeriodWithDetails = BillingPeriod & {
+  charges: BillingCharge[];
+  payments: Payment[];
+  subtotalMinor: number;
+  paidMinor: number;
+  outstandingMinor: number;
+};
 
 export type Deliverable = typeof deliverables.$inferSelect;
 export type InsertDeliverable = z.infer<typeof insertDeliverableSchema>;
