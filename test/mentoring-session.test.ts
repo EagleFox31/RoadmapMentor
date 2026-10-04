@@ -38,6 +38,8 @@ test("additional session can exist outside the included package count", () => {
     startsAt: "2026-10-14T18:00:00+01:00",
     endsAt: "2026-10-14T19:00:00+01:00",
     isAdditional: true,
+    additionalPriceMinor: 10000,
+    additionalPriceCurrency: "XAF",
   });
 
   assert.equal(parsed.isAdditional, true);
