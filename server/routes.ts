@@ -528,7 +528,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.user!.id,
         req.user!.role,
       );
-      res.json(memberships);
+
+      const detailedMemberships = await Promise.all(
+        memberships.map(async (membership) => {
+          const [roadmap, mentor, learner] = await Promise.all([
+            storage.getRoadmap(membership.roadmapId),
+            storage.getUser(membership.mentorId),
+            storage.getUser(membership.learnerId),
+          ]);
+
+          return {
+            ...membership,
+            roadmap: roadmap
+              ? { id: roadmap.id, title: roadmap.title }
+              : null,
+            mentor: mentor
+              ? { id: mentor.id, fullName: mentor.fullName, email: mentor.email }
+              : null,
+            learner: learner
+              ? { id: learner.id, fullName: learner.fullName, email: learner.email }
+              : null,
+          };
+        }),
+      );
+
+      res.json(detailedMemberships);
     } catch (error) {
       handleError(res, error);
     }
