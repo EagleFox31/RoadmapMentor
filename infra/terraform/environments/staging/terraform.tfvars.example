@@ -1,0 +1,16 @@
+provider_name      = "aws"
+deployment_region  = "eu-central-1"
+hostname           = "staging-roadmap.example.com"
+network_cidr       = "10.42.10.0/24"
+allowed_http_cidrs = ["0.0.0.0/0"]
+
+compute_vcpu         = 2
+compute_memory_mib   = 2048
+compute_architecture = "amd64"
+data_volume_gib      = 20
+
+common_tags = {
+  Owner       = "replace-me"
+  CostCenter  = "pilot"
+  Environment = "staging"
+}
