@@ -1,5 +1,6 @@
 // From javascript_database blueprint - using DatabaseStorage
 import { db } from "./db";
+import { hasRoadmapAccess } from "./domain/roadmapAccess";
 import { eq, and, desc, inArray, isNull, ne } from "drizzle-orm";
 import {
   users,
@@ -223,28 +224,13 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
 
-    if (
-      role === "MENTOR" &&
-      (roadmap.createdByUserId === userId || roadmap.isLegacy)
-    ) {
-      return true;
-    }
-
-    const membership = await db
-      .select({ id: mentorships.id })
-      .from(mentorships)
-      .where(
-        and(
-          eq(mentorships.roadmapId, roadmapId),
-          role === "MENTOR"
-            ? eq(mentorships.mentorId, userId)
-            : eq(mentorships.learnerId, userId),
-          ne(mentorships.status, "CANCELLED"),
-        ),
-      )
-      .limit(1);
-
-    return membership.length > 0;
+    const roadmapMemberships = await this.getMentorshipsByRoadmap(roadmapId);
+    return hasRoadmapAccess({
+      userId,
+      role,
+      roadmap,
+      memberships: roadmapMemberships,
+    });
   }
 
   // Week methods
