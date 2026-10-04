@@ -86,24 +86,6 @@ export const mentoringPackageScopeItems = pgTable("mentoring_package_scope_items
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const changeRequests = pgTable("change_requests", {
-  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-  mentorshipId: integer("mentorship_id").notNull().references(() => mentorships.id, { onDelete: "cascade" }),
-  packageId: integer("package_id").references(() => mentoringPackages.id, { onDelete: "set null" }),
-  requestedByUserId: integer("requested_by_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  status: changeRequestStatusEnum("status").notNull().default("PROPOSED"),
-  quotedPriceMinor: integer("quoted_price_minor"),
-  currency: text("currency").notNull().default("XAF"),
-  linkedTaskId: integer("linked_task_id").references(() => tasks.id, { onDelete: "set null" }),
-  quotedAt: timestamp("quoted_at"),
-  acceptedAt: timestamp("accepted_at"),
-  rejectedAt: timestamp("rejected_at"),
-  deliveredAt: timestamp("delivered_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
 
 // Weeks table
 export const weeks = pgTable("weeks", {
@@ -137,6 +119,25 @@ export const tasks = pgTable("tasks", {
   orderIndex: integer("order_index").notNull().default(0),
   isOptional: boolean("is_optional").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const changeRequests = pgTable("change_requests", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  mentorshipId: integer("mentorship_id").notNull().references(() => mentorships.id, { onDelete: "cascade" }),
+  packageId: integer("package_id").references(() => mentoringPackages.id, { onDelete: "set null" }),
+  requestedByUserId: integer("requested_by_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  status: changeRequestStatusEnum("status").notNull().default("PROPOSED"),
+  quotedPriceMinor: integer("quoted_price_minor"),
+  currency: text("currency").notNull().default("XAF"),
+  linkedTaskId: integer("linked_task_id").references(() => tasks.id, { onDelete: "set null" }),
+  quotedAt: timestamp("quoted_at"),
+  acceptedAt: timestamp("accepted_at"),
+  rejectedAt: timestamp("rejected_at"),
+  deliveredAt: timestamp("delivered_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 // Deliverables table
