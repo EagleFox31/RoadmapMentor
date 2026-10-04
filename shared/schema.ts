@@ -445,7 +445,7 @@ export const insertChangeRequestSchema = createInsertSchema(changeRequests).omit
 });
 
 export const createChangeRequestSchema = z.object({
-  packageId: z.number().int().positive().nullable().optional(),
+  packageId: z.number().int().positive(),
   title: z.string().trim().min(1),
   description: z.string().trim().min(1),
 }).strict();
