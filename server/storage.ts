@@ -174,7 +174,7 @@ export class DatabaseStorage implements IStorage {
       );
 
     membershipRows.forEach(({ roadmap }) => collected.set(roadmap.id, roadmap));
-    return [...collected.values()].sort((a, b) => a.id - b.id);
+    return Array.from(collected.values()).sort((a, b) => a.id - b.id);
   }
 
   async createRoadmap(roadmap: InsertRoadmap): Promise<Roadmap> {
