@@ -113,6 +113,7 @@ No source-code modification should be required between machines; differences bel
 | `JWT_SECRET` | Yes outside development | JWT signing/verification secret |
 | `PORT` | No | HTTP port; defaults to `5000` |
 | `APP_URL` | No | Public application URL used in notification links |
+| `AI_API_KEY`, `AI_BASE_URL`, `AI_MODEL` | No | Any OpenAI-compatible provider and model (e.g. DeepSeek: `https://api.deepseek.com`, `deepseek-chat`); `AI_API_KEY` takes priority, `AI_MODEL` defaults to `gpt-4o` |
 | `OPENAI_API_KEY` | For direct AI use | Preferred OpenAI credential outside Replit |
 | `AI_INTEGRATIONS_OPENAI_API_KEY` | Replit AI only | Replit AI integration credential |
 | `AI_INTEGRATIONS_OPENAI_BASE_URL` | Replit AI only | Replit AI integration endpoint |
@@ -145,6 +146,16 @@ The migration is intentionally idempotent. It:
 - can be run again after a partial deployment without duplicating memberships.
 
 New roadmaps do **not** inherit that global compatibility behavior. Their access is restricted to the roadmap creator and explicit, non-cancelled mentorships.
+
+## Tests
+
+```bash
+npm test                      # unit tests (no database required)
+npm run test:integration      # API journey mentor / learner (needs a running dev server)
+python test/e2e/mentor-learner.e2e.py   # browser journey (Playwright for Python)
+```
+
+Integration and e2e tests need `TEST_BASE_URL` (for example `http://localhost:5000`) and a server started with `NODE_ENV=development` on a **disposable** database: they create users and a roadmap, and use the development-only `/api/auth/create-test-users` route. e2e also needs `pip install playwright && playwright install chromium`.
 
 ## Container deployment
 

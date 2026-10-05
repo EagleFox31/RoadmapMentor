@@ -323,8 +323,18 @@ export default function RoadmapPage() {
   const handleSaveAIRoadmap = async (generatedWeeks: any[]) => {
     // Transform AI-generated weeks to match backend schema
     // AI returns "weekNumber" but backend expects "number"
+    // Target roadmap: the one shared by the weeks already displayed. When none can be
+    // inferred, the server resolves it (single accessible roadmap) or returns an explicit error.
+    const knownRoadmapIds = Array.from(
+      new Set(weeks.map((w) => w.roadmapId).filter((id): id is number => typeof id === "number")),
+    );
+    const targetRoadmapId = knownRoadmapIds.length === 1 ? knownRoadmapIds[0] : undefined;
+
     const transformedWeeks = generatedWeeks.map((week) => ({
       ...week,
+      ...(targetRoadmapId !== undefined && week.roadmapId === undefined
+        ? { roadmapId: targetRoadmapId }
+        : {}),
       number: week.weekNumber, // Map weekNumber -> number
       objectives: week.objectives.map((obj: any, index: number) => ({
         ...obj,

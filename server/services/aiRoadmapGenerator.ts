@@ -1,22 +1,21 @@
 import OpenAI from "openai";
 import pRetry, { AbortError } from "p-retry";
 import { z } from "zod";
+import { resolveAiConfig } from "./aiConfig";
 
-// Check if user provided their own OpenAI API key
-// If OPENAI_API_KEY exists, use it directly (user's own key)
-// Otherwise, use Replit AI Integrations (billed to Replit credits)
-const useOwnApiKey = !!process.env.OPENAI_API_KEY;
+// Provider, base URL and model come from the environment (see aiConfig.ts).
+const aiConfig = resolveAiConfig();
 
-console.log("[AI Service] OpenAI configuration:", {
-  useOwnApiKey,
-  hasOwnKey: !!process.env.OPENAI_API_KEY,
-  hasReplitKey: !!process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-  hasReplitBaseURL: !!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+console.log("[AI Service] configuration:", {
+  source: aiConfig.source,
+  baseURL: aiConfig.baseURL,
+  model: aiConfig.model,
+  hasApiKey: !!aiConfig.apiKey,
 });
 
 const openai = new OpenAI({
-  baseURL: useOwnApiKey ? "https://api.openai.com/v1" : process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: useOwnApiKey ? process.env.OPENAI_API_KEY : process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+  baseURL: aiConfig.baseURL,
+  apiKey: aiConfig.apiKey,
 });
 
 // Helper function to check if error is rate limit or quota violation
@@ -37,7 +36,8 @@ const taskSchema = z.object({
 });
 
 const objectiveSchema = z.object({
-  type: z.enum(["CONCEPT", "ALGO", "PROJECT", "OTHER"]),
+  // Providers may invent labels (e.g. "EXERCISE"): degrade to OTHER instead of failing the whole generation.
+  type: z.enum(["CONCEPT", "ALGO", "PROJECT", "OTHER"]).catch("OTHER"),
   title: z.string().trim().min(1, "Objective title cannot be empty"),
   description: z.string().trim().default(""),
   tasks: z.array(taskSchema).min(1, "At least one task required"),
@@ -60,7 +60,7 @@ const resourceSchema = z.object({
       return false;
     }
   }, { message: "Invalid URL format" }),
-  resourceType: z.enum(["DOC", "VIDEO", "COURSE", "ARTICLE", "OTHER"]).default("OTHER"),
+  resourceType: z.enum(["DOC", "VIDEO", "COURSE", "ARTICLE", "OTHER"]).catch("OTHER"),
 });
 
 const generatedWeekSchema = z.object({
@@ -231,7 +231,7 @@ Structure JSON attendue:
       async () => {
         try {
           const completion = await openai.chat.completions.create({
-            model: "gpt-4o", // Using GPT-4o for reliable JSON mode
+            model: aiConfig.model,
             messages: [
               {
                 role: "system",
@@ -243,7 +243,7 @@ Structure JSON attendue:
               }
             ],
             response_format: { type: "json_object" },
-            max_completion_tokens: 8192,
+            max_tokens: 8192, // accepted by OpenAI and compatible providers (DeepSeek)
           });
 
           console.log("OpenAI response received:", {

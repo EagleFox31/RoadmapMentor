@@ -59,5 +59,7 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 (async () => {
+  // Set here (not in the npm script) so `npm run dev` also works on Windows cmd.
+  process.env.NODE_ENV ??= "development";
   await runApp(setupVite);
 })();
