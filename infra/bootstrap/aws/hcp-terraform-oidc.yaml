@@ -1,0 +1,131 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Bootstrap AWS trust for HCP Terraform dynamic credentials used by RoadmapMentor.
+  Creates narrowly scoped plan/apply IAM roles and can optionally create
+  the HCP Terraform OIDC provider when it does not already exist.
+
+Parameters:
+  CreateOidcProvider:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Set to true only if app.terraform.io is not already an IAM OIDC provider.
+
+  HcpTerraformOrganization:
+    Type: String
+    Default: trigenys-group
+    MinLength: 1
+
+  HcpTerraformProject:
+    Type: String
+    Default: RoadmapMentor
+    MinLength: 1
+
+  HcpTerraformWorkspace:
+    Type: String
+    Default: roadmapmentor-production
+    MinLength: 1
+
+  HcpTerraformAudience:
+    Type: String
+    Default: aws.workload.identity
+    MinLength: 1
+
+Conditions:
+  ShouldCreateOidcProvider: !Equals [!Ref CreateOidcProvider, "true"]
+
+Resources:
+  HcpTerraformOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: ShouldCreateOidcProvider
+    Properties:
+      Url: https://app.terraform.io
+      ClientIdList:
+        - !Ref HcpTerraformAudience
+      Tags:
+        - Key: ManagedBy
+          Value: cloudformation
+        - Key: Product
+          Value: RoadmapMentor
+        - Key: Purpose
+          Value: hcp-terraform-bootstrap
+
+  HcpTerraformPlanRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: roadmapmentor-tfc-plan
+      Description: HCP Terraform plan-phase identity for RoadmapMentor production.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - ShouldCreateOidcProvider
+                - !Ref HcpTerraformOidcProvider
+                - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/app.terraform.io"
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                app.terraform.io:aud: !Ref HcpTerraformAudience
+                app.terraform.io:sub: !Sub "organization:${HcpTerraformOrganization}:project:${HcpTerraformProject}:workspace:${HcpTerraformWorkspace}:run_phase:plan"
+      Tags:
+        - Key: ManagedBy
+          Value: cloudformation
+        - Key: Product
+          Value: RoadmapMentor
+        - Key: Environment
+          Value: production
+        - Key: HcpTerraformPhase
+          Value: plan
+
+  HcpTerraformApplyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: roadmapmentor-tfc-apply
+      Description: HCP Terraform apply-phase identity for RoadmapMentor production.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - ShouldCreateOidcProvider
+                - !Ref HcpTerraformOidcProvider
+                - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/app.terraform.io"
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                app.terraform.io:aud: !Ref HcpTerraformAudience
+                app.terraform.io:sub: !Sub "organization:${HcpTerraformOrganization}:project:${HcpTerraformProject}:workspace:${HcpTerraformWorkspace}:run_phase:apply"
+      Tags:
+        - Key: ManagedBy
+          Value: cloudformation
+        - Key: Product
+          Value: RoadmapMentor
+        - Key: Environment
+          Value: production
+        - Key: HcpTerraformPhase
+          Value: apply
+
+Outputs:
+  OidcProviderArn:
+    Description: ARN of the HCP Terraform OIDC provider used by the roles.
+    Value: !If
+      - ShouldCreateOidcProvider
+      - !Ref HcpTerraformOidcProvider
+      - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/app.terraform.io"
+
+  PlanRoleArn:
+    Description: Set this as TFC_AWS_PLAN_ROLE_ARN in HCP Terraform.
+    Value: !GetAtt HcpTerraformPlanRole.Arn
+
+  ApplyRoleArn:
+    Description: Set this as TFC_AWS_APPLY_ROLE_ARN in HCP Terraform.
+    Value: !GetAtt HcpTerraformApplyRole.Arn
+
+  ProviderAuthVariable:
+    Description: Environment variable name that enables HCP Terraform AWS dynamic credentials.
+    Value: TFC_AWS_PROVIDER_AUTH
