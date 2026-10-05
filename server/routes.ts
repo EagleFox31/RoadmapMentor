@@ -2215,6 +2215,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.user!.id,
         req.user!.role,
       );
+      if (req.query.roadmapId !== undefined) {
+        const roadmapId = Number(req.query.roadmapId);
+        if (!Number.isInteger(roadmapId) || roadmapId <= 0) {
+          return res.status(400).json({ error: "roadmapId must be a positive integer" });
+        }
+        if (!(await storage.userCanAccessRoadmap(req.user!.id, req.user!.role, roadmapId))) {
+          return res.status(404).json({ error: "Roadmap not found" });
+        }
+        weeks = weeks.filter((week) => week.roadmapId === roadmapId);
+      }
       let totalTasks = 0;
       let completedTasks = 0;
 
