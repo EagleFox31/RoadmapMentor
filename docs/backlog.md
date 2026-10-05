@@ -25,8 +25,11 @@ Ce backlog transforme l'analyse du dépôt en travaux ordonnés et vérifiables.
 | RM-010 | P1 | Domain | L | Réduire les requêtes N+1 et garantir l'unicité de la progression | RM-006 |
 | RM-011 | P1 | Platform | M | Rendre les tâches planifiées sûres en multi-instance | — |
 | RM-012 | P1 | Platform | L | Ajouter un stockage objet partagé pour la production | — |
+| RM-018 | P1 | Mentoring OS | L | Ajouter des labs guidés et leur workflow de validation | RM-004, RM-006 |
+| RM-019 | P1 | Mentoring OS | M | Lire les vidéos et ressources compatibles dans l'application | RM-004 |
 | RM-013 | P2 | Foundation | L | Découper les monolithes `routes.ts` et `storage.ts` | RM-007 |
 | RM-014 | P2 | Release | M | Réduire le poids du frontend et des médias | — |
+| RM-020 | P1 | Mentoring OS | M | Inviter un apprenant par e-mail avec inscription par lien | RM-002, RM-003, RM-006 |
 | RM-015 | P2 | Foundation | S | Nettoyer les dépendances et avertissements d'outillage | RM-005 |
 | RM-016 | P2 | Platform | L | Implémenter réellement l'infrastructure cloud Terraform | RM-006, RM-012 |
 | RM-017 | P2 | Release | M | Ajouter observabilité, alertes et procédures d'exploitation | RM-011, RM-016 |
@@ -63,6 +66,8 @@ Le formulaire envoie le champ `role`, alors que `publicRegistrationSchema` l'int
 
 ### RM-002 — Ajouter un parcours contrôlé de création des mentors
 
+> **Statut : implémenté, en attente de revue/PR — 2026-10-05.** Branche `feat/rm-002-mentor-bootstrap` (worktree `../roadmapmentor-rm002`, base `fix/rm-005-prod-deps`, non poussée). Mécanisme : commande opérateur `npm run mentor:create` (sans changement de schéma), idempotente, refuse de promouvoir un apprenant, mot de passe ≥ 12 caractères (généré et affiché une fois, ou `MENTOR_PASSWORD`), ligne `[audit]` à chaque création. Vérifié sur Postgres jetable : création, rejeu sans effet, conflit apprenant refusé, connexion du mentor créé, inscription publique avec `role` rejetée (400). Tests unitaires de la politique ; documentation opérateur dans `docs/deployment.md` et README. Limites : la trace d'audit est une ligne de log (pas de table dédiée) ; pas de création de mentor depuis l'interface (hors périmètre, invitation éventuelle à étudier avec RM-003).
+
 **Constat**
 
 La création de mentors existe uniquement dans la route de données de test, désactivée en production. Aucun parcours sécurisé ne permet de provisionner un vrai mentor.
@@ -81,6 +86,8 @@ La création de mentors existe uniquement dans la route de données de test, dé
 - Le parcours possède des tests d'autorisation et une documentation opérateur.
 
 ### RM-003 — Fournir l'interface de gestion des roadmaps et mentorats
+
+> **Statut : implémenté, en attente de revue/PR — 2026-10-05.** Branche `feat/rm-003-mentoring-ui` (worktree `../roadmapmentor-rm003`, base `feat/rm-002-mentor-bootstrap`, non poussée). Livré : page `/roadmaps` (créer/consulter ses roadmaps, mentorats avec rôles et statuts, rattachement d'un apprenant par e-mail ; états chargement, vide, erreur, conflit « déjà rattaché »), bouton de navigation, route `GET /api/learners/lookup` (mentor uniquement, e-mail exact, comptes LEARNER seulement, 404 uniforme). Vérifié sur Postgres jetable : 18 tests d'intégration (dont 6 nouveaux : association d'un non-apprenant refusée, apprenant/non-membre sans accès), e2e UI (7 étapes) et ancien e2e (7 étapes) verts, `tsc`/build OK. À noter : la recherche par e-mail confirme l'existence d'un compte apprenant à un mentor (limiter le débit avec RM-009) ; pas de système d'invitation pour un apprenant non inscrit ; `routes.ts` est aussi modifié par le travail en cours dans le dossier principal (conflit de fusion possible, zones distinctes).
 
 **Constat**
 
@@ -143,6 +150,8 @@ Le backend isole plusieurs roadmaps, mais `/roadmap` charge toutes les semaines 
 - Le typage, les tests, le build et les parcours critiques restent valides après mise à jour.
 
 ### RM-006 — Introduire des migrations de base de données versionnées
+
+> **Statut : implémenté, en attente de revue/PR — 2026-10-05.** Branche `feat/rm-006-migrations` (worktree `../roadmapmentor-rm006`, base `fix/rm-005-prod-deps`, non poussée). Livré : migration initiale (`migrations/`), scripts `db:generate` / `db:migrate`, étape `migrate` de compose, gate CI `migrations` (dérive schéma/migrations, base vide, idempotence), docs de déploiement. Vérifié sur Postgres jetable : base vide = 19 tables, rejeu sans effet, base créée par `push` refusée sans `MIGRATE_BASELINE_EXISTING=true` puis baseline OK. `shared/schema.ts` non modifié : tout changement de schéma en cours (ex. labs RM-018) doit produire sa propre migration via `npm run db:generate`. Non vérifié : exécution réelle du job CI GitHub.
 
 **Constat**
 
@@ -286,6 +295,102 @@ Le stockage sur disque fonctionne sur un hôte unique. Il ne convient pas à plu
 - Les objets privés restent réservés à leur propriétaire autorisé.
 - Le changement de fournisseur ne modifie pas les URL persistées en base.
 
+### RM-018 — Ajouter des labs guidés et leur workflow de validation
+
+**Statut : en cours — première tranche verticale implémentée**
+
+**Constat**
+
+Le projet ne possède pas de modèle de lab. Les exercices sont actuellement représentés par des objectifs `ALGO`, des tâches et une capture d'écran de réussite. Cette structure ne permet pas de présenter une pratique guidée complète, de suivre une soumission ni de demander des corrections.
+
+**Travail**
+
+- Ajouter une entité `labs` rattachée à une semaine, avec une extension future possible vers un objectif précis.
+- Stocker titre, objectif andragogique, consignes, difficulté, durée estimée et ordre d'affichage.
+- Permettre de rattacher un dépôt de départ et une URL de lancement pour les sujets qui demandent un serveur, une base de données ou plusieurs services.
+- Exécuter les premiers labs Python directement dans le navigateur avec `react-py`/Pyodide, un code de départ et des assertions automatisées.
+- Ajouter les soumissions apprenant avec les statuts `IN_PROGRESS`, `SUBMITTED`, `APPROVED` et `CHANGES_REQUESTED`. L'absence de soumission représente `NOT_STARTED`.
+- Permettre au mentor de commenter, valider ou demander des corrections.
+- Étendre la génération IA pour proposer un brouillon de lab que le mentor doit réviser avant publication.
+
+**Rôle andragogique**
+
+- Utiliser un lab juste après l'introduction d'une notion pour vérifier que l'apprenant sait l'appliquer sans attendre le livrable final.
+- Privilégier les cas courts et observables : syntaxe, algorithme, transformation de données, appel d'API, requête, débogage ou remédiation ciblée.
+- Ne pas remplacer une ressource passive par un lab : la ressource sert à comprendre, la tâche précise le travail, le lab fait pratiquer et le livrable combine plusieurs acquis dans un projet.
+- Viser par semaine un ou deux micro-labs de 15 à 30 minutes, puis au besoin un lab principal de 45 à 90 minutes avant le livrable.
+- Utiliser la sandbox Python intégrée pour les exercices autonomes. Utiliser un dépôt ou un environnement externe pour FastAPI, PostgreSQL et les exercices multi-services.
+
+**Découpage de livraison**
+
+1. **Tranche 1 — en cours** : modèle `labs`/`lab_submissions`, CRUD mentor, publication, affichage hebdomadaire, exécution Python dans le navigateur, sauvegarde et soumission, validation simple par le mentor.
+2. **Tranche 2** : retour mentor rédigé dans l'interface, identité complète de l'apprenant dans la liste des soumissions, historique des tentatives et métriques de progression.
+3. **Tranche 3** : modèles de labs FastAPI/PostgreSQL basés sur des dépôts réutilisables et liens de lancement externes.
+4. **Tranche 4** : génération assistée par IA, prévisualisation mentor et bibliothèque de labs réutilisables.
+
+**Critères d'acceptation**
+
+- Un mentor peut créer, ordonner, modifier et supprimer un lab dans une semaine.
+- Un apprenant peut lire les instructions, modifier et exécuter le code Python, voir le résultat des tests, sauvegarder un brouillon et soumettre sa solution.
+- Le mentor peut approuver la soumission ou demander des corrections avec un commentaire.
+- Les données d'un lab et de ses soumissions respectent les droits de la roadmap et du mentorat.
+- La progression distingue clairement visionnage, tâches, labs et livrable final.
+- Les labs générés par IA restent en brouillon tant qu'un mentor ne les a pas validés.
+
+### RM-019 — Lire les vidéos et ressources compatibles dans l'application
+
+**Constat**
+
+Le type de ressource `VIDEO` existe déjà, mais toutes les ressources s'ouvrent dans un nouvel onglet. Le modèle ne stocke ni fournisseur, ni durée, ni description andragogique, ni caractère obligatoire.
+
+**Travail**
+
+- Étendre les ressources avec description, fournisseur, durée estimée, ordre et caractère obligatoire ou facultatif.
+- Détecter et normaliser côté serveur les URL YouTube et Vimeo prises en charge.
+- Ajouter un lecteur vidéo intégré, responsive et accessible dans le détail de la semaine.
+- Afficher les PDF compatibles dans une visionneuse interne et conserver un lien externe de secours.
+- Afficher les articles et documentations sous forme de fiche avec résumé et ouverture externe.
+- Refuser l'intégration iframe de domaines arbitraires ; utiliser une liste de fournisseurs autorisés et une politique CSP adaptée.
+- Ajouter une action explicite « Marquer comme vue » ; ne pas prétendre qu'une vidéo est terminée sans signal fiable du lecteur.
+- Vérifier les liens proposés par l'IA et laisser le mentor les approuver avant publication.
+
+**Critères d'acceptation**
+
+- Une vidéo YouTube ou Vimeo valide peut être regardée sans quitter la semaine.
+- Une ressource non intégrable reste accessible dans un nouvel onglet avec une indication claire.
+- Une URL inconnue ne peut jamais devenir une iframe arbitraire.
+- Le lecteur fonctionne sur mobile, au clavier et en plein écran.
+- L'apprenant voit la durée, le statut obligatoire ou facultatif et son état de consultation.
+- Un lien invalide ou supprimé est signalé au mentor sans casser l'affichage de la semaine.
+
+### RM-020 — Inviter un apprenant par e-mail avec inscription par lien
+
+> **Statut : à faire — conçu le 2026-10-05, demandé suite à RM-003.**
+
+**Constat**
+
+Depuis RM-003, un mentor ne peut rattacher qu'un apprenant déjà inscrit. Un apprenant inconnu doit d'abord créer son compte lui-même.
+
+**Travail**
+
+- Table `invitations` (migration RM-006) : e-mail, roadmap, mentor, hash du jeton (jamais le jeton en clair), expiration, usage unique, statut.
+- Le mentor saisit un e-mail non inscrit sur `/roadmaps` : envoi d'un lien via `emailService` (lien `APP_URL/invite/<jeton>`).
+- Page publique d'acceptation : e-mail verrouillé, saisie du nom et du mot de passe uniquement ; création du compte `LEARNER` et du mentorat dans une transaction, jeton consommé.
+- Invitation expirée, déjà utilisée ou révoquée : message clair ; le mentor peut renvoyer ou révoquer.
+- Si l'e-mail est déjà un apprenant : rattachement direct (comportement RM-003).
+
+**Critères d'acceptation**
+
+- Un apprenant invité arrive connecté sur la roadmap après avoir renseigné uniquement nom et mot de passe.
+- Le jeton est à usage unique, expire, et est stocké haché.
+- L'invitation ne peut jamais créer un compte MENTOR.
+- Limitation de débit sur la création d'invitation et l'acceptation (avec RM-009).
+
+**Conception / ordre**
+
+- Code dans un module dédié (`server/routes/invitations.ts` + service), pas dans le monolithe `routes.ts` (cf. RM-013).
+- Dépend de la fusion de RM-006 (migrations) : branche à créer après intégration de `feat/rm-006-migrations`.
+
 ## P2 — Maintenabilité et passage à l'échelle
 
 ### RM-013 — Découper les monolithes backend
@@ -381,9 +486,10 @@ Les modules Terraform actuels décrivent des contrats typés, mais ne créent en
 
 1. **Stabilisation immédiate** : RM-001, RM-005 et RM-006.
 2. **Onboarding utilisable** : RM-002, RM-003 et RM-004.
-3. **Bêta fiable** : RM-007, RM-008, RM-009 et RM-010.
-4. **Exploitation multi-instance** : RM-011 et RM-012.
-5. **Industrialisation** : RM-013 à RM-017.
+3. **Expérience andragogique** : RM-018 et RM-019.
+4. **Bêta fiable** : RM-007, RM-008, RM-009 et RM-010.
+5. **Exploitation multi-instance** : RM-011 et RM-012.
+6. **Industrialisation** : RM-013 à RM-017.
 
 ## Définition de terminé commune
 
