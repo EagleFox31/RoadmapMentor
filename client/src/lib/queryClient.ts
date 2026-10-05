@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { getAuthToken, removeAuthToken } from "@/lib/auth";
 
 export function formatErrorBody(text: string): string {
   try {
@@ -19,7 +20,18 @@ export function formatErrorBody(text: string): string {
   return text;
 }
 
+// Un 401 sur une session ouverte (jeton expiré, compte supprimé, rôle changé) ferme la session
+// locale et ramène à la connexion. Les 401 de /api/auth/login sont de simples identifiants invalides.
+function endSessionOnUnauthorized(res: Response) {
+  if (res.status !== 401 || !getAuthToken()) return;
+  const path = new URL(res.url, window.location.origin).pathname;
+  if (path === "/api/auth/login" || path === "/api/auth/register") return;
+  removeAuthToken();
+  window.location.href = "/";
+}
+
 async function throwIfResNotOk(res: Response) {
+  endSessionOnUnauthorized(res);
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${formatErrorBody(text)}`);

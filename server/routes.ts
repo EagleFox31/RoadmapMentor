@@ -426,7 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const isValid = await comparePassword(password, user.password);
-      if (!isValid) {
+      if (!isValid || user.disabledAt) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
@@ -759,6 +759,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const mentorship = await storage.createMentorship(mentorshipData);
         res.status(201).json(mentorship);
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  // Exact-email lookup used by mentors to attach a learner to a roadmap.
+  // Only LEARNER accounts are returned; any other outcome is an indistinguishable 404.
+  app.get(
+    "/api/learners/lookup",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const email =
+          typeof req.query.email === "string" ? req.query.email.trim() : "";
+        if (!email || !email.includes("@")) {
+          return res.status(400).json({ error: "A valid email is required" });
+        }
+
+        const user = (await storage.getUserByEmail(email)) ?? (await storage.getUserByEmail(email.toLowerCase()));
+        if (!user || user.role !== "LEARNER") {
+          return res.status(404).json({ error: "Learner not found" });
+        }
+
+        res.json({ id: user.id, fullName: user.fullName, email: user.email });
       } catch (error) {
         handleError(res, error);
       }
@@ -2189,6 +2215,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.user!.id,
         req.user!.role,
       );
+      if (req.query.roadmapId !== undefined) {
+        const roadmapId = Number(req.query.roadmapId);
+        if (!Number.isInteger(roadmapId) || roadmapId <= 0) {
+          return res.status(400).json({ error: "roadmapId must be a positive integer" });
+        }
+        if (!(await storage.userCanAccessRoadmap(req.user!.id, req.user!.role, roadmapId))) {
+          return res.status(404).json({ error: "Roadmap not found" });
+        }
+        weeks = weeks.filter((week) => week.roadmapId === roadmapId);
+      }
       let totalTasks = 0;
       let completedTasks = 0;
 
