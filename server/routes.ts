@@ -765,6 +765,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  // Exact-email lookup used by mentors to attach a learner to a roadmap.
+  // Only LEARNER accounts are returned; any other outcome is an indistinguishable 404.
+  app.get(
+    "/api/learners/lookup",
+    authMiddleware,
+    requireMentor,
+    async (req: AuthRequest, res) => {
+      try {
+        const email =
+          typeof req.query.email === "string" ? req.query.email.trim() : "";
+        if (!email || !email.includes("@")) {
+          return res.status(400).json({ error: "A valid email is required" });
+        }
+
+        const user = (await storage.getUserByEmail(email)) ?? (await storage.getUserByEmail(email.toLowerCase()));
+        if (!user || user.role !== "LEARNER") {
+          return res.status(404).json({ error: "Learner not found" });
+        }
+
+        res.json({ id: user.id, fullName: user.fullName, email: user.email });
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
   // ========== MENTORING PACKAGE / SCOPE ROUTES ==========
 
   app.get(

@@ -7,6 +7,7 @@ import AuthPage from "@/pages/auth-page";
 import RoadmapPage from "@/pages/roadmap-page";
 import PreferencesPage from "@/pages/preferences";
 import MentoringPage from "@/pages/mentoring";
+import RoadmapsPage from "@/pages/roadmaps";
 import NotFound from "@/pages/not-found";
 import { isAuthenticated } from "@/lib/auth";
 import mentorBg from "./assets/mentor-bg.jpg";
@@ -39,6 +40,9 @@ function Router() {
       </Route>
       <Route path="/preferences">
         <ProtectedRoute component={PreferencesPage} />
+      </Route>
+      <Route path="/roadmaps">
+        <ProtectedRoute component={RoadmapsPage} />
       </Route>
       <Route path="/mentoring">
         <ProtectedRoute component={MentoringPage} />
