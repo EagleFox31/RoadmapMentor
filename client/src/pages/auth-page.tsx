@@ -18,7 +18,6 @@ export default function AuthPage() {
     fullName: "",
     email: "",
     password: "",
-    role: "LEARNER" as "MENTOR" | "LEARNER",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -157,24 +156,6 @@ export default function AuthPage() {
                 data-testid="input-password"
               />
             </div>
-
-            {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="role" className="text-white text-sm font-medium">
-                  Rôle
-                </Label>
-                <select
-                  id="role"
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as "MENTOR" | "LEARNER" })}
-                  className="w-full bg-white/10 border border-white/20 text-white rounded-lg px-3 py-2 focus:bg-white/15 transition-all"
-                  data-testid="select-role"
-                >
-                  <option value="LEARNER" className="bg-gray-800">Apprenant</option>
-                  <option value="MENTOR" className="bg-gray-800">Mentor</option>
-                </select>
-              </div>
-            )}
 
             <Button
               type="submit"

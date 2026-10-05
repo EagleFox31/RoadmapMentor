@@ -30,6 +30,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Helper to send errors
   const handleError = (res: any, error: any) => {
+    if (error?.name === "ZodError") {
+      return res.status(400).json({
+        error: "Validation failed",
+        issues: error.issues,
+      });
+    }
     console.error("API Error:", error);
     res.status(500).json({ error: error.message || "Internal server error" });
   };
@@ -42,15 +48,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Transitional compatibility: pre-domain weeks stay reachable until the
     // explicit legacy migration attaches them to the legacy roadmap.
+    // Learners only see weeks validated by a mentor (same rule as GET /api/weeks).
+    const hiddenFromLearner =
+      req.user!.role === "LEARNER" && !week.isValidatedByMentor;
+
     if (week.roadmapId === null) {
-      return { week, allowed: true };
+      return { week, allowed: !hiddenFromLearner };
     }
 
-    const allowed = await storage.userCanAccessRoadmap(
-      req.user!.id,
-      req.user!.role,
-      week.roadmapId,
-    );
+    const allowed =
+      !hiddenFromLearner &&
+      (await storage.userCanAccessRoadmap(
+        req.user!.id,
+        req.user!.role,
+        week.roadmapId,
+      ));
     return { week, allowed };
   };
 

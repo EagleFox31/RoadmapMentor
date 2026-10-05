@@ -93,7 +93,8 @@ export default async function runApp(
   server.listen({
     port,
     host: "0.0.0.0",
-    reusePort: true,
+    // SO_REUSEPORT is not available on Windows (listen fails with ENOTSUP).
+    ...(process.platform === "win32" ? {} : { reusePort: true }),
   }, () => {
     log(`serving on port ${port}`);
   });

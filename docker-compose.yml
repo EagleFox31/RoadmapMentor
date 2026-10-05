@@ -19,7 +19,6 @@ services:
   db-proxy:
     image: ghcr.io/neondatabase/wsproxy:latest
     environment:
-      APPEND_PORT: "postgres:5432"
       ALLOW_ADDR_REGEX: ".*"
       LOG_TRAFFIC: "false"
       LOG_CONN_INFO: "false"
