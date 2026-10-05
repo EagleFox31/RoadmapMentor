@@ -15,6 +15,13 @@
       "when": 1791207861774,
       "tag": "0001_user-disabled-at",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791210408406,
+      "tag": "0002_progress-unique-and-indexes",
+      "breakpoints": true
     }
   ]
 }

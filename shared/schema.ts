@@ -1,5 +1,5 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, boolean, timestamp, pgEnum, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, boolean, timestamp, pgEnum, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -130,7 +130,9 @@ export const objectives = pgTable("objectives", {
   description: text("description"),
   orderIndex: integer("order_index").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  byWeek: index("objectives_week_id_idx").on(table.weekId),
+}));
 
 // Tasks table
 export const tasks = pgTable("tasks", {
@@ -140,7 +142,9 @@ export const tasks = pgTable("tasks", {
   orderIndex: integer("order_index").notNull().default(0),
   isOptional: boolean("is_optional").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  byObjective: index("tasks_objective_id_idx").on(table.objectiveId),
+}));
 
 export const changeRequests = pgTable("change_requests", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -244,7 +248,9 @@ export const deliverables = pgTable("deliverables", {
   description: text("description"),
   instructions: text("instructions"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  byWeek: index("deliverables_week_id_idx").on(table.weekId),
+}));
 
 // Resources table
 export const resources = pgTable("resources", {
@@ -254,7 +260,9 @@ export const resources = pgTable("resources", {
   url: text("url").notNull(),
   resourceType: resourceTypeEnum("resource_type").notNull().default("OTHER"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  byWeek: index("resources_week_id_idx").on(table.weekId),
+}));
 
 // Task Progress table (junction table for learner progress)
 export const taskProgress = pgTable("task_progress", {
@@ -265,7 +273,10 @@ export const taskProgress = pgTable("task_progress", {
   screenshotUrl: text("screenshot_url"),
   doneAt: timestamp("done_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  uniqueTaskLearner: uniqueIndex("task_progress_task_learner_unique").on(table.taskId, table.learnerId),
+  byLearner: index("task_progress_learner_id_idx").on(table.learnerId),
+}));
 
 // Week Comments table
 export const weekComments = pgTable("week_comments", {
@@ -274,7 +285,9 @@ export const weekComments = pgTable("week_comments", {
   learnerId: integer("learner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  byWeek: index("week_comments_week_id_idx").on(table.weekId),
+}));
 
 // Email notification preferences
 export const emailNotificationTypeEnum = pgEnum("email_notification_type", [

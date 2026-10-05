@@ -1,7 +1,7 @@
 // From javascript_database blueprint - using DatabaseStorage
 import { db } from "./db";
 import { hasRoadmapAccess } from "./domain/roadmapAccess";
-import { eq, and, desc, inArray, isNull, ne } from "drizzle-orm";
+import { eq, and, desc, inArray, isNull, ne, sql } from "drizzle-orm";
 import {
   users,
   roadmaps,
@@ -62,6 +62,15 @@ import {
   type RoadmapBulkInsert,
   type RoadmapBulkCreateResponse,
 } from "@shared/schema";
+
+export type WeekContents = {
+  objectives: Objective[];
+  tasks: Task[];
+  deliverables: Deliverable[];
+  resources: Resource[];
+  comments: (WeekComment & { learner: User })[];
+  progress: TaskProgressWithLearner[];
+};
 
 export interface IStorage {
   // User methods
@@ -137,6 +146,7 @@ export interface IStorage {
 
   // Task methods
   getTasksByObjective(objectiveId: number): Promise<Task[]>;
+  getWeekContentsByWeekIds(weekIds: number[]): Promise<WeekContents>;
   getTask(id: number): Promise<Task | undefined>;
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: number, task: Partial<InsertTask>): Promise<Task | undefined>;
@@ -879,6 +889,61 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(tasks).where(eq(tasks.objectiveId, objectiveId)).orderBy(tasks.orderIndex);
   }
 
+  // Loads every child row of the given weeks in a fixed number of queries.
+  async getWeekContentsByWeekIds(weekIds: number[]): Promise<WeekContents> {
+    if (weekIds.length === 0) {
+      return { objectives: [], tasks: [], deliverables: [], resources: [], comments: [], progress: [] };
+    }
+
+    const [objectiveRows, deliverableRows, resourceRows, commentRows] = await Promise.all([
+      db.select().from(objectives).where(inArray(objectives.weekId, weekIds)).orderBy(objectives.orderIndex),
+      db.select().from(deliverables).where(inArray(deliverables.weekId, weekIds)),
+      db.select().from(resources).where(inArray(resources.weekId, weekIds)),
+      db
+        .select({ comment: weekComments, learner: users })
+        .from(weekComments)
+        .innerJoin(users, eq(weekComments.learnerId, users.id))
+        .where(inArray(weekComments.weekId, weekIds))
+        .orderBy(desc(weekComments.createdAt)),
+    ]);
+
+    const objectiveIds = objectiveRows.map((objective) => objective.id);
+    const taskRows = objectiveIds.length
+      ? await db.select().from(tasks).where(inArray(tasks.objectiveId, objectiveIds)).orderBy(tasks.orderIndex)
+      : [];
+
+    const taskIds = taskRows.map((task) => task.id);
+    const progressRows = taskIds.length
+      ? await db
+          .select({
+            id: taskProgress.id,
+            taskId: taskProgress.taskId,
+            learnerId: taskProgress.learnerId,
+            isDone: taskProgress.isDone,
+            screenshotUrl: taskProgress.screenshotUrl,
+            doneAt: taskProgress.doneAt,
+            createdAt: taskProgress.createdAt,
+            learner: {
+              id: users.id,
+              fullName: users.fullName,
+              email: users.email,
+            },
+          })
+          .from(taskProgress)
+          .innerJoin(users, eq(taskProgress.learnerId, users.id))
+          .where(inArray(taskProgress.taskId, taskIds))
+      : [];
+
+    return {
+      objectives: objectiveRows,
+      tasks: taskRows,
+      deliverables: deliverableRows,
+      resources: resourceRows,
+      comments: commentRows.map(({ comment, learner }) => ({ ...comment, learner })),
+      progress: progressRows,
+    };
+  }
+
   async getTask(id: number): Promise<Task | undefined> {
     const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
     return task || undefined;
@@ -986,34 +1051,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   async toggleTaskProgress(taskId: number, learnerId: number, screenshotUrl?: string): Promise<TaskProgress> {
-    const existing = await this.getTaskProgress(taskId, learnerId);
-
-    if (existing) {
-      // Toggle the existing progress
-      const [updated] = await db
-        .update(taskProgress)
-        .set({
-          isDone: !existing.isDone,
-          doneAt: !existing.isDone ? new Date() : null,
-          screenshotUrl: screenshotUrl || existing.screenshotUrl,
-        })
-        .where(eq(taskProgress.id, existing.id))
-        .returning();
-      return updated;
-    } else {
-      // Create new progress entry
-      const [created] = await db
-        .insert(taskProgress)
-        .values({
-          taskId,
-          learnerId,
-          isDone: true,
-          doneAt: new Date(),
-          screenshotUrl,
-        })
-        .returning();
-      return created;
-    }
+    // Single atomic upsert on the (task_id, learner_id) unique index: concurrent calls
+    // can neither create duplicates nor lose a toggle.
+    const [row] = await db
+      .insert(taskProgress)
+      .values({
+        taskId,
+        learnerId,
+        isDone: true,
+        doneAt: new Date(),
+        screenshotUrl,
+      })
+      .onConflictDoUpdate({
+        target: [taskProgress.taskId, taskProgress.learnerId],
+        set: {
+          isDone: sql`NOT ${taskProgress.isDone}`,
+          doneAt: sql`CASE WHEN ${taskProgress.isDone} THEN NULL ELSE now() END`,
+          screenshotUrl: sql`COALESCE(${screenshotUrl ?? null}, ${taskProgress.screenshotUrl})`,
+        },
+      })
+      .returning();
+    return row;
   }
 
   // Week Comment methods
