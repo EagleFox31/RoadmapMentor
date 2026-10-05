@@ -62,6 +62,58 @@ jobs:
       - name: Build production image
         run: docker build --target runtime -t roadmapmentor-ci .
 
+  migrations:
+    name: migrations
+    needs: impact
+    if: ${{ contains(fromJSON(needs.impact.outputs.gates), 'migrations') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: roadmapmentor
+          POSTGRES_PASSWORD: roadmapmentor
+          POSTGRES_DB: roadmapmentor
+        options: >-
+          --health-cmd "pg_isready -U roadmapmentor -d roadmapmentor"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      db-proxy:
+        image: ghcr.io/neondatabase/wsproxy:latest
+        env:
+          ALLOW_ADDR_REGEX: ".*"
+        ports:
+          - 5444:80
+    env:
+      DATABASE_URL: postgresql://roadmapmentor:roadmapmentor@postgres:5432/roadmapmentor
+      DATABASE_WS_PROXY: localhost:5444/v1
+      DATABASE_WS_PROXY_INSECURE: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Schema matches committed migrations
+        run: |
+          npx drizzle-kit generate --name ci_drift_check
+          git status --porcelain migrations
+          test -z "$(git status --porcelain migrations)" || { echo "shared/schema.ts changed without a migration: run npm run db:generate"; exit 1; }
+
+      - name: Build an empty database from migrations only
+        run: npm run db:migrate
+
+      - name: Migrations are idempotent
+        run: npm run db:migrate
+
   terraform-checks:
     name: terraform-checks
     needs: impact

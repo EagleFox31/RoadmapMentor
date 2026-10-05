@@ -31,12 +31,17 @@ services:
     build:
       context: .
       target: build
-    command: ["npm", "run", "db:push"]
+    command: ["npm", "run", "db:migrate"]
     environment:
       DATABASE_URL: postgresql://roadmapmentor:roadmapmentor@postgres:5432/roadmapmentor
+      DATABASE_WS_PROXY: db-proxy:80/v1
+      DATABASE_WS_PROXY_INSECURE: "true"
+      MIGRATE_BASELINE_EXISTING: ${MIGRATE_BASELINE_EXISTING:-}
     depends_on:
       postgres:
         condition: service_healthy
+      db-proxy:
+        condition: service_started
     restart: "no"
 
   app:
