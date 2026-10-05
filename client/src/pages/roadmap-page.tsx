@@ -12,6 +12,8 @@ import { ResourceModal } from "@/components/modals/resource-modal";
 import { AIRoadmapModal } from "@/components/modals/ai-roadmap-modal";
 import { Button } from "@/components/ui/button";
 import { Plus, Sparkles } from "lucide-react";
+import { RoadmapSwitcher } from "@/components/roadmap-switcher";
+import { useActiveRoadmap } from "@/lib/active-roadmap";
 import { isMentor, getCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -61,14 +63,28 @@ export default function RoadmapPage() {
   const [targetObjectiveId, setTargetObjectiveId] = useState<number | null>(null);
 
   // Fetch all weeks with details
-  const { data: weeks = [], isLoading } = useQuery<WeekWithDetails[]>({
-    queryKey: ["/api/weeks"],
+  const { roadmaps, active, activeId, setActiveId, isLoading: roadmapsLoading, notFound } =
+    useActiveRoadmap("/roadmap");
+  const weeksKey = ["/api/weeks", activeId ?? "none"];
+  const progressKey = ["/api/progress/summary", activeId ?? "none"];
+
+  const { data: weeks = [], isLoading: weeksLoading } = useQuery<WeekWithDetails[]>({
+    queryKey: weeksKey,
+    enabled: activeId !== null,
+    queryFn: () => apiRequest("GET", `/api/weeks?roadmapId=${activeId}`),
   });
+  const isLoading = roadmapsLoading || (activeId !== null && weeksLoading);
 
   // Fetch progress summary
   const { data: progressSummary } = useQuery<any>({
-    queryKey: ["/api/progress/summary"],
+    queryKey: progressKey,
+    enabled: activeId !== null,
+    queryFn: () => apiRequest("GET", `/api/progress/summary?roadmapId=${activeId}`),
   });
+
+  useEffect(() => {
+    setSelectedWeekId(null);
+  }, [activeId]);
 
   const selectedWeek = weeks.find(w => w.id === selectedWeekId) || null;
 
@@ -139,8 +155,8 @@ export default function RoadmapPage() {
       return await apiRequest("POST", `/api/tasks/${taskId}/toggle-progress`, { screenshotUrl });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/progress/summary"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
+      queryClient.invalidateQueries({ queryKey: progressKey });
     },
   });
 
@@ -150,16 +166,16 @@ export default function RoadmapPage() {
       return await apiRequest("POST", `/api/weeks/${weekId}/comments`, { content });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Commentaire ajouté", description: "Votre message a été publié." });
     },
   });
 
   // Week mutations
   const createWeekMutation = useMutation({
-    mutationFn: async (data: any) => await apiRequest("POST", "/api/weeks", data),
+    mutationFn: async (data: any) => await apiRequest("POST", "/api/weeks", { ...data, roadmapId: activeId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       closeModal("week");
       toast({ title: "Semaine créée", description: "La semaine a été ajoutée avec succès." });
     },
@@ -168,7 +184,7 @@ export default function RoadmapPage() {
   const updateWeekMutation = useMutation({
     mutationFn: async (data: any) => await apiRequest("PUT", `/api/weeks/${editingWeek?.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       closeModal("week");
       toast({ title: "Semaine mise à jour", description: "Les modifications ont été enregistrées." });
     },
@@ -177,7 +193,7 @@ export default function RoadmapPage() {
   const deleteWeekMutation = useMutation({
     mutationFn: async (weekId: number) => await apiRequest("DELETE", `/api/weeks/${weekId}`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       setSelectedWeekId(null);
       toast({ title: "Semaine supprimée", description: "La semaine a été supprimée." });
     },
@@ -185,12 +201,11 @@ export default function RoadmapPage() {
 
   const cloneWeekMutation = useMutation({
     mutationFn: async (weekId: number) => {
-      const weeks = await apiRequest("GET", "/api/weeks", {}) as WeekWithDetails[];
       const maxNumber = Math.max(...weeks.map(w => w.number), 0);
       return await apiRequest("POST", `/api/weeks/${weekId}/clone`, { newNumber: maxNumber + 1 });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Semaine dupliquée", description: "La semaine a été clonée avec succès." });
     },
   });
@@ -198,7 +213,7 @@ export default function RoadmapPage() {
   const validateWeekMutation = useMutation({
     mutationFn: async (weekId: number) => await apiRequest("POST", `/api/weeks/${weekId}/validate`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Semaine validée", description: "La semaine a été marquée comme validée." });
     },
   });
@@ -208,7 +223,7 @@ export default function RoadmapPage() {
     mutationFn: async (data: any) => await apiRequest("POST", `/api/weeks/${data.weekId}/objectives`, data),
     onSuccess: () => {
       closeModal("objective");
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Objectif créé", description: "L'objectif a été ajouté avec succès." });
     },
   });
@@ -217,7 +232,7 @@ export default function RoadmapPage() {
     mutationFn: async (data: any) => await apiRequest("PUT", `/api/objectives/${editingObjective?.id}`, data),
     onSuccess: () => {
       closeModal("objective");
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Objectif mis à jour", description: "Les modifications ont été enregistrées." });
     },
   });
@@ -225,7 +240,7 @@ export default function RoadmapPage() {
   const deleteObjectiveMutation = useMutation({
     mutationFn: async (objectiveId: number) => await apiRequest("DELETE", `/api/objectives/${objectiveId}`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Objectif supprimé", description: "L'objectif a été supprimé." });
     },
   });
@@ -233,7 +248,7 @@ export default function RoadmapPage() {
   const cloneObjectiveMutation = useMutation({
     mutationFn: async (objectiveId: number) => await apiRequest("POST", `/api/objectives/${objectiveId}/clone`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Objectif dupliqué", description: "L'objectif a été cloné avec succès." });
     },
   });
@@ -243,7 +258,7 @@ export default function RoadmapPage() {
     mutationFn: async (data: any) => await apiRequest("POST", `/api/objectives/${data.objectiveId}/tasks`, data),
     onSuccess: () => {
       closeModal("task");
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Tâche créée", description: "La tâche a été ajoutée avec succès." });
     },
   });
@@ -252,7 +267,7 @@ export default function RoadmapPage() {
     mutationFn: async (data: any) => await apiRequest("PUT", `/api/tasks/${editingTask?.id}`, data),
     onSuccess: () => {
       closeModal("task");
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Tâche mise à jour", description: "Les modifications ont été enregistrées." });
     },
   });
@@ -260,7 +275,7 @@ export default function RoadmapPage() {
   const deleteTaskMutation = useMutation({
     mutationFn: async (taskId: number) => await apiRequest("DELETE", `/api/tasks/${taskId}`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Tâche supprimée", description: "La tâche a été supprimée." });
     },
   });
@@ -270,7 +285,7 @@ export default function RoadmapPage() {
     mutationFn: async (data: any) => await apiRequest("POST", `/api/weeks/${data.weekId}/deliverables`, data),
     onSuccess: () => {
       closeModal("deliverable");
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Livrable créé", description: "Le livrable a été ajouté avec succès." });
     },
   });
@@ -279,7 +294,7 @@ export default function RoadmapPage() {
     mutationFn: async (data: any) => await apiRequest("PUT", `/api/deliverables/${editingDeliverable?.id}`, data),
     onSuccess: () => {
       closeModal("deliverable");
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Livrable mis à jour", description: "Les modifications ont été enregistrées." });
     },
   });
@@ -287,7 +302,7 @@ export default function RoadmapPage() {
   const deleteDeliverableMutation = useMutation({
     mutationFn: async (deliverableId: number) => await apiRequest("DELETE", `/api/deliverables/${deliverableId}`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Livrable supprimé", description: "Le livrable a été supprimé." });
     },
   });
@@ -297,7 +312,7 @@ export default function RoadmapPage() {
     mutationFn: async (data: any) => await apiRequest("POST", `/api/weeks/${data.weekId}/resources`, data),
     onSuccess: () => {
       closeModal("resource");
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Ressource créée", description: "La ressource a été ajoutée avec succès." });
     },
   });
@@ -306,7 +321,7 @@ export default function RoadmapPage() {
     mutationFn: async (data: any) => await apiRequest("PUT", `/api/resources/${editingResource?.id}`, data),
     onSuccess: () => {
       closeModal("resource");
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Ressource mise à jour", description: "Les modifications ont été enregistrées." });
     },
   });
@@ -314,7 +329,7 @@ export default function RoadmapPage() {
   const deleteResourceMutation = useMutation({
     mutationFn: async (resourceId: number) => await apiRequest("DELETE", `/api/resources/${resourceId}`, {}),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      queryClient.invalidateQueries({ queryKey: weeksKey });
       toast({ title: "Ressource supprimée", description: "La ressource a été supprimée." });
     },
   });
@@ -323,12 +338,8 @@ export default function RoadmapPage() {
   const handleSaveAIRoadmap = async (generatedWeeks: any[]) => {
     // Transform AI-generated weeks to match backend schema
     // AI returns "weekNumber" but backend expects "number"
-    // Target roadmap: the one shared by the weeks already displayed. When none can be
-    // inferred, the server resolves it (single accessible roadmap) or returns an explicit error.
-    const knownRoadmapIds = Array.from(
-      new Set(weeks.map((w) => w.roadmapId).filter((id): id is number => typeof id === "number")),
-    );
-    const targetRoadmapId = knownRoadmapIds.length === 1 ? knownRoadmapIds[0] : undefined;
+    // Target roadmap: always the active one, never inferred.
+    const targetRoadmapId = activeId ?? undefined;
 
     const transformedWeeks = generatedWeeks.map((week) => ({
       ...week,
@@ -351,11 +362,29 @@ export default function RoadmapPage() {
     const result = await apiRequest("POST", "/api/weeks/bulk", transformedWeeks);
 
     // Invalidate cache only on success (transaction committed)
-    queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
-    queryClient.invalidateQueries({ queryKey: ["/api/progress/summary"] });
+    queryClient.invalidateQueries({ queryKey: weeksKey });
+    queryClient.invalidateQueries({ queryKey: progressKey });
     
     return result;
   };
+
+  if (!isLoading && (notFound || activeId === null)) {
+    return (
+      <div className="min-h-screen w-full bg-background">
+        <TopBar />
+        <div className="flex items-center justify-center h-[calc(100vh-4rem)] pt-20">
+          <div className="text-center glass-card p-12 rounded-3xl space-y-4">
+            <p className="text-foreground text-lg font-semibold" data-testid="text-no-roadmap">
+              {notFound ? "Roadmap introuvable." : "Aucune roadmap disponible pour le moment."}
+            </p>
+            {roadmaps.length > 0 && (
+              <RoadmapSwitcher roadmaps={roadmaps} activeId={null} onChange={setActiveId} />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -378,6 +407,7 @@ export default function RoadmapPage() {
       <main className="container max-w-[1600px] mx-auto px-8 py-12 pt-28">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <aside className="lg:col-span-3 lg:sticky lg:top-28 lg:self-start space-y-6">
+            <RoadmapSwitcher roadmaps={roadmaps} activeId={active?.id ?? null} onChange={setActiveId} />
             {isMentor() && (
               <>
                 <Button

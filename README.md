@@ -163,6 +163,7 @@ New roadmaps do **not** inherit that global compatibility behavior. Their access
 npm test                      # unit tests (no database required)
 npm run test:integration      # API journey mentor / learner (needs a running dev server)
 python test/e2e/mentor-learner.e2e.py   # browser journey (Playwright for Python)
+python test/e2e/roadmaps-ui.e2e.py      # roadmap creation and learner attachment from the UI
 ```
 
 Integration and e2e tests need `TEST_BASE_URL` (for example `http://localhost:5000`) and a server started with `NODE_ENV=development` on a **disposable** database: they create users and a roadmap, and use the development-only `/api/auth/create-test-users` route. e2e also needs `pip install playwright && playwright install chromium`.
