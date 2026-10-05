@@ -157,6 +157,10 @@ The migration is intentionally idempotent. It:
 
 New roadmaps do **not** inherit that global compatibility behavior. Their access is restricted to the roadmap creator and explicit, non-cancelled mentorships.
 
+## Tâches planifiées
+
+Les rappels de tâches (mercredi et vendredi 10h, `Europe/Paris`) sont configurables : `SCHEDULER_ENABLED`, `SCHEDULER_TIMEZONE`, `SCHEDULER_MIDWEEK_CRON`, `SCHEDULER_ENDWEEK_CRON` (voir `.env.example`). Chaque créneau est réservé dans `scheduled_job_runs` (clé unique job + créneau) : plusieurs instances ou un redémarrage n'envoient qu'un lot par créneau. Un lot en échec est marqué `FAILED` et n'est pas rejoué automatiquement. Pour un worker dédié, mettre `SCHEDULER_ENABLED=false` sur les autres instances.
+
 ## Tests
 
 ```bash

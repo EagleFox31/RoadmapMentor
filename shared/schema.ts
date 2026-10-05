@@ -278,6 +278,19 @@ export const taskProgress = pgTable("task_progress", {
   byLearner: index("task_progress_learner_id_idx").on(table.learnerId),
 }));
 
+// Claims of scheduled job executions: one row per (job, scheduled slot) makes a run happen once across instances and restarts
+export const scheduledJobRuns = pgTable("scheduled_job_runs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  jobName: text("job_name").notNull(),
+  runKey: text("run_key").notNull(),
+  status: text("status").notNull().default("RUNNING"),
+  result: text("result"),
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  finishedAt: timestamp("finished_at"),
+}, (table) => ({
+  uniqueRun: uniqueIndex("scheduled_job_runs_job_run_unique").on(table.jobName, table.runKey),
+}));
+
 // Week Comments table
 export const weekComments = pgTable("week_comments", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
