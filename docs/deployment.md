@@ -186,3 +186,10 @@ Use the examples as templates, never as secret stores:
 - `.env.production.example` — production shape.
 
 Real credentials belong in the environment or the chosen secret-management system and must not be committed.
+
+## HTTP hardening (RM-009)
+
+- **Headers**: `helmet` on every response; strict CSP in production only (same-origin scripts, Google Fonts, signed uploads to `storage.googleapis.com`). If a new external origin is needed, extend `contentSecurityPolicy()` in `server/http/hardening.ts`.
+- **Rate limits** (per IP for sign-in/sign-up, per user otherwise; in memory, so per instance until a shared store exists — RM-011/RM-012): auth 20 / 15 min, AI generation 10 / h, uploads 60 / 15 min, jobs 6 / h. Override with `RATE_LIMIT_<AUTH|AI|UPLOAD|JOBS>_MAX` and `_WINDOW_MS`.
+- **Behind a reverse proxy / load balancer** set `TRUST_PROXY=<number of hops>` (usually `1`), otherwise every client shares the proxy's IP and the auth limit.
+- **Bodies**: JSON and form bodies capped at 1 MB; uploads at 5 MB and limited to PNG, JPEG, WebP, GIF (SVG refused). AI input: topic 200 characters, context 2000.
