@@ -1,9 +1,28 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+export function formatErrorBody(text: string): string {
+  try {
+    const body = JSON.parse(text);
+    if (Array.isArray(body?.issues) && body.issues.length > 0) {
+      const details = body.issues
+        .map((issue: { path?: unknown[]; message?: string }) => {
+          const field = issue.path?.length ? `${issue.path.join(".")}: ` : "";
+          return `${field}${issue.message ?? "invalide"}`;
+        })
+        .join("; ");
+      return `${body.error ?? "Validation failed"} (${details})`;
+    }
+    if (typeof body?.error === "string") return body.error;
+  } catch {
+    // corps non JSON : conservé tel quel
+  }
+  return text;
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
+    throw new Error(`${res.status}: ${formatErrorBody(text)}`);
   }
 }
 
