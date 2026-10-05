@@ -8,12 +8,14 @@ import { publicRegistrationSchema, insertRoadmapSchema, insertMentorshipSchema, 
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { isDevelopmentEnvironment } from "./security";
+import { createLimiters, isAllowedUploadType, MAX_UPLOAD_BYTES, ALLOWED_UPLOAD_TYPES } from "./http/hardening";
 import { assertChangeRequestTransition, requiresLinkedRoadmapWork } from "./domain/changeRequest";
 import { canFinalizeMentoringSession, finalStatusForAttendance } from "./domain/mentoringSession";
 import { assertCurrencyMatches, summarizeBilling } from "./domain/billing";
 import { manualPaymentAdapter } from "./payments/provider";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  const limiters = createLimiters();
   app.get("/health/live", (_req, res) => {
     res.status(200).json({ status: "ok" });
   });
@@ -378,7 +380,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ========== AUTH ROUTES ==========
 
-  app.post("/api/auth/register", async (req, res) => {
+  app.post("/api/auth/register", limiters.auth, async (req, res) => {
     try {
       const userData = publicRegistrationSchema.parse(req.body);
       const { fullName, email, password } = userData;
@@ -416,7 +418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/login", async (req, res) => {
+  app.post("/api/auth/login", limiters.auth, async (req, res) => {
     try {
       const { email, password } = req.body;
 
@@ -492,7 +494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Referenced from blueprint:javascript_object_storage
 
   // Get presigned upload URL for screenshots
-  app.post("/api/objects/upload", authMiddleware, async (req: AuthRequest, res) => {
+  app.post("/api/objects/upload", authMiddleware, limiters.upload, async (req: AuthRequest, res) => {
     try {
       const objectStorageService = new ObjectStorageService();
       const uploadTarget =
@@ -506,7 +508,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put(
     "/api/objects/local-upload/:objectId",
     authMiddleware,
-    express.raw({ type: "image/*", limit: "5mb" }),
+    limiters.upload,
+    express.raw({ type: [...ALLOWED_UPLOAD_TYPES], limit: MAX_UPLOAD_BYTES }),
     async (req: AuthRequest, res) => {
       try {
         const objectStorageService = new ObjectStorageService();
@@ -519,8 +522,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const contentType = req.headers["content-type"] || "";
-        if (!contentType.startsWith("image/")) {
-          return res.status(415).json({ error: "Only image uploads are allowed" });
+        if (!isAllowedUploadType(contentType)) {
+          return res.status(415).json({ error: "Only PNG, JPEG, WebP or GIF images are allowed" });
         }
 
         await objectStorageService.writeDirectUpload(
@@ -2369,7 +2372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Route pour envoyer manuellement les rappels de tâches
-  app.post("/api/jobs/send-task-reminders", authMiddleware, requireMentor, async (_req, res) => {
+  app.post("/api/jobs/send-task-reminders", authMiddleware, requireMentor, limiters.jobs, async (_req, res) => {
     try {
       const { emailService } = await import("./services/emailService");
       const learners = await emailService.getAllLearners();
@@ -2483,22 +2486,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ========== AI ROADMAP GENERATION ==========
 
-  app.post("/api/ai/generate-roadmap", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
+  app.post("/api/ai/generate-roadmap", authMiddleware, requireMentor, limiters.ai, async (req: AuthRequest, res) => {
     const userId = req.user!.id;
     const userEmail = req.user!.email;
     const userName = req.user!.fullName;
     
     try {
-      const { generateRoadmap } = await import("./services/aiRoadmapGenerator");
       const { topic, numberOfWeeks, skillLevel, additionalContext } = req.body;
 
       if (!topic || !numberOfWeeks) {
         return res.status(400).json({ error: "topic and numberOfWeeks are required" });
       }
 
-      if (numberOfWeeks < 1 || numberOfWeeks > 12) {
+      if (
+        typeof topic !== "string" || topic.length > 200 ||
+        (additionalContext !== undefined && (typeof additionalContext !== "string" || additionalContext.length > 2000))
+      ) {
+        return res.status(400).json({ error: "topic (200 characters max) and additionalContext (2000 characters max) must be text" });
+      }
+
+      if (!Number.isInteger(numberOfWeeks) || numberOfWeeks < 1 || numberOfWeeks > 12) {
         return res.status(400).json({ error: "numberOfWeeks must be between 1 and 12" });
       }
+
+      const { generateRoadmap } = await import("./services/aiRoadmapGenerator");
 
       const generatedWeeks = await generateRoadmap({
         topic,

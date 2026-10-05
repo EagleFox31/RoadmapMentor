@@ -18,8 +18,8 @@ export function ScreenshotUploader({ onUploadComplete, currentUrl }: ScreenshotU
     if (!file) return;
 
     // Validate file type
-    if (!file.type.startsWith("image/")) {
-      setError("Veuillez sélectionner une image");
+    if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type)) {
+      setError("Formats acceptés : PNG, JPEG, WebP ou GIF");
       return;
     }
 
@@ -78,7 +78,7 @@ export function ScreenshotUploader({ onUploadComplete, currentUrl }: ScreenshotU
       <input
         type="file"
         id="screenshot-upload"
-        accept="image/*"
+        accept="image/png,image/jpeg,image/webp,image/gif"
         onChange={handleFileSelect}
         className="hidden"
         disabled={isUploading}
