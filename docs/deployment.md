@@ -71,13 +71,23 @@ For a standard PostgreSQL database while the application still uses `@neondataba
 
 ## Schema changes
 
-The current repository uses Drizzle's schema push workflow.
+Schema changes ship as committed, versioned Drizzle migrations in `migrations/`. `npm run db:push` remains a local prototyping shortcut only; never use it against a shared or production database.
 
-Before an application rollout:
+### Authoring a change
+
+1. edit `shared/schema.ts`;
+2. run `npm run db:generate -- --name <short_description>` and review the generated SQL (destructive statements such as `DROP` need an explicit data plan);
+3. commit the SQL file and the `migrations/meta` updates together with the schema change.
+
+CI (`migrations` gate) fails when the schema and the committed migrations diverge, and builds an empty database from the migrations alone, twice, to prove replay safety.
+
+### Applying a release
+
+Migrations run as a release step separate from the application:
 
 1. back up the database;
-2. run the schema job against the target database;
-3. verify the schema job completed successfully;
+2. run `npm run db:migrate` against the target database;
+3. verify the job completed successfully;
 4. roll out the application image;
 5. verify `/health/ready`.
 
@@ -88,9 +98,23 @@ docker compose run --rm migrate
 docker compose up -d app
 ```
 
-For hosted environments, run `npm run db:push` from the build/migration image as a one-off release step before shifting traffic.
+For hosted environments, run `npm run db:migrate` from the build/migration image as a one-off release step before shifting traffic. The runner uses the same `DATABASE_URL` / `DATABASE_WS_PROXY*` settings as the application.
 
-For a larger team or destructive schema changes, replace direct schema push with committed, versioned Drizzle migrations before production rollout.
+### Existing databases created with `db:push`
+
+A database that already holds the application tables but has no migration history is refused on purpose. After a backup, and once you have confirmed the schema is current (run `npx drizzle-kit push` once on the old code path if unsure), record the initial migration as applied, then apply anything newer:
+
+```bash
+MIGRATE_BASELINE_EXISTING=true npm run db:migrate
+```
+
+This inserts the initial migration into `drizzle.__drizzle_migrations` without executing it. Later runs need no flag.
+
+### Recovery
+
+A failed migration is not rolled back by the application rollback. Restore the pre-release backup or ship a reviewed forward fix. The runner applies all pending migrations in a single transaction, so a failing run leaves no partial change.
+
+The legacy data migration (`npm run migrate:roadmap-domain`) stays an explicit, separate step after `db:migrate`.
 
 ## Backup and restore
 
