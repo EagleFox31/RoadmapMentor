@@ -109,3 +109,67 @@ test("password hashes verify the original value and reject a different value", a
   assert.equal(await comparePassword("RoadmapMentor-test-password", hash), true);
   assert.equal(await comparePassword("different-password", hash), false);
 });
+
+async function runMiddleware(
+  loadUser: (id: number) => Promise<any>,
+  token: string,
+) {
+  const { createAuthMiddleware } = await import("../server/auth");
+  const req = { headers: { authorization: `Bearer ${token}` } } as AuthRequest;
+  const { response, state } = createResponse();
+  const nextCalled = await new Promise<boolean>((resolve) => {
+    const originalJson = (response as any).json.bind(response);
+    (response as any).json = (body: unknown) => {
+      originalJson(body);
+      resolve(false);
+      return response;
+    };
+    createAuthMiddleware(loadUser)(req, response, (() => resolve(true)) as NextFunction);
+  });
+  return { req, state, nextCalled };
+}
+
+test("authMiddleware takes the role from the database, not from the token", async () => {
+  const { generateToken } = await import("../server/auth");
+  const token = generateToken({ id: 7, email: "a@b.c", role: "MENTOR" } as any);
+  const { req, nextCalled } = await runMiddleware(
+    async () => ({ id: 7, email: "a@b.c", role: "MENTOR", password: "hash" }),
+    token,
+  );
+
+  assert.equal(nextCalled, true);
+  assert.equal(req.user?.id, 7);
+  assert.equal("password" in (req.user ?? {}), false);
+});
+
+test("authMiddleware rejects a deleted account immediately", async () => {
+  const { generateToken } = await import("../server/auth");
+  const token = generateToken({ id: 7, email: "a@b.c", role: "LEARNER" } as any);
+  const { state, nextCalled } = await runMiddleware(async () => undefined, token);
+
+  assert.equal(nextCalled, false);
+  assert.equal(state.statusCode, 401);
+});
+
+test("authMiddleware rejects a token whose role no longer matches the database", async () => {
+  const { generateToken } = await import("../server/auth");
+  const token = generateToken({ id: 7, email: "a@b.c", role: "MENTOR" } as any);
+  const { state, nextCalled } = await runMiddleware(
+    async () => ({ id: 7, email: "a@b.c", role: "LEARNER", password: "hash" }),
+    token,
+  );
+
+  assert.equal(nextCalled, false);
+  assert.equal(state.statusCode, 401);
+});
+
+test("authMiddleware answers 500 when the user lookup fails", async () => {
+  const { generateToken } = await import("../server/auth");
+  const token = generateToken({ id: 7, email: "a@b.c", role: "MENTOR" } as any);
+  const { state, nextCalled } = await runMiddleware(async () => {
+    throw new Error("db down");
+  }, token);
+
+  assert.equal(nextCalled, false);
+  assert.equal(state.statusCode, 500);
+});

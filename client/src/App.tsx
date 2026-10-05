@@ -8,7 +8,9 @@ import RoadmapPage from "@/pages/roadmap-page";
 import PreferencesPage from "@/pages/preferences";
 import MentoringPage from "@/pages/mentoring";
 import NotFound from "@/pages/not-found";
-import { isAuthenticated } from "@/lib/auth";
+import { useEffect, useState } from "react";
+import { apiRequest } from "@/lib/queryClient";
+import { isAuthenticated, setCurrentUser } from "@/lib/auth";
 import mentorBg from "./assets/mentor-bg.jpg";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -48,7 +50,23 @@ function Router() {
   );
 }
 
+// Aligne l'identité locale (rôle, nom) sur le serveur avant d'afficher les pages protégées.
+function useSessionSync() {
+  const [ready, setReady] = useState(!isAuthenticated());
+
+  useEffect(() => {
+    if (ready) return;
+    apiRequest("GET", "/api/auth/me")
+      .then((user) => setCurrentUser(user))
+      .catch(() => undefined) // un 401 ferme déjà la session ; une panne réseau ne bloque pas l'affichage
+      .finally(() => setReady(true));
+  }, [ready]);
+
+  return ready;
+}
+
 function App() {
+  const sessionReady = useSessionSync();
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -66,7 +84,7 @@ function App() {
           
           {/* Content */}
           <div className="relative z-10 min-h-screen">
-            <Router />
+            {sessionReady && <Router />}
           </div>
         </div>
         <Toaster />

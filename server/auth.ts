@@ -34,22 +34,46 @@ export function verifyToken(token: string): any {
   }
 }
 
-export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
+export type UserLoader = (id: number) => Promise<User | undefined>;
 
-  if (!token) {
-    return res.status(401).json({ error: "No token provided" });
-  }
-
-  const decoded = verifyToken(token);
-  if (!decoded) {
-    return res.status(401).json({ error: "Invalid token" });
-  }
-
-  req.user = decoded;
-  next();
+async function loadUserFromStorage(id: number) {
+  const { storage } = await import("./storage");
+  return storage.getUser(id);
 }
+
+/**
+ * Valide le jeton puis recharge l'utilisateur : le rôle et l'existence du compte
+ * viennent de la base, jamais du contenu du jeton. Un compte supprimé ou un jeton
+ * dont le rôle ne correspond plus à la base est refusé immédiatement.
+ */
+export function createAuthMiddleware(loadUser: UserLoader) {
+  return function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
+
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    loadUser(decoded.id)
+      .then((user) => {
+        if (!user || user.role !== decoded.role) {
+          return res.status(401).json({ error: "Session no longer valid" });
+        }
+        const { password: _password, ...safeUser } = user;
+        req.user = safeUser as User;
+        next();
+      })
+      .catch(() => res.status(500).json({ error: "Authentication check failed" }));
+  };
+}
+
+export const authMiddleware = createAuthMiddleware(loadUserFromStorage);
 
 export function requireMentor(req: AuthRequest, res: Response, next: NextFunction) {
   if (req.user?.role !== "MENTOR") {
