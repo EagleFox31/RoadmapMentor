@@ -14,7 +14,7 @@
     "migrate:roadmap-domain": "tsx scripts/migrate-roadmap-domain.ts"
   },
   "dependencies": {
-    "@google-cloud/storage": "^7.17.3",
+    "@google-cloud/storage": "^8.2.0",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@neondatabase/serverless": "^0.10.4",
