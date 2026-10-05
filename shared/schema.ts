@@ -7,6 +7,13 @@ import { z } from "zod";
 export const roleEnum = pgEnum("role", ["MENTOR", "LEARNER"]);
 export const objectiveTypeEnum = pgEnum("objective_type", ["CONCEPT", "ALGO", "PROJECT", "OTHER"]);
 export const resourceTypeEnum = pgEnum("resource_type", ["DOC", "VIDEO", "COURSE", "ARTICLE", "OTHER"]);
+export const labDifficultyEnum = pgEnum("lab_difficulty", ["BEGINNER", "INTERMEDIATE", "ADVANCED"]);
+export const labSubmissionStatusEnum = pgEnum("lab_submission_status", [
+  "IN_PROGRESS",
+  "SUBMITTED",
+  "APPROVED",
+  "CHANGES_REQUESTED",
+]);
 export const mentorshipStatusEnum = pgEnum("mentorship_status", ["ACTIVE", "PAUSED", "COMPLETED", "CANCELLED"]);
 export const changeRequestStatusEnum = pgEnum("change_request_status", [
   "PROPOSED",
@@ -264,6 +271,50 @@ export const resources = pgTable("resources", {
   byWeek: index("resources_week_id_idx").on(table.weekId),
 }));
 
+// Short, guided exercises used to practise a newly introduced notion.
+// Python labs run in the browser; repositoryUrl/launchUrl support external
+// environments for subjects that need a server, database, or several services.
+export const labs = pgTable("labs", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  weekId: integer("week_id").notNull().references(() => weeks.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  instructions: text("instructions").notNull(),
+  difficulty: labDifficultyEnum("difficulty").notNull().default("BEGINNER"),
+  estimatedMinutes: integer("estimated_minutes").notNull().default(30),
+  starterCode: text("starter_code"),
+  testCode: text("test_code"),
+  repositoryUrl: text("repository_url"),
+  launchUrl: text("launch_url"),
+  orderIndex: integer("order_index").notNull().default(0),
+  isPublished: boolean("is_published").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const labSubmissions = pgTable(
+  "lab_submissions",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    labId: integer("lab_id").notNull().references(() => labs.id, { onDelete: "cascade" }),
+    learnerId: integer("learner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    status: labSubmissionStatusEnum("status").notNull().default("IN_PROGRESS"),
+    code: text("code").notNull().default(""),
+    output: text("output"),
+    mentorFeedback: text("mentor_feedback"),
+    submittedAt: timestamp("submitted_at"),
+    reviewedAt: timestamp("reviewed_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    uniqueLearnerSubmission: uniqueIndex("lab_submission_lab_learner_unique").on(
+      table.labId,
+      table.learnerId,
+    ),
+  }),
+);
+
 // Task Progress table (junction table for learner progress)
 export const taskProgress = pgTable("task_progress", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -367,6 +418,7 @@ export const emailNotifications = pgTable("email_notifications", {
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   taskProgress: many(taskProgress),
+  labSubmissions: many(labSubmissions),
   weekComments: many(weekComments),
   createdRoadmaps: many(roadmaps),
   mentorMentorships: many(mentorships, { relationName: "mentorMentorships" }),
@@ -457,6 +509,7 @@ export const weeksRelations = relations(weeks, ({ one, many }) => ({
   objectives: many(objectives),
   deliverables: many(deliverables),
   resources: many(resources),
+  labs: many(labs),
   comments: many(weekComments),
 }));
 
@@ -549,6 +602,25 @@ export const resourcesRelations = relations(resources, ({ one }) => ({
   week: one(weeks, {
     fields: [resources.weekId],
     references: [weeks.id],
+  }),
+}));
+
+export const labsRelations = relations(labs, ({ one, many }) => ({
+  week: one(weeks, {
+    fields: [labs.weekId],
+    references: [weeks.id],
+  }),
+  submissions: many(labSubmissions),
+}));
+
+export const labSubmissionsRelations = relations(labSubmissions, ({ one }) => ({
+  lab: one(labs, {
+    fields: [labSubmissions.labId],
+    references: [labs.id],
+  }),
+  learner: one(users, {
+    fields: [labSubmissions.learnerId],
+    references: [users.id],
   }),
 }));
 
@@ -774,6 +846,33 @@ export const insertResourceSchema = createInsertSchema(resources).omit({
   createdAt: true,
 });
 
+export const insertLabSchema = createInsertSchema(labs)
+  .omit({ createdAt: true, updatedAt: true })
+  .extend({
+    title: z.string().trim().min(1).max(200),
+    description: z.string().trim().max(2000).nullable().optional(),
+    instructions: z.string().trim().min(1).max(10000),
+    estimatedMinutes: z.number().int().min(5).max(240),
+    starterCode: z.string().max(100000).nullable().optional(),
+    testCode: z.string().max(100000).nullable().optional(),
+    repositoryUrl: z.string().url().nullable().optional(),
+    launchUrl: z.string().url().nullable().optional(),
+  });
+
+export const createLabSchema = insertLabSchema.omit({ weekId: true }).strict();
+export const updateLabSchema = createLabSchema.partial().strict();
+
+export const saveLabSubmissionSchema = z.object({
+  code: z.string().max(100000),
+  output: z.string().max(20000).nullable().optional(),
+  submit: z.boolean().default(false),
+}).strict();
+
+export const reviewLabSubmissionSchema = z.object({
+  decision: z.enum(["APPROVE", "REQUEST_CHANGES"]),
+  feedback: z.string().trim().max(5000).nullable().optional(),
+}).strict();
+
 export const insertTaskProgressSchema = createInsertSchema(taskProgress).omit({
   createdAt: true,
   doneAt: true,
@@ -856,6 +955,11 @@ export type InsertDeliverable = z.infer<typeof insertDeliverableSchema>;
 export type Resource = typeof resources.$inferSelect;
 export type InsertResource = z.infer<typeof insertResourceSchema>;
 
+export type Lab = typeof labs.$inferSelect;
+export type InsertLab = z.infer<typeof insertLabSchema>;
+export type LabSubmission = typeof labSubmissions.$inferSelect;
+export type LabWithSubmissions = Lab & { submissions: LabSubmission[] };
+
 export type TaskProgress = typeof taskProgress.$inferSelect;
 export type InsertTaskProgress = z.infer<typeof insertTaskProgressSchema>;
 
@@ -886,6 +990,7 @@ export type WeekWithDetails = Week & {
   objectives: ObjectiveWithTasks[];
   deliverables: Deliverable[];
   resources: Resource[];
+  labs: LabWithSubmissions[];
   comments: (WeekComment & { learner: User })[];
 };
 

@@ -18,6 +18,8 @@ import {
   tasks,
   deliverables,
   resources,
+  labs,
+  labSubmissions,
   taskProgress,
   weekComments,
   emailNotificationPreferences,
@@ -52,6 +54,9 @@ import {
   type InsertDeliverable,
   type Resource,
   type InsertResource,
+  type Lab,
+  type InsertLab,
+  type LabSubmission,
   type TaskProgress,
   type TaskProgressWithLearner,
   type InsertTaskProgress,
@@ -70,6 +75,8 @@ export type WeekContents = {
   resources: Resource[];
   comments: (WeekComment & { learner: User })[];
   progress: TaskProgressWithLearner[];
+  labs: Lab[];
+  labSubmissions: LabSubmission[];
 };
 
 export interface IStorage {
@@ -165,6 +172,28 @@ export interface IStorage {
   createResource(resource: InsertResource): Promise<Resource>;
   updateResource(id: number, resource: Partial<InsertResource>): Promise<Resource | undefined>;
   deleteResource(id: number): Promise<boolean>;
+
+  // Lab methods
+  getLabsByWeek(weekId: number): Promise<Lab[]>;
+  getLab(id: number): Promise<Lab | undefined>;
+  createLab(lab: InsertLab): Promise<Lab>;
+  updateLab(id: number, lab: Partial<InsertLab>): Promise<Lab | undefined>;
+  deleteLab(id: number): Promise<boolean>;
+  getLabSubmission(id: number): Promise<LabSubmission | undefined>;
+  getLabSubmissionForLearner(labId: number, learnerId: number): Promise<LabSubmission | undefined>;
+  getLabSubmissions(labId: number): Promise<LabSubmission[]>;
+  saveLabSubmission(
+    labId: number,
+    learnerId: number,
+    code: string,
+    output: string | null,
+    submit: boolean,
+  ): Promise<LabSubmission>;
+  reviewLabSubmission(
+    id: number,
+    status: "APPROVED" | "CHANGES_REQUESTED",
+    feedback: string | null,
+  ): Promise<LabSubmission | undefined>;
 
   // Task Progress methods
   getTaskProgress(taskId: number, learnerId: number): Promise<TaskProgress | undefined>;
@@ -892,13 +921,14 @@ export class DatabaseStorage implements IStorage {
   // Loads every child row of the given weeks in a fixed number of queries.
   async getWeekContentsByWeekIds(weekIds: number[]): Promise<WeekContents> {
     if (weekIds.length === 0) {
-      return { objectives: [], tasks: [], deliverables: [], resources: [], comments: [], progress: [] };
+      return { objectives: [], tasks: [], deliverables: [], resources: [], comments: [], progress: [], labs: [], labSubmissions: [] };
     }
 
-    const [objectiveRows, deliverableRows, resourceRows, commentRows] = await Promise.all([
+    const [objectiveRows, deliverableRows, resourceRows, labRows, commentRows] = await Promise.all([
       db.select().from(objectives).where(inArray(objectives.weekId, weekIds)).orderBy(objectives.orderIndex),
       db.select().from(deliverables).where(inArray(deliverables.weekId, weekIds)),
       db.select().from(resources).where(inArray(resources.weekId, weekIds)),
+      db.select().from(labs).where(inArray(labs.weekId, weekIds)).orderBy(labs.orderIndex, labs.id),
       db
         .select({ comment: weekComments, learner: users })
         .from(weekComments)
@@ -934,6 +964,15 @@ export class DatabaseStorage implements IStorage {
           .where(inArray(taskProgress.taskId, taskIds))
       : [];
 
+    const labIds = labRows.map((lab) => lab.id);
+    const labSubmissionRows = labIds.length
+      ? await db
+          .select()
+          .from(labSubmissions)
+          .where(inArray(labSubmissions.labId, labIds))
+          .orderBy(desc(labSubmissions.updatedAt))
+      : [];
+
     return {
       objectives: objectiveRows,
       tasks: taskRows,
@@ -941,6 +980,8 @@ export class DatabaseStorage implements IStorage {
       resources: resourceRows,
       comments: commentRows.map(({ comment, learner }) => ({ ...comment, learner })),
       progress: progressRows,
+      labs: labRows,
+      labSubmissions: labSubmissionRows,
     };
   }
 
@@ -1012,6 +1053,113 @@ export class DatabaseStorage implements IStorage {
   async deleteResource(id: number): Promise<boolean> {
     const result = await db.delete(resources).where(eq(resources.id, id));
     return true;
+  }
+
+  // Lab methods
+  async getLabsByWeek(weekId: number): Promise<Lab[]> {
+    return await db
+      .select()
+      .from(labs)
+      .where(eq(labs.weekId, weekId))
+      .orderBy(labs.orderIndex, labs.id);
+  }
+
+  async getLab(id: number): Promise<Lab | undefined> {
+    const [lab] = await db.select().from(labs).where(eq(labs.id, id));
+    return lab || undefined;
+  }
+
+  async createLab(lab: InsertLab): Promise<Lab> {
+    const [created] = await db.insert(labs).values(lab).returning();
+    return created;
+  }
+
+  async updateLab(id: number, lab: Partial<InsertLab>): Promise<Lab | undefined> {
+    const [updated] = await db
+      .update(labs)
+      .set({ ...lab, updatedAt: new Date() })
+      .where(eq(labs.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteLab(id: number): Promise<boolean> {
+    await db.delete(labs).where(eq(labs.id, id));
+    return true;
+  }
+
+  async getLabSubmission(id: number): Promise<LabSubmission | undefined> {
+    const [submission] = await db
+      .select()
+      .from(labSubmissions)
+      .where(eq(labSubmissions.id, id));
+    return submission || undefined;
+  }
+
+  async getLabSubmissionForLearner(labId: number, learnerId: number): Promise<LabSubmission | undefined> {
+    const [submission] = await db
+      .select()
+      .from(labSubmissions)
+      .where(and(eq(labSubmissions.labId, labId), eq(labSubmissions.learnerId, learnerId)));
+    return submission || undefined;
+  }
+
+  async getLabSubmissions(labId: number): Promise<LabSubmission[]> {
+    return await db
+      .select()
+      .from(labSubmissions)
+      .where(eq(labSubmissions.labId, labId))
+      .orderBy(desc(labSubmissions.updatedAt));
+  }
+
+  async saveLabSubmission(
+    labId: number,
+    learnerId: number,
+    code: string,
+    output: string | null,
+    submit: boolean,
+  ): Promise<LabSubmission> {
+    const now = new Date();
+    const [submission] = await db
+      .insert(labSubmissions)
+      .values({
+        labId,
+        learnerId,
+        code,
+        output,
+        status: submit ? "SUBMITTED" : "IN_PROGRESS",
+        submittedAt: submit ? now : null,
+        reviewedAt: null,
+        mentorFeedback: null,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [labSubmissions.labId, labSubmissions.learnerId],
+        set: {
+          code,
+          output,
+          status: submit ? "SUBMITTED" : "IN_PROGRESS",
+          submittedAt: submit ? now : null,
+          reviewedAt: null,
+          mentorFeedback: null,
+          updatedAt: now,
+        },
+      })
+      .returning();
+    return submission;
+  }
+
+  async reviewLabSubmission(
+    id: number,
+    status: "APPROVED" | "CHANGES_REQUESTED",
+    feedback: string | null,
+  ): Promise<LabSubmission | undefined> {
+    const [updated] = await db
+      .update(labSubmissions)
+      .set({ status, mentorFeedback: feedback, reviewedAt: new Date(), updatedAt: new Date() })
+      .where(eq(labSubmissions.id, id))
+      .returning();
+    return updated || undefined;
   }
 
   // Task Progress methods

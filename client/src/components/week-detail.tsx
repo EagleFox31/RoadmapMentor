@@ -5,8 +5,9 @@ import { Calendar, CheckCircle2, Plus, Pencil, Trash2 } from "lucide-react";
 import { ObjectiveCard } from "./objective-card";
 import { DeliverablesList } from "./deliverables-list";
 import { ResourcesList } from "./resources-list";
+import { LabsList } from "./labs-list";
 import { WeekComments } from "./week-comments";
-import type { WeekWithDetails, ObjectiveWithTasks, Deliverable, Resource } from "@shared/schema";
+import type { WeekWithDetails, ObjectiveWithTasks, Deliverable, Resource, Lab } from "@shared/schema";
 import { isMentor } from "@/lib/auth";
 
 interface WeekDetailProps {
@@ -30,6 +31,9 @@ interface WeekDetailProps {
   onAddResource?: () => void;
   onEditResource?: (resource: Resource) => void;
   onDeleteResource?: (resourceId: number) => void;
+  onAddLab?: () => void;
+  onEditLab?: (lab: Lab) => void;
+  onDeleteLab?: (labId: number) => void;
   isLoadingComment?: boolean;
 }
 
@@ -54,6 +58,9 @@ export function WeekDetail({
   onAddResource,
   onEditResource,
   onDeleteResource,
+  onAddLab,
+  onEditLab,
+  onDeleteLab,
   isLoadingComment,
 }: WeekDetailProps) {
   if (!week) {
@@ -182,6 +189,22 @@ export function WeekDetail({
             ))}
           </div>
         )}
+      </div>
+
+      {/* Guided labs */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-xl font-bold text-foreground">Labs pratiques</h3>
+            <p className="text-sm text-muted-foreground">Testez les nouvelles notions dans un exercice court et guidé.</p>
+          </div>
+          {isMentor() && (
+            <Button onClick={onAddLab} className="bg-indigo-600 text-white" data-testid="button-add-lab">
+              <Plus className="w-4 h-4 mr-2" />Ajouter un lab
+            </Button>
+          )}
+        </div>
+        <LabsList labs={week.labs || []} onEdit={onEditLab} onDelete={onDeleteLab} />
       </div>
 
       {/* Deliverables */}

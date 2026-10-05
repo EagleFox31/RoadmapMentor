@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { pool } from "./db";
 import { emailService } from "./services/emailService";
 import { authMiddleware, requireMentor, requireLearner, generateToken, hashPassword, comparePassword, verifyToken, type AuthRequest } from "./auth";
-import { publicRegistrationSchema, insertRoadmapSchema, insertMentorshipSchema, createMentoringPackageSchema, insertMentoringPackageSchema, createChangeRequestSchema, insertChangeRequestSchema, quoteChangeRequestSchema, changeRequestDecisionSchema, scheduleMentoringSessionSchema, insertMentoringSessionSchema, completeMentoringSessionSchema, createBillingPeriodSchema, insertBillingPeriodSchema, insertBillingChargeSchema, manualBillingChargeSchema, insertPaymentSchema, recordManualPaymentSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema, updateEmailNotificationPreferencesSchema, type BillingPeriod, type Week } from "@shared/schema";
+import { publicRegistrationSchema, insertRoadmapSchema, insertMentorshipSchema, createMentoringPackageSchema, insertMentoringPackageSchema, createChangeRequestSchema, insertChangeRequestSchema, quoteChangeRequestSchema, changeRequestDecisionSchema, scheduleMentoringSessionSchema, insertMentoringSessionSchema, completeMentoringSessionSchema, createBillingPeriodSchema, insertBillingPeriodSchema, insertBillingChargeSchema, manualBillingChargeSchema, insertPaymentSchema, recordManualPaymentSchema, insertWeekSchema, insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, insertWeekCommentSchema, insertRoadmapBulkSchema, updateEmailNotificationPreferencesSchema, createLabSchema, updateLabSchema, saveLabSubmissionSchema, reviewLabSubmissionSchema, type BillingPeriod, type Week } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { isDevelopmentEnvironment } from "./security";
@@ -197,6 +197,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       resource,
       week: weekAccess.week,
       allowed: weekAccess.allowed,
+    };
+  };
+
+  const getLabAccess = async (req: AuthRequest, labId: number) => {
+    const lab = await storage.getLab(labId);
+    if (!lab) {
+      return { lab: undefined, week: undefined, allowed: false };
+    }
+
+    const weekAccess = await canAccessWeek(req, lab.weekId);
+    const hiddenDraft = req.user!.role === "LEARNER" && !lab.isPublished;
+    return {
+      lab,
+      week: weekAccess.week,
+      allowed: weekAccess.allowed && !hiddenDraft,
     };
   };
 
@@ -1643,6 +1658,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const resourcesByWeek = groupBy(contents.resources, (r) => r.weekId);
       const commentsByWeek = groupBy(contents.comments, (c) => c.weekId);
       const progressByTask = groupBy(contents.progress, (p) => p.taskId);
+      const labsByWeek = groupBy(contents.labs, (l) => l.weekId);
+      const submissionsByLab = groupBy(contents.labSubmissions, (s) => s.labId);
 
       const learnerIdsByRoadmap = new Map<number, Set<number> | null>();
       for (const week of weeks) {
@@ -1684,11 +1701,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 roadmapLearnerIds.has(comment.learnerId),
               );
 
+        const visibleLabs = (labsByWeek.get(week.id) ?? []).filter(
+          (lab) => !isLearner || lab.isPublished,
+        );
+        const labsWithSubmissions = visibleLabs.map((lab) => {
+          const submissions = submissionsByLab.get(lab.id) ?? [];
+          return {
+            ...lab,
+            submissions: isLearner
+              ? submissions.filter((entry) => entry.learnerId === currentUserId)
+              : roadmapLearnerIds === null
+                ? submissions
+                : submissions.filter((entry) =>
+                    roadmapLearnerIds.has(entry.learnerId),
+                  ),
+          };
+        });
+
         return {
           ...week,
           objectives: objectivesWithTasks,
           deliverables: deliverablesByWeek.get(week.id) ?? [],
           resources: resourcesByWeek.get(week.id) ?? [],
+          labs: labsWithSubmissions,
           comments: scopedComments,
         };
       });
@@ -2101,6 +2136,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.deleteResource(resourceId);
       res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // ========== LAB ROUTES ==========
+
+  app.post("/api/weeks/:weekId/labs", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
+    try {
+      const weekId = parseInt(req.params.weekId, 10);
+      const { week, allowed } = await canAccessWeek(req, weekId);
+      if (!week || !allowed) {
+        return res.status(404).json({ error: "Week not found" });
+      }
+
+      const labData = createLabSchema.parse(req.body);
+      const lab = await storage.createLab({ ...labData, weekId });
+      res.status(201).json(lab);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.put("/api/labs/:id", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
+    try {
+      const labId = parseInt(req.params.id, 10);
+      const { lab, allowed } = await getLabAccess(req, labId);
+      if (!lab || !allowed) {
+        return res.status(404).json({ error: "Lab not found" });
+      }
+
+      const patch = updateLabSchema.parse(req.body);
+      res.json(await storage.updateLab(labId, patch));
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.delete("/api/labs/:id", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
+    try {
+      const labId = parseInt(req.params.id, 10);
+      const { lab, allowed } = await getLabAccess(req, labId);
+      if (!lab || !allowed) {
+        return res.status(404).json({ error: "Lab not found" });
+      }
+
+      await storage.deleteLab(labId);
+      res.status(204).send();
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.put("/api/labs/:id/submission", authMiddleware, requireLearner, async (req: AuthRequest, res) => {
+    try {
+      const labId = parseInt(req.params.id, 10);
+      const { lab, allowed } = await getLabAccess(req, labId);
+      if (!lab || !allowed) {
+        return res.status(404).json({ error: "Lab not found" });
+      }
+
+      const submission = saveLabSubmissionSchema.parse(req.body);
+      const existingSubmission = await storage.getLabSubmissionForLearner(labId, req.user!.id);
+      if (existingSubmission?.status === "APPROVED") {
+        return res.status(409).json({ error: "An approved lab cannot be changed" });
+      }
+      res.json(await storage.saveLabSubmission(
+        labId,
+        req.user!.id,
+        submission.code,
+        submission.output ?? null,
+        submission.submit,
+      ));
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  app.post("/api/lab-submissions/:id/review", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
+    try {
+      const submissionId = parseInt(req.params.id, 10);
+      const submission = await storage.getLabSubmission(submissionId);
+      if (!submission) {
+        return res.status(404).json({ error: "Lab submission not found" });
+      }
+      if (submission.status !== "SUBMITTED") {
+        return res.status(409).json({ error: "Only a submitted lab can be reviewed" });
+      }
+
+      const { lab, allowed } = await getLabAccess(req, submission.labId);
+      if (!lab || !allowed) {
+        return res.status(404).json({ error: "Lab submission not found" });
+      }
+
+      const review = reviewLabSubmissionSchema.parse(req.body);
+      const status = review.decision === "APPROVE" ? "APPROVED" : "CHANGES_REQUESTED";
+      res.json(await storage.reviewLabSubmission(
+        submissionId,
+        status,
+        review.feedback ?? null,
+      ));
     } catch (error) {
       handleError(res, error);
     }
