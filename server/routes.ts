@@ -1623,67 +1623,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         weeks = weeks.filter((week) => week.isValidatedByMentor);
       }
 
-      const weeksWithDetails = await Promise.all(
-        weeks.map(async (week) => {
-          const objectives = await storage.getObjectivesByWeek(week.id);
-          const deliverables = await storage.getDeliverablesByWeek(week.id);
-          const resources = await storage.getResourcesByWeek(week.id);
-          const comments = await storage.getCommentsByWeek(week.id);
-          const roadmapLearnerIds = await getLearnerIdsForWeek(week);
+      const contents = await storage.getWeekContentsByWeekIds(
+        weeks.map((week) => week.id),
+      );
 
-          const objectivesWithTasks = await Promise.all(
-            objectives.map(async (objective) => {
-              const taskList = await storage.getTasksByObjective(objective.id);
+      const groupBy = <T>(rows: T[], key: (row: T) => number) => {
+        const groups = new Map<number, T[]>();
+        for (const row of rows) {
+          const bucket = groups.get(key(row));
+          if (bucket) bucket.push(row);
+          else groups.set(key(row), [row]);
+        }
+        return groups;
+      };
 
-              const tasksWithProgress = await Promise.all(
-                taskList.map(async (task) => {
-                  if (isLearner) {
-                    const progress = await storage.getTaskProgress(
-                      task.id,
-                      currentUserId,
+      const objectivesByWeek = groupBy(contents.objectives, (o) => o.weekId);
+      const tasksByObjective = groupBy(contents.tasks, (t) => t.objectiveId);
+      const deliverablesByWeek = groupBy(contents.deliverables, (d) => d.weekId);
+      const resourcesByWeek = groupBy(contents.resources, (r) => r.weekId);
+      const commentsByWeek = groupBy(contents.comments, (c) => c.weekId);
+      const progressByTask = groupBy(contents.progress, (p) => p.taskId);
+
+      const learnerIdsByRoadmap = new Map<number, Set<number> | null>();
+      for (const week of weeks) {
+        const roadmapId = week.roadmapId;
+        if (roadmapId !== null && !learnerIdsByRoadmap.has(roadmapId)) {
+          learnerIdsByRoadmap.set(roadmapId, await getLearnerIdsForWeek(week));
+        }
+      }
+
+      const weeksWithDetails = weeks.map((week) => {
+        const roadmapLearnerIds =
+          week.roadmapId === null
+            ? null
+            : (learnerIdsByRoadmap.get(week.roadmapId) ?? null);
+
+        const objectivesWithTasks = (objectivesByWeek.get(week.id) ?? []).map(
+          (objective) => ({
+            ...objective,
+            tasks: (tasksByObjective.get(objective.id) ?? []).map((task) => {
+              const allProgress = progressByTask.get(task.id) ?? [];
+              const progress = isLearner
+                ? allProgress.filter((entry) => entry.learnerId === currentUserId)
+                : roadmapLearnerIds === null
+                  ? allProgress
+                  : allProgress.filter((entry) =>
+                      roadmapLearnerIds.has(entry.learnerId),
                     );
-                    return { ...task, progress: progress ? [progress] : [] };
-                  }
+              return { ...task, progress };
+            }),
+          }),
+        );
 
-                  const allProgress = await storage.getAllTaskProgress(task.id);
-                  const scopedProgress =
-                    roadmapLearnerIds === null
-                      ? allProgress
-                      : allProgress.filter((progress) =>
-                          roadmapLearnerIds.has(progress.learnerId),
-                        );
-                  return { ...task, progress: scopedProgress };
-                }),
+        const comments = commentsByWeek.get(week.id) ?? [];
+        const scopedComments = isLearner
+          ? comments.filter((comment) => comment.learnerId === currentUserId)
+          : roadmapLearnerIds === null
+            ? comments
+            : comments.filter((comment) =>
+                roadmapLearnerIds.has(comment.learnerId),
               );
 
-              return { ...objective, tasks: tasksWithProgress };
-            }),
-          );
-
-          const scopedComments = isLearner
-            ? comments.filter((comment) => comment.learnerId === currentUserId)
-            : roadmapLearnerIds === null
-              ? comments
-              : comments.filter((comment) =>
-                  roadmapLearnerIds.has(comment.learnerId),
-                );
-
-          const commentsWithLearner = await Promise.all(
-            scopedComments.map(async (comment) => {
-              const learner = await storage.getUser(comment.learnerId);
-              return { ...comment, learner: learner! };
-            }),
-          );
-
-          return {
-            ...week,
-            objectives: objectivesWithTasks,
-            deliverables,
-            resources,
-            comments: commentsWithLearner,
-          };
-        }),
-      );
+        return {
+          ...week,
+          objectives: objectivesWithTasks,
+          deliverables: deliverablesByWeek.get(week.id) ?? [],
+          resources: resourcesByWeek.get(week.id) ?? [],
+          comments: scopedComments,
+        };
+      });
 
       res.json(weeksWithDetails);
     } catch (error) {
