@@ -20,11 +20,13 @@
         "shared/schema.ts",
         "drizzle.config.ts",
         "migrations/**",
-        "scripts/migrate-*.ts"
+        "scripts/migrate-*.ts",
+        "scripts/db-*.ts"
       ],
       "gates": [
         "verify",
-        "container-build"
+        "container-build",
+        "migrations"
       ]
     },
     "frontend": {
@@ -78,6 +80,7 @@
       "gates": [
         "verify",
         "container-build",
+        "migrations",
         "terraform-checks"
       ]
     },

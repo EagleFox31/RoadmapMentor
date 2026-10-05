@@ -88,10 +88,20 @@ The application must be configured through environment variables. Do not add mac
 ### 3. Apply the database schema
 
 ```bash
-npm run db:push
+npm run db:migrate
 ```
 
-### 4. Start development
+Create new migrations with `npm run db:generate -- --name <description>` (see `docs/deployment.md`). `npm run db:push` is for throwaway local databases only.
+
+### 4. Create the first mentor
+
+```bash
+npm run mentor:create -- --email=mentor@example.com "--name=Your Name"
+```
+
+See "Mentor accounts" in `docs/deployment.md`. Public sign-up only creates learners.
+
+### 5. Start development
 
 ```bash
 npm run dev
@@ -133,7 +143,7 @@ Issue #6 introduces first-class `roadmaps` and `mentorships` while preserving ex
 Back up the database first. Then apply the schema and run the compatibility migration:
 
 ```bash
-npm run db:push
+npm run db:migrate   # existing database: see "Existing databases" in docs/deployment.md
 npm run migrate:roadmap-domain
 ```
 
