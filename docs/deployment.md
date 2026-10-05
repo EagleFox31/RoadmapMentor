@@ -92,6 +92,21 @@ For hosted environments, run `npm run db:push` from the build/migration image as
 
 For a larger team or destructive schema changes, replace direct schema push with committed, versioned Drizzle migrations before production rollout.
 
+## Mentor accounts
+
+Public registration only ever creates `LEARNER` accounts: the API rejects any `role` field. Mentors are provisioned by an operator with access to the target database; there is no unauthenticated path.
+
+Create the first mentor of a new installation (after the schema is applied):
+
+```bash
+npm run mentor:create -- --email=mentor@example.com "--name=Ada Lovelace"
+```
+
+- The password is generated and printed once; to choose it, set `MENTOR_PASSWORD` (at least 12 characters) in the environment instead of passing it as an argument. Ask the mentor to change it after the first login.
+- The command is idempotent: an existing mentor with the same email is left untouched. An existing `LEARNER` account is never promoted; use another email.
+- Each creation writes an `[audit] ... mentor_created userId=... operator=...` line to the command output (never the password). Keep release/operator logs to retain the trail.
+- In containers, run it from the build image with the same `DATABASE_URL` / `DATABASE_WS_PROXY*` settings as the app, e.g. `docker compose run --rm migrate npm run mentor:create -- --email=... "--name=..."`.
+
 ## Backup and restore
 
 Example PostgreSQL backup:

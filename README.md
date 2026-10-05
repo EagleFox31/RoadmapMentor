@@ -91,7 +91,15 @@ The application must be configured through environment variables. Do not add mac
 npm run db:push
 ```
 
-### 4. Start development
+### 4. Create the first mentor
+
+```bash
+npm run mentor:create -- --email=mentor@example.com "--name=Your Name"
+```
+
+See "Mentor accounts" in `docs/deployment.md`. Public sign-up only creates learners.
+
+### 5. Start development
 
 ```bash
 npm run dev
