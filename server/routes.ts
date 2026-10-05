@@ -426,7 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const isValid = await comparePassword(password, user.password);
-      if (!isValid) {
+      if (!isValid || user.disabledAt) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 

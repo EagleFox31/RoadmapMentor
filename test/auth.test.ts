@@ -151,6 +151,18 @@ test("authMiddleware rejects a deleted account immediately", async () => {
   assert.equal(state.statusCode, 401);
 });
 
+test("authMiddleware rejects a disabled account immediately", async () => {
+  const { generateToken } = await import("../server/auth");
+  const token = generateToken({ id: 7, email: "a@b.c", role: "LEARNER" } as any);
+  const { state, nextCalled } = await runMiddleware(
+    async () => ({ id: 7, email: "a@b.c", role: "LEARNER", password: "hash", disabledAt: new Date() }),
+    token,
+  );
+
+  assert.equal(nextCalled, false);
+  assert.equal(state.statusCode, 401);
+});
+
 test("authMiddleware rejects a token whose role no longer matches the database", async () => {
   const { generateToken } = await import("../server/auth");
   const token = generateToken({ id: 7, email: "a@b.c", role: "MENTOR" } as any);

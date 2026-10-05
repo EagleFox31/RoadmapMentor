@@ -62,7 +62,7 @@ export function createAuthMiddleware(loadUser: UserLoader) {
 
     loadUser(decoded.id)
       .then((user) => {
-        if (!user || user.role !== decoded.role) {
+        if (!user || user.disabledAt || user.role !== decoded.role) {
           return res.status(401).json({ error: "Session no longer valid" });
         }
         const { password: _password, ...safeUser } = user;

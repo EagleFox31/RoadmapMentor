@@ -31,6 +31,7 @@ describe("active roadmap scoping", { skip: !BASE && "TEST_BASE_URL not set" }, (
   let learner: string;
   let roadmapA: number;
   let roadmapB: number;
+  let weekA: number;
 
   before(async () => {
     await api("POST", "/api/auth/create-test-users");
@@ -62,6 +63,7 @@ describe("active roadmap scoping", { skip: !BASE && "TEST_BASE_URL not set" }, (
     ] as const) {
       const week = await api("POST", "/api/weeks", mentor, { roadmapId, number: 1, title, startDate: "2026-01-05", endDate: "2026-01-11" });
       assert.equal(week.status, 201, JSON.stringify(week.data));
+      if (roadmapId === roadmapA) weekA = week.data.id;
     }
   });
 
@@ -84,6 +86,13 @@ describe("active roadmap scoping", { skip: !BASE && "TEST_BASE_URL not set" }, (
     assert.equal((await api("GET", `/api/weeks?roadmapId=${roadmapA}`, learner)).status, 404);
     assert.equal((await api("GET", `/api/progress/summary?roadmapId=${roadmapA}`, learner)).status, 404);
     assert.equal((await api("GET", `/api/roadmaps/${roadmapA}`, learner)).status, 404);
+  });
+
+  test("a week of a foreign roadmap is a 404 for every week route", async () => {
+    assert.equal((await api("GET", `/api/weeks/${weekA}`, mentor)).status, 200);
+    assert.equal((await api("GET", `/api/weeks/${weekA}`, learner)).status, 404);
+    assert.equal((await api("GET", `/api/weeks/${weekA}/comments`, learner)).status, 404);
+    assert.equal((await api("POST", `/api/weeks/${weekA}/comments`, learner, { content: "x" })).status, 404);
   });
 
   test("an invalid roadmapId is a 400 for progress", async () => {
