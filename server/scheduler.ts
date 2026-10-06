@@ -1,13 +1,15 @@
 import cron from "node-cron";
 import { storage } from "./storage";
 import { emailService } from "./services/emailService";
+import { claimJobRun, finishJobRun } from "./services/jobRuns";
+import { resolveSchedulerConfig } from "./services/schedulerConfig";
 
 /**
  * Fonction qui envoie les rappels de tâches aux apprenants
  * Parcourt tous les apprenants et envoie UN email par apprenant s'ils ont des tâches en attente
  * (peu importe le nombre de semaines concernées)
  */
-async function sendTaskReminders() {
+async function sendTaskReminders(): Promise<string> {
   console.log(`[Scheduler] Envoi des rappels de tâches - ${new Date().toISOString()}`);
   
   try {
@@ -68,36 +70,61 @@ async function sendTaskReminders() {
       }
     }
 
-    console.log(`[Scheduler] Rappels envoyés: ${sentCount}, Ignorés: ${skippedCount}, Total apprenants: ${learners.length}`);
+    const summary = `Rappels envoyés: ${sentCount}, Ignorés: ${skippedCount}, Total apprenants: ${learners.length}`;
+    console.log(`[Scheduler] ${summary}`);
+    return summary;
   } catch (error) {
     console.error("[Scheduler] Erreur lors de l'envoi des rappels:", error);
+    throw error;
   }
 }
 
 /**
- * Initialise les tâches planifiées
- * - Mercredi à 10h: Rappel de mi-semaine
- * - Vendredi à 10h: Rappel de fin de semaine
+ * Initialise les tâches planifiées (horaires, fuseau et activation via SCHEDULER_*).
+ * Chaque exécution est réservée en base pour son créneau planifié : avec plusieurs instances
+ * ou après un redémarrage, un créneau n'est traité qu'une seule fois.
  */
 export function initializeScheduler() {
-  // Rappel de mi-semaine: Mercredi à 10h (heure locale du serveur)
-  cron.schedule('0 10 * * 3', async () => {
-    console.log('[Scheduler] Déclenchement du rappel de mi-semaine (Mercredi 10h)');
-    await sendTaskReminders();
-  }, {
-    timezone: "Europe/Paris" // Adaptez selon votre fuseau horaire
-  });
+  const config = resolveSchedulerConfig();
+  if (!config.enabled) {
+    console.log("[Scheduler] Désactivé (SCHEDULER_ENABLED=false)");
+    return;
+  }
 
-  // Rappel de fin de semaine: Vendredi à 10h (heure locale du serveur)
-  cron.schedule('0 10 * * 5', async () => {
-    console.log('[Scheduler] Déclenchement du rappel de fin de semaine (Vendredi 10h)');
-    await sendTaskReminders();
-  }, {
-    timezone: "Europe/Paris" // Adaptez selon votre fuseau horaire
-  });
+  for (const job of config.jobs) {
+    cron.schedule(
+      job.expression,
+      async (context) => {
+        const runKey = context.date.toISOString();
+        const startedAt = Date.now();
+        try {
+          if (!(await claimJobRun(job.name, runKey))) {
+            console.log(`[Scheduler] ${job.name} ${runKey}: déjà pris en charge par une autre instance`);
+            return;
+          }
+        } catch (error) {
+          console.error(`[Scheduler] ${job.name} ${runKey}: réservation impossible`, error);
+          return;
+        }
 
-  console.log('[Scheduler] Tâches planifiées initialisées:');
-  console.log('  - Mercredi à 10h: Rappel de mi-semaine');
-  console.log('  - Vendredi à 10h: Rappel de fin de semaine');
-  console.log('  - Fuseau horaire: Europe/Paris');
+        console.log(`[Scheduler] ${job.label} (${job.name}) ${runKey}`);
+        try {
+          const summary = await sendTaskReminders();
+          await finishJobRun(job.name, runKey, "SUCCEEDED", summary);
+          console.log(`[Scheduler] ${job.name} ${runKey}: terminé en ${Date.now() - startedAt} ms`);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          await finishJobRun(job.name, runKey, "FAILED", message).catch(() => undefined);
+          console.error(`[Scheduler] ${job.name} ${runKey}: échec en ${Date.now() - startedAt} ms`);
+        }
+      },
+      { timezone: config.timezone },
+    );
+  }
+
+  console.log("[Scheduler] Tâches planifiées initialisées:");
+  for (const job of config.jobs) {
+    console.log(`  - ${job.label}: ${job.expression}`);
+  }
+  console.log(`  - Fuseau horaire: ${config.timezone}`);
 }

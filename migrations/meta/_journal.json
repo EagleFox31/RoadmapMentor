@@ -22,6 +22,20 @@
       "when": 1791210408406,
       "tag": "0002_progress-unique-and-indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791211278613,
+      "tag": "0003_scheduled-job-runs",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791243684977,
+      "tag": "0004_labs",
+      "breakpoints": true
     }
   ]
 }

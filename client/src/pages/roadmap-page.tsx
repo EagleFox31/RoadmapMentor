@@ -9,6 +9,7 @@ import { ObjectiveModal } from "@/components/modals/objective-modal";
 import { TaskModal } from "@/components/modals/task-modal";
 import { DeliverableModal } from "@/components/modals/deliverable-modal";
 import { ResourceModal } from "@/components/modals/resource-modal";
+import { LabModal } from "@/components/modals/lab-modal";
 import { AIRoadmapModal } from "@/components/modals/ai-roadmap-modal";
 import { Button } from "@/components/ui/button";
 import { Plus, Sparkles } from "lucide-react";
@@ -17,7 +18,7 @@ import { useActiveRoadmap } from "@/lib/active-roadmap";
 import { isMentor, getCurrentUser } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { WeekWithDetails, Week, Objective, Task, Deliverable, Resource, ObjectiveWithTasks } from "@shared/schema";
+import type { WeekWithDetails, Week, Objective, Task, Deliverable, Resource, ObjectiveWithTasks, Lab } from "@shared/schema";
 
 type ModalState = {
   week: boolean;
@@ -25,6 +26,7 @@ type ModalState = {
   task: boolean;
   deliverable: boolean;
   resource: boolean;
+  lab: boolean;
 };
 
 export default function RoadmapPage() {
@@ -49,6 +51,7 @@ export default function RoadmapPage() {
     task: false,
     deliverable: false,
     resource: false,
+    lab: false,
   });
   
   // AI Roadmap Modal state
@@ -60,6 +63,7 @@ export default function RoadmapPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingDeliverable, setEditingDeliverable] = useState<Deliverable | null>(null);
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
+  const [editingLab, setEditingLab] = useState<Lab | null>(null);
   const [targetObjectiveId, setTargetObjectiveId] = useState<number | null>(null);
 
   // Fetch all weeks with details
@@ -146,6 +150,7 @@ export default function RoadmapPage() {
     setEditingTask(null);
     setEditingDeliverable(null);
     setEditingResource(null);
+    setEditingLab(null);
     setTargetObjectiveId(null);
   };
 
@@ -334,6 +339,33 @@ export default function RoadmapPage() {
     },
   });
 
+  // Guided lab mutations
+  const createLabMutation = useMutation({
+    mutationFn: async ({ weekId, ...data }: any) => apiRequest("POST", `/api/weeks/${weekId}/labs`, data),
+    onSuccess: () => {
+      closeModal("lab");
+      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      toast({ title: "Lab créé", description: "Le lab a été ajouté à la semaine." });
+    },
+  });
+
+  const updateLabMutation = useMutation({
+    mutationFn: async ({ weekId: _weekId, ...data }: any) => apiRequest("PUT", `/api/labs/${editingLab?.id}`, data),
+    onSuccess: () => {
+      closeModal("lab");
+      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      toast({ title: "Lab mis à jour" });
+    },
+  });
+
+  const deleteLabMutation = useMutation({
+    mutationFn: async (labId: number) => apiRequest("DELETE", `/api/labs/${labId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      toast({ title: "Lab supprimé" });
+    },
+  });
+
   // AI Roadmap save function (ATOMIC BULK CREATION WITH TRANSACTION)
   const handleSaveAIRoadmap = async (generatedWeeks: any[]) => {
     // Transform AI-generated weeks to match backend schema
@@ -461,6 +493,9 @@ export default function RoadmapPage() {
                 onAddResource={() => openModal("resource")}
                 onEditResource={(r) => { setEditingResource(r); openModal("resource"); }}
                 onDeleteResource={(id) => confirm("Supprimer cette ressource ?") && deleteResourceMutation.mutate(id)}
+                onAddLab={() => openModal("lab")}
+                onEditLab={(lab) => { setEditingLab(lab); openModal("lab"); }}
+                onDeleteLab={(id) => confirm("Supprimer ce lab ?") && deleteLabMutation.mutate(id)}
                 isLoadingComment={addCommentMutation.isPending}
               />
             </div>
@@ -517,6 +552,15 @@ export default function RoadmapPage() {
         weekId={selectedWeekId!}
         resource={editingResource}
         isLoading={createResourceMutation.isPending || updateResourceMutation.isPending}
+      />
+
+      <LabModal
+        isOpen={modals.lab}
+        onClose={() => closeModal("lab")}
+        onSubmit={(data) => editingLab ? updateLabMutation.mutate(data) : createLabMutation.mutate(data)}
+        weekId={selectedWeekId!}
+        lab={editingLab}
+        isLoading={createLabMutation.isPending || updateLabMutation.isPending}
       />
 
       <AIRoadmapModal
