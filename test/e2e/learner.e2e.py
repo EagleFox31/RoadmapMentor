@@ -9,6 +9,9 @@ with sync_playwright() as p:
     browser = p.chromium.launch()
     page = browser.new_page()
     page.set_default_timeout(10000)
+    page.on("console", lambda m: print("console:", m.type, m.text[:200]) if m.type in ("error", "warning") else None)
+    page.on("pageerror", lambda e: print("pageerror:", str(e)[:300]))
+    page.on("requestfailed", lambda r: print("requestfailed:", r.url[:150], r.failure))
 
     page.goto(BASE); page.wait_for_load_state("networkidle")
     tid(page, "button-show-register").click()

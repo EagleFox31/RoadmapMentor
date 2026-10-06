@@ -201,6 +201,12 @@ jobs:
           python test/e2e/learner.e2e.py
           python test/e2e/mentor.e2e.py
 
+      - name: Browser diagnostics
+        if: failure()
+        run: |
+          curl -s -i "$TEST_BASE_URL/" | head -n 40
+          tail -n 40 "$RUNNER_TEMP/prod-server.log"
+
       - name: Stop production server
         if: always()
         run: kill "$(cat "$RUNNER_TEMP/server.pid")" || true
