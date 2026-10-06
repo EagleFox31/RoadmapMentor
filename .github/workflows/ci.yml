@@ -174,7 +174,12 @@ jobs:
 
       - name: Stop development server
         if: always()
-        run: kill "$(cat "$RUNNER_TEMP/server.pid")" || true
+        # npm spawns the server as a child: free the port itself, not only the wrapper.
+        run: |
+          kill "$(cat "$RUNNER_TEMP/server.pid")" || true
+          fuser -k "${PORT}/tcp" || true
+          for i in $(seq 1 20); do curl -fs "$TEST_BASE_URL/health/ready" > /dev/null || exit 0; sleep 1; done
+          echo "port ${PORT} is still serving"; exit 1
 
       - name: Build production bundle
         run: npm run build
@@ -209,7 +214,12 @@ jobs:
 
       - name: Stop production server
         if: always()
-        run: kill "$(cat "$RUNNER_TEMP/server.pid")" || true
+        # npm spawns the server as a child: free the port itself, not only the wrapper.
+        run: |
+          kill "$(cat "$RUNNER_TEMP/server.pid")" || true
+          fuser -k "${PORT}/tcp" || true
+          for i in $(seq 1 20); do curl -fs "$TEST_BASE_URL/health/ready" > /dev/null || exit 0; sleep 1; done
+          echo "port ${PORT} is still serving"; exit 1
 
   terraform-checks:
     name: terraform-checks
