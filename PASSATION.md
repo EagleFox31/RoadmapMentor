@@ -1,7 +1,7 @@
 # Passation — 2026-10-06
 
 ## Objectif en cours
-Enchaîner la feuille de route `docs/backlog.md` : RM-012 (PR #50) et RM-009 (PR #51, absent de `main` jusque-là) à fusionner ; prochain : RM-013 ou RM-007.
+Enchaîner la feuille de route `docs/backlog.md` : RM-012 et RM-009 fusionnés ; RM-013 (découpage) en PR sur `refactor/rm-013-split-backend` ; prochain : RM-007 ou RM-020.
 
 ## Fait (tout est fusionné dans `main`, e8e44d5)
 - RM-002/003/004/005/006/008 : fusionnés (PR #38 à #46). RM-009 (commit 3e1c052) ne l'était PAS : réintégré par la PR #51.
@@ -16,10 +16,10 @@ Enchaîner la feuille de route `docs/backlog.md` : RM-012 (PR #50) et RM-009 (PR
 - Lot de rappels idempotent par créneau (pas par e-mail) ; un lot en échec n'est pas rejoué.
 
 ## Reste à faire
-1. Fusionner la PR #50 (RM-012, adaptateur S3 ; non testé sur vrai bucket/MinIO). Statuts backlog et leçon déjà mis à jour (sur la branche de la PR).
+1. Fusionner la PR RM-013. RM-012 (S3) non testé sur vrai bucket/MinIO.
 4. RM-010 restant : mesure du nombre de requêtes, pagination, N+1 du scheduler de rappels.
 5. RM-011 restant : métriques (RM-017), reprise d'un lot interrompu.
-6. RM-007 (CRUD semaines, séances, facturation, CI), RM-013 (découper `routes.ts`/`storage.ts`), RM-020 (invitation par e-mail).
+6. RM-007 (CRUD semaines, séances, facturation, CI), RM-020 (invitation par e-mail).
 7. Non testé en navigateur : labs (Python), sélecteur de roadmap, redirection 401, CSP en build prod.
 8. Branches distantes fusionnées à supprimer sur origin (feat/rm-0xx, fix/rm-005-prod-deps) si souhaité.
 
@@ -30,3 +30,5 @@ Enchaîner la feuille de route `docs/backlog.md` : RM-012 (PR #50) et RM-009 (PR
 - Éditer les fichiers par Edit/Write ou scripts Python en heredoc `'PYEOF'` : pas de découpage `index()` sans borner la recherche après le début.
 - Codex peut retravailler en parallèle dans le même dossier : vérifier `git status` avant de commencer.
 - Pas de mention d'IA dans commits, PR ni code.
+- Architecture : routes dans `server/routes/<domaine>.ts`, accès dans `server/access/`, données dans `server/data/<agrégat>.ts` (façade `server/storage.ts`), erreurs métier dans `server/domain/errors.ts`.
+- Windows : pas de `pkill` ; tuer le serveur de test via `netstat -ano | grep :5055` puis `taskkill //PID <pid> //F //T` (un ancien serveur resté actif fausse les tests).

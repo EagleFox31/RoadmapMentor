@@ -403,6 +403,10 @@ Depuis RM-003, un mentor ne peut rattacher qu'un apprenant déjà inscrit. Un ap
 
 ### RM-013 — Découper les monolithes backend
 
+> **Statut : terminé — 2026-10-06.**
+> **Comment :** `server/routes.ts` (2 682 lignes) est un simple compositeur de 37 lignes ; 14 modules de routes par domaine dans `server/routes/` (`registerXRoutes(app, deps)`), contrôles d'accès partagés dans `server/access/` (`weekAccess`, `mentorshipAccess`), workflow de facturation dans `server/services/billingPeriods.ts`. `server/storage.ts` (1 268 lignes) est une façade de 4 lignes : un dépôt par agrégat dans `server/data/` (interface `XStore` + classe), composés par `createStorage()` qui refuse les noms de méthode dupliqués ; l'objet `storage` et ses 85 méthodes sont inchangés pour les appelants, les transactions restent dans leur dépôt, les appels inter-agrégats passent par `this.store()`. Erreurs métier typées (`server/domain/errors.ts`: `NotFoundError` 404, `InvalidRequestError` 400, `ConflictError` 409) converties en un seul endroit (`server/http/errors.ts`) ; plus de reconnaissance par texte de message dans les routes.
+> **Preuve :** découpage mécanique par script, 67 routes avant/après, 85 méthodes de stockage avant/après ; `tsc`, 91 tests unitaires, 30 tests d'intégration sur serveur frais et build verts. **Reste :** `RM-007` (CRUD semaines…) reste listé comme dépendance dans le tableau mais n'a pas bloqué ce travail.
+
 **Constat**
 
 `server/routes.ts` dépasse 2 400 lignes et `server/storage.ts` dépasse 1 000 lignes.
