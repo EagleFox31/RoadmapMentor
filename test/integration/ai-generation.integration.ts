@@ -2,28 +2,9 @@
 //   TEST_BASE_URL=http://localhost:5055 TEST_AI=1 npm run test:integration
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
+import { api, BASE, run } from "./support/api";
 
-const BASE = process.env.TEST_BASE_URL;
 const enabled = !!BASE && process.env.TEST_AI === "1";
-
-async function api(method: string, path: string, token?: string, body?: unknown) {
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const text = await res.text();
-  let data: any;
-  try {
-    data = text ? JSON.parse(text) : undefined;
-  } catch {
-    data = text;
-  }
-  return { status: res.status, data };
-}
 
 describe("AI roadmap generation", { skip: !enabled && "set TEST_BASE_URL and TEST_AI=1" }, () => {
   test("generates weeks and saves them atomically into a roadmap", { timeout: 240_000 }, async () => {
