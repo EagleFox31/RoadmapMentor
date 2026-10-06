@@ -4,6 +4,8 @@ import { after, test } from "node:test";
 
 export const BASE = process.env.TEST_BASE_URL;
 export const PASSWORD = "Test123!";
+// Mentor provisioning enforces a stricter password policy than public sign-up.
+export const MENTOR_PASSWORD = "Mentor-Test-123!";
 export const run = Date.now().toString(36);
 
 export async function api(method: string, path: string, token?: string, body?: unknown) {
@@ -31,8 +33,8 @@ export interface Actor {
   email: string;
 }
 
-export async function login(email: string): Promise<Actor> {
-  const res = await api("POST", "/api/auth/login", undefined, { email, password: PASSWORD });
+export async function login(email: string, password = PASSWORD): Promise<Actor> {
+  const res = await api("POST", "/api/auth/login", undefined, { email, password });
   assert.equal(res.status, 200, `login ${email}: ${JSON.stringify(res.data)}`);
   return { token: res.data.token, id: res.data.user?.id, email };
 }
@@ -58,9 +60,9 @@ export async function ensureMentor(label: string): Promise<Actor> {
   execFileSync(
     process.execPath,
     ["--import", "tsx", "scripts/create-mentor.ts", `--email=${email}`, `--name=IT Mentor ${label}`],
-    { env: { ...process.env, MENTOR_PASSWORD: PASSWORD }, stdio: "pipe" },
+    { env: { ...process.env, MENTOR_PASSWORD }, stdio: "pipe" },
   );
-  return login(email);
+  return login(email, MENTOR_PASSWORD);
 }
 
 const tracked: Array<{ path: string; token: string }> = [];
@@ -92,7 +94,7 @@ export type AccessRow = [
  */
 export function expectAccess(actors: Record<string, () => string | undefined>, rows: AccessRow[]) {
   for (const [method, path, actor, body, expected] of rows) {
-    const label = typeof path === "function" ? path.toString() : path;
+    const label = typeof path === "function" ? path().replace(/\d+/g, ":id").replace(/^.*?(\/api)/, "$1") || "(dynamic)" : path;
     test(`${actor} ${method} ${label} -> ${expected}`, async () => {
       const resolved = typeof path === "function" ? path() : path;
       const res = await api(method, resolved, actors[actor]?.(), body);
