@@ -15,6 +15,7 @@
     "db:migrate": "tsx scripts/db-migrate.ts",
     "test": "tsx --test test/**/*.test.ts",
     "test:integration": "tsx --test test/integration/*.integration.ts",
+    "test:access-mutation": "tsx scripts/access-mutation-check.ts",
     "storage:migrate": "tsx scripts/migrate-object-storage.ts",
     "migrate:roadmap-domain": "tsx scripts/migrate-roadmap-domain.ts"
   },

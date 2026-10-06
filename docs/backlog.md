@@ -176,30 +176,29 @@ Le dépôt utilise `drizzle-kit push` et ne contient pas de dossier de migration
 
 ### RM-007 — Ajouter les tests d'intégration API et les parcours E2E
 
-> **Statut : partiel — 2026-10-05.**
-> **Comment :** `npm run test:integration` (`test/integration/*.integration.ts`) lance de vraies requêtes HTTP contre un serveur de développement branché sur un PostgreSQL jetable (service `postgres` du `docker-compose.yml` + proxy WebSocket, avec `drizzle-kit push`). Le parcours mentor/apprenant y est couvert (13 tests, dont la génération IA en option avec `TEST_AI=1`). Le parcours navigateur est dans `test/e2e/mentor-learner.e2e.py` (Playwright, 7 étapes : inscription UI, validation mentor, preuve par capture, commentaire, lecture mentor).
-> **Pourquoi :** les tests unitaires ne voyaient aucun des défauts réels (inscription cassée, `reusePort` sous Windows, `.env` non chargé, proxy compose, visibilité des semaines). Ces suites les ont trouvés et sont documentées dans `docs/engineering/lessons-learned.md`.
-> **Reste :** exécution en CI, CRUD complet des semaines, demandes de changement, séances, facturation/paiements, isolation de deux roadmaps, test sur un build de production.
-
+> **Statut : terminé — 2026-10-07.**
+> **Comment :** `test/integration/support/api.ts` (acteurs, fixture de mentorat, matrice d'accès `expectAccess`) ; suites `weeks-crud`, `sessions`, `change-requests`, `billing` et isolation de deux roadmaps ; E2E scindé en `test/e2e/learner.e2e.py` et `mentor.e2e.py` ; job CI `integration` (serveur de développement, puis build de production) ; `npm run test:access-mutation`. Voir `docs/engineering/testing.md`.
+> **Preuve :** 103 tests d'intégration verts sur le serveur de développement, 73 sur le build de production (suites nouvelles), 9 étapes E2E vertes sur le build de production, 5 mutations de gardes d'accès détectées.
+> **Reste (hors périmètre) :** les anciennes suites s'appuient encore sur `mentor@test.com` (développement seulement) ; `roadmaps-ui.e2e.py` n'est pas en CI ; la CI n'a pas encore tourné sur GitHub.
 
 **Constat**
 
-Les 53 tests actuels valident surtout les schémas et fonctions métier. Ils ne couvrent pas les routes avec une vraie base ni les parcours navigateur.
+Les tests unitaires ne couvraient pas les routes avec une vraie base ni les parcours navigateur.
 
 **Travail**
 
-- [x] Lancer PostgreSQL dans l'environnement de test. (en local via docker compose ; pas encore en CI)
+- [x] Lancer PostgreSQL dans l'environnement de test (service `postgres` + proxy dans le job CI `integration`).
 - [x] Tester inscription, connexion et autorisations sur les routes réelles.
-- [ ] Tester l'isolation de deux roadmaps et de deux apprenants. (deux apprenants : fait ; deux roadmaps : à faire)
-- [ ] Tester le CRUD des semaines et la sauvegarde atomique d'une roadmap IA. (sauvegarde atomique IA : faite ; CRUD : à faire)
-- [ ] Tester demandes de changement, séances, facturation et paiements.
-- [ ] Ajouter au moins deux parcours E2E : mentor et apprenant. (un scénario e2e couvrant mentor et apprenant ; à scinder en deux parcours)
+- [x] Tester l'isolation de deux roadmaps et de deux apprenants.
+- [x] Tester le CRUD des semaines et la sauvegarde atomique d'une roadmap IA.
+- [x] Tester demandes de changement, séances, facturation et paiements.
+- [x] Ajouter au moins deux parcours E2E : mentor et apprenant.
 
 **Critères d'acceptation**
 
-- [ ] Les scénarios critiques échouent si une vérification d'accès est retirée.
-- [ ] Les tests nettoient leurs données et sont reproductibles en CI. (isolation par identifiants uniques ; base jetable, pas encore de nettoyage ni de CI)
-- [ ] Les parcours mentor et apprenant s'exécutent sur un build proche de la production.
+- [x] Les scénarios critiques échouent si une vérification d'accès est retirée (`npm run test:access-mutation`).
+- [x] Les tests sont reproductibles en CI (acteurs uniques par exécution, base jetable de service).
+- [x] Les parcours mentor et apprenant s'exécutent sur un build proche de la production.
 
 ### RM-008 — Renforcer le cycle de vie de l'authentification
 

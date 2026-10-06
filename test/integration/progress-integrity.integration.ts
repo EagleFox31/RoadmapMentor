@@ -1,30 +1,9 @@
 import assert from "node:assert/strict";
 import { before, describe, test } from "node:test";
+import { api, BASE, PASSWORD, run } from "./support/api";
 
-const BASE = process.env.TEST_BASE_URL;
-const PASSWORD = "Test123!";
-const run = Date.now().toString(36);
 
 type Json = Record<string, any>;
-
-async function api(method: string, path: string, token?: string, body?: unknown) {
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const text = await res.text();
-  let data: any;
-  try {
-    data = text ? JSON.parse(text) : undefined;
-  } catch {
-    data = text;
-  }
-  return { status: res.status, data };
-}
 
 async function register(label: string) {
   const r = await api("POST", "/api/auth/register", undefined, {
