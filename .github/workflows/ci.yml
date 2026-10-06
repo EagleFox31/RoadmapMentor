@@ -191,6 +191,16 @@ jobs:
       - name: API integration tests (production build)
         run: npx tsx --test test/integration/weeks-crud.integration.ts test/integration/sessions.integration.ts test/integration/change-requests.integration.ts test/integration/billing.integration.ts
 
+      - name: Install Playwright
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Browser journeys (production build)
+        run: |
+          python test/e2e/learner.e2e.py
+          python test/e2e/mentor.e2e.py
+
       - name: Stop production server
         if: always()
         run: kill "$(cat "$RUNNER_TEMP/server.pid")" || true

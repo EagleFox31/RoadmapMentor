@@ -98,7 +98,8 @@
     },
     "tests-integration": {
       "paths": [
-        "test/integration/**"
+        "test/integration/**",
+        "test/e2e/**"
       ],
       "gates": [
         "integration"
