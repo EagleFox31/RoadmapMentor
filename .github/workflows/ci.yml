@@ -114,6 +114,87 @@ jobs:
       - name: Migrations are idempotent
         run: npm run db:migrate
 
+  integration:
+    name: integration
+    needs: impact
+    if: ${{ contains(fromJSON(needs.impact.outputs.gates), 'integration') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: roadmapmentor
+          POSTGRES_PASSWORD: roadmapmentor
+          POSTGRES_DB: roadmapmentor
+        options: >-
+          --health-cmd "pg_isready -U roadmapmentor -d roadmapmentor"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      db-proxy:
+        image: ghcr.io/neondatabase/wsproxy:latest
+        env:
+          ALLOW_ADDR_REGEX: ".*"
+        ports:
+          - 5444:80
+    env:
+      DATABASE_URL: postgresql://roadmapmentor:roadmapmentor@postgres:5432/roadmapmentor
+      DATABASE_WS_PROXY: localhost:5444/v1
+      DATABASE_WS_PROXY_INSECURE: "true"
+      JWT_SECRET: ci-only-secret
+      RATE_LIMIT_AUTH_MAX: "1000"
+      OBJECT_STORAGE_PROVIDER: filesystem
+      PORT: "5055"
+      TEST_BASE_URL: http://localhost:5055
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply migrations
+        run: npm run db:migrate
+
+      - name: Start development server
+        run: |
+          npm run dev > "$RUNNER_TEMP/dev-server.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/server.pid"
+          for i in $(seq 1 60); do curl -fs "$TEST_BASE_URL/health/ready" > /dev/null && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/dev-server.log"; exit 1
+
+      - name: API integration tests (development server)
+        run: npm run test:integration
+
+      - name: Stop development server
+        if: always()
+        run: kill "$(cat "$RUNNER_TEMP/server.pid")" || true
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Start production server
+        run: |
+          NODE_ENV=production node dist/index.js > "$RUNNER_TEMP/prod-server.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/server.pid"
+          for i in $(seq 1 60); do curl -fs "$TEST_BASE_URL/health/ready" > /dev/null && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/prod-server.log"; exit 1
+
+      # Suites that provision users through scripts/create-mentor.ts only: the
+      # dev-only create-test-users route does not exist in a production build.
+      - name: API integration tests (production build)
+        run: npx tsx --test test/integration/weeks-crud.integration.ts test/integration/sessions.integration.ts test/integration/change-requests.integration.ts test/integration/billing.integration.ts
+
+      - name: Stop production server
+        if: always()
+        run: kill "$(cat "$RUNNER_TEMP/server.pid")" || true
+
   terraform-checks:
     name: terraform-checks
     needs: impact

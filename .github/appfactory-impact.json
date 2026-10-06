@@ -12,7 +12,8 @@
         "shared/**"
       ],
       "gates": [
-        "verify"
+        "verify",
+        "integration"
       ]
     },
     "database-schema": {
@@ -26,7 +27,8 @@
       "gates": [
         "verify",
         "container-build",
-        "migrations"
+        "migrations",
+        "integration"
       ]
     },
     "frontend": {
@@ -51,7 +53,8 @@
       ],
       "gates": [
         "verify",
-        "container-build"
+        "container-build",
+        "integration"
       ],
       "dependsOn": [
         "shared-contracts",
@@ -81,7 +84,8 @@
         "verify",
         "container-build",
         "migrations",
-        "terraform-checks"
+        "terraform-checks",
+        "integration"
       ]
     },
     "terraform-iac": {
@@ -90,6 +94,17 @@
       ],
       "gates": [
         "terraform-checks"
+      ]
+    },
+    "tests-integration": {
+      "paths": [
+        "test/integration/**"
+      ],
+      "gates": [
+        "integration"
+      ],
+      "dependsOn": [
+        "backend"
       ]
     }
   }
