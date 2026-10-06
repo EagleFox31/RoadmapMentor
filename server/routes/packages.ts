@@ -203,12 +203,6 @@ export function registerMentoringPackageRoutes(app: Express) {
 
         res.json(updated);
       } catch (error) {
-        if (
-          error instanceof Error &&
-          error.message.startsWith("Invalid change request transition")
-        ) {
-          return res.status(409).json({ error: error.message });
-        }
         handleError(res, error);
       }
     },
@@ -273,12 +267,6 @@ export function registerMentoringPackageRoutes(app: Express) {
 
         res.json(updated);
       } catch (error) {
-        if (
-          error instanceof Error &&
-          error.message.startsWith("Invalid change request transition")
-        ) {
-          return res.status(409).json({ error: error.message });
-        }
         handleError(res, error);
       }
     },
@@ -321,12 +309,6 @@ export function registerMentoringPackageRoutes(app: Express) {
 
         res.json(updated);
       } catch (error) {
-        if (
-          error instanceof Error &&
-          error.message.startsWith("Invalid change request transition")
-        ) {
-          return res.status(409).json({ error: error.message });
-        }
         handleError(res, error);
       }
     },

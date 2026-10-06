@@ -1,3 +1,4 @@
+import { InvalidRequestError, NotFoundError } from "../domain/errors";
 import { storage } from "../storage";
 import { emailService } from "../services/emailService";
 import { type AuthRequest } from "../auth";
@@ -36,11 +37,11 @@ export const resolveRoadmapIdForNewWeek = async (
   if (requestedRoadmapId !== undefined && requestedRoadmapId !== null) {
     const roadmapId = Number(requestedRoadmapId);
     if (!Number.isInteger(roadmapId) || roadmapId <= 0) {
-      throw new Error("roadmapId must be a positive integer");
+      throw new InvalidRequestError("roadmapId must be a positive integer");
     }
 
     if (!(await storage.userCanAccessRoadmap(req.user!.id, req.user!.role, roadmapId))) {
-      throw new Error("Roadmap not found");
+      throw new NotFoundError("Roadmap not found");
     }
     return roadmapId;
   }
@@ -55,7 +56,9 @@ export const resolveRoadmapIdForNewWeek = async (
   }
 
   if (accessibleRoadmaps.length > 1) {
-    throw new Error("roadmapId is required when more than one roadmap is accessible");
+    throw new InvalidRequestError(
+      "roadmapId is required when more than one roadmap is accessible",
+    );
   }
 
   return null;

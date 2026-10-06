@@ -165,16 +165,6 @@ export function registerWeekRoutes(app: Express) {
       const week = await storage.createWeek(weekData);
       res.status(201).json(week);
     } catch (error) {
-      if (error instanceof Error && error.message === "Roadmap not found") {
-        return res.status(404).json({ error: error.message });
-      }
-      if (
-        error instanceof Error &&
-        (error.message.includes("roadmapId is required") ||
-          error.message.includes("roadmapId must be"))
-      ) {
-        return res.status(400).json({ error: error.message });
-      }
       handleError(res, error);
     }
   });
@@ -197,16 +187,6 @@ export function registerWeekRoutes(app: Express) {
           error: "Validation error",
           details: error.message,
         });
-      }
-      if (error instanceof Error && error.message === "Roadmap not found") {
-        return res.status(404).json({ error: error.message });
-      }
-      if (
-        error instanceof Error &&
-        (error.message.includes("roadmapId is required") ||
-          error.message.includes("roadmapId must be"))
-      ) {
-        return res.status(400).json({ error: error.message });
       }
       handleError(res, error);
     }

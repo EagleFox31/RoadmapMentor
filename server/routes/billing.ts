@@ -121,12 +121,6 @@ export function registerBillingRoutes(app: Express) {
 
         res.json(await reconcileBillingPeriod(access.billingPeriod));
       } catch (error) {
-        if (
-          error instanceof Error &&
-          error.message.startsWith("Currency mismatch")
-        ) {
-          return res.status(409).json({ error: error.message });
-        }
         handleError(res, error);
       }
     },

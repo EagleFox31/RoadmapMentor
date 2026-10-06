@@ -1,3 +1,4 @@
+import { ConflictError } from "./errors";
 export type BillingStatus = "DUE" | "PARTIALLY_PAID" | "PAID" | "VOID";
 
 export type MoneyLine = {
@@ -44,7 +45,7 @@ export function assertCurrencyMatches(
   actualCurrency: string,
 ): void {
   if (expectedCurrency.toUpperCase() !== actualCurrency.toUpperCase()) {
-    throw new Error(
+    throw new ConflictError(
       `Currency mismatch: expected ${expectedCurrency.toUpperCase()}, received ${actualCurrency.toUpperCase()}`,
     );
   }

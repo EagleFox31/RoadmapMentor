@@ -1,3 +1,4 @@
+import { ConflictError } from "./errors";
 export type ChangeRequestStatus =
   | "PROPOSED"
   | "QUOTED"
@@ -25,7 +26,7 @@ export function assertChangeRequestTransition(
   next: ChangeRequestStatus,
 ): void {
   if (!canTransitionChangeRequest(current, next)) {
-    throw new Error(`Invalid change request transition: ${current} -> ${next}`);
+    throw new ConflictError(`Invalid change request transition: ${current} -> ${next}`);
   }
 }
 
