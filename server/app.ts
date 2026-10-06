@@ -9,6 +9,7 @@ import express, {
 
 import { registerRoutes } from "./routes";
 import { initializeScheduler } from "./scheduler";
+import { applySecurityHeaders, JSON_BODY_LIMIT } from "./http/hardening";
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -28,12 +29,14 @@ declare module 'http' {
     rawBody: unknown
   }
 }
+applySecurityHeaders(app);
 app.use(express.json({
+  limit: JSON_BODY_LIMIT,
   verify: (req, _res, buf) => {
     req.rawBody = buf;
   }
 }));
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: false, limit: JSON_BODY_LIMIT }));
 
 app.use((req, res, next) => {
   const start = Date.now();
