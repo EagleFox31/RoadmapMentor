@@ -205,6 +205,19 @@ OBJECT_STORAGE_LOCAL_DIR=.data/object-storage
 
 Uploads go through the authenticated application endpoint and are stored below the configured directory. ACL metadata is stored alongside each object. The application persists canonical `/objects/...` paths, so changing providers does not change database URLs.
 
+### S3-compatible provider (shared, multi-instance)
+
+```env
+OBJECT_STORAGE_PROVIDER=s3
+OBJECT_STORAGE_S3_BUCKET=my-bucket
+OBJECT_STORAGE_S3_REGION=eu-west-3
+OBJECT_STORAGE_S3_ENDPOINT=        # R2 / MinIO / Scaleway only
+OBJECT_STORAGE_S3_PREFIX=prod      # optional key prefix
+OBJECT_STORAGE_S3_FORCE_PATH_STYLE=false
+```
+
+Credentials use the standard AWS chain. The bucket stays private and needs no CORS: uploads and downloads are proxied by the application, which enforces ACLs. ACL policies are stored as object metadata.
+
 ### Replit compatibility provider
 
 Existing Replit deployments can keep the original sidecar-backed storage:
