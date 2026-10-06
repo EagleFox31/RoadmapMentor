@@ -278,6 +278,10 @@ Chaque instance de l'application démarre ses propres tâches `node-cron`. Plusi
 
 ### RM-012 — Ajouter un stockage objet partagé pour la production
 
+> **Statut : terminé, sauf validation contre un vrai bucket — 2026-10-06.**
+> **Comment :** `S3ObjectStorageAdapter` (`server/objectStorage.ts`, `OBJECT_STORAGE_PROVIDER=s3`), ACL en métadonnées d'objet, téléversement proxifié (pas de CORS), script idempotent `npm run storage:migrate`, procédure et rétention dans `docs/deployment.md`.
+> **Preuve :** tests unitaires avec client S3 simulé (`test/object-storage-adapter.test.ts`). **Reste :** test réel sur S3/MinIO.
+
 **Constat**
 
 Le stockage sur disque fonctionne sur un hôte unique. Il ne convient pas à plusieurs instances et nécessite une sauvegarde séparée. L'adaptateur Replit conserve une dépendance Google Cloud importante.
