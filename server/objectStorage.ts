@@ -1,10 +1,17 @@
+import {
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+  CopyObjectCommand,
+} from "@aws-sdk/client-s3";
 import { Storage, type File } from "@google-cloud/storage";
 import type { Response } from "express";
 import { randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { Readable } from "node:stream";
+import { PassThrough, type Readable } from "node:stream";
 import {
   ACL_POLICY_METADATA_KEY,
   type ObjectAclPolicy,
@@ -14,7 +21,7 @@ import {
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
-export type ObjectStorageProviderName = "replit" | "filesystem";
+export type ObjectStorageProviderName = "replit" | "filesystem" | "s3";
 
 export type ObjectUploadTarget = {
   uploadURL: string;
@@ -372,6 +379,163 @@ export class FilesystemObjectStorageAdapter implements ObjectStorageAdapter {
   }
 }
 
+
+const S3_ACL_METADATA_KEY = "aclpolicy";
+
+function isS3NotFound(error: any): boolean {
+  return (
+    error?.name === "NotFound" ||
+    error?.name === "NoSuchKey" ||
+    error?.$metadata?.httpStatusCode === 404
+  );
+}
+
+/**
+ * S3-compatible adapter (AWS S3, Cloudflare R2, MinIO, Scaleway...).
+ * Uploads go through the application route, so the bucket needs no CORS
+ * configuration and stays fully private.
+ */
+export class S3ObjectStorageAdapter implements ObjectStorageAdapter {
+  readonly name = "s3" as const;
+  private readonly client: S3Client;
+  private readonly bucket: string;
+  private readonly prefix: string;
+
+  constructor(
+    env: NodeJS.ProcessEnv = process.env,
+    client?: S3Client,
+  ) {
+    const bucket = env.OBJECT_STORAGE_S3_BUCKET?.trim();
+    if (!bucket) {
+      throw new Error(
+        "OBJECT_STORAGE_S3_BUCKET is required when OBJECT_STORAGE_PROVIDER=s3",
+      );
+    }
+    this.bucket = bucket;
+    this.prefix = (env.OBJECT_STORAGE_S3_PREFIX || "")
+      .trim()
+      .replace(/^\/+|\/+$/g, "");
+    this.client =
+      client ??
+      new S3Client({
+        region: env.OBJECT_STORAGE_S3_REGION?.trim() || "us-east-1",
+        endpoint: env.OBJECT_STORAGE_S3_ENDPOINT?.trim() || undefined,
+        forcePathStyle: env.OBJECT_STORAGE_S3_FORCE_PATH_STYLE === "true",
+      });
+  }
+
+  private key(objectKey: string): string {
+    const safeKey = normalizeObjectKey(objectKey);
+    return this.prefix ? this.prefix + "/" + safeKey : safeKey;
+  }
+
+  async createUploadTarget(objectId: string): Promise<ObjectUploadTarget> {
+    return {
+      uploadURL: "/api/objects/local-upload/" + objectId,
+      objectPath: "/objects/uploads/" + objectId,
+      requiresAuth: true,
+    };
+  }
+
+  normalizeObjectEntityPath(rawPath: string): string {
+    const prefix = "/api/objects/local-upload/";
+    if (rawPath.startsWith(prefix)) {
+      return "/objects/uploads/" + rawPath.slice(prefix.length);
+    }
+    return rawPath;
+  }
+
+  private async head(objectKey: string) {
+    return this.client.send(
+      new HeadObjectCommand({ Bucket: this.bucket, Key: this.key(objectKey) }),
+    );
+  }
+
+  async exists(objectKey: string): Promise<boolean> {
+    try {
+      await this.head(objectKey);
+      return true;
+    } catch (error) {
+      if (isS3NotFound(error)) return false;
+      throw error;
+    }
+  }
+
+  async getMetadata(objectKey: string): Promise<StoredObjectMetadata> {
+    const head = await this.head(objectKey);
+    return {
+      contentType: head.ContentType || undefined,
+      size: head.ContentLength,
+    };
+  }
+
+  createReadStream(objectKey: string): Readable {
+    const out = new PassThrough();
+    this.client
+      .send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: this.key(objectKey) }),
+      )
+      .then((res) => (res.Body as Readable).on("error", (e) => out.destroy(e)).pipe(out))
+      .catch((e) => out.destroy(e));
+    return out;
+  }
+
+  async getAclPolicy(objectKey: string): Promise<ObjectAclPolicy | null> {
+    const head = await this.head(objectKey);
+    const value = head.Metadata?.[S3_ACL_METADATA_KEY];
+    return value ? (JSON.parse(value) as ObjectAclPolicy) : null;
+  }
+
+  async setAclPolicy(
+    objectKey: string,
+    aclPolicy: ObjectAclPolicy,
+  ): Promise<void> {
+    let head;
+    try {
+      head = await this.head(objectKey);
+    } catch (error) {
+      if (isS3NotFound(error)) throw new ObjectNotFoundError();
+      throw error;
+    }
+    const key = this.key(objectKey);
+    await this.client.send(
+      new CopyObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        CopySource: encodeURIComponent(this.bucket + "/" + key).replace(/%2F/g, "/"),
+        MetadataDirective: "REPLACE",
+        ContentType: head.ContentType,
+        Metadata: {
+          ...(head.Metadata || {}),
+          [S3_ACL_METADATA_KEY]: JSON.stringify(aclPolicy),
+        },
+      }),
+    );
+  }
+
+  async writeDirectUpload(
+    objectId: string,
+    body: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    if (!/^[0-9a-f-]{36}$/i.test(objectId)) {
+      throw new Error("Invalid object id");
+    }
+    const objectKey = "uploads/" + objectId;
+    if (await this.exists(objectKey)) {
+      throw new Error("Object already exists");
+    }
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: this.key(objectKey),
+        Body: body,
+        ContentType: contentType,
+      }),
+    );
+  }
+}
+
 export function resolveObjectStorageProviderName(
   env: NodeJS.ProcessEnv = process.env,
 ): ObjectStorageProviderName {
@@ -379,11 +543,15 @@ export function resolveObjectStorageProviderName(
   if (!configured) {
     return "replit";
   }
-  if (configured === "replit" || configured === "filesystem") {
+  if (
+    configured === "replit" ||
+    configured === "filesystem" ||
+    configured === "s3"
+  ) {
     return configured;
   }
   throw new Error(
-    "OBJECT_STORAGE_PROVIDER must be either 'replit' or 'filesystem'",
+    "OBJECT_STORAGE_PROVIDER must be 'replit', 'filesystem' or 's3'",
   );
 }
 
@@ -391,9 +559,9 @@ export function createObjectStorageAdapter(
   env: NodeJS.ProcessEnv = process.env,
 ): ObjectStorageAdapter {
   const provider = resolveObjectStorageProviderName(env);
-  return provider === "filesystem"
-    ? new FilesystemObjectStorageAdapter(env)
-    : new ReplitObjectStorageAdapter(env);
+  if (provider === "filesystem") return new FilesystemObjectStorageAdapter(env);
+  if (provider === "s3") return new S3ObjectStorageAdapter(env);
+  return new ReplitObjectStorageAdapter(env);
 }
 
 export class ObjectStorageService {

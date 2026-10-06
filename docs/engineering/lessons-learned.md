@@ -13,3 +13,12 @@
 | AI generation failed on `resourceType: "EXERCISE"` (DeepSeek) | Strict enum on provider output | Unknown `type` / `resourceType` degrade to `OTHER` | Opt-in `TEST_AI=1` integration test against the configured provider |
 
 Generalised lesson: contract changes between layers (strict API schema vs. form payload) need a test that crosses the layers, not only unit tests on each side.
+
+## 2026-10-06 — Editing and merge-order incidents (RM-010/011)
+
+| Context | Root cause | Resolution | Prevention |
+| --- | --- | --- | --- |
+| A class was duplicated in a source file after a scripted edit | Edit done by string slicing (`index()` without bounding the search after the start marker), matching the wrong occurrence | Duplicate removed, file re-checked with `tsc` | Edit with the Edit tool or scripts that assert a single match; run `tsc` right after any scripted edit |
+| RM-011 landed in the RM-010 branch instead of `main` | Stacked PRs: the base PR was merged first while the child still targeted its branch | Recovered through a follow-up PR to `main` (#49) | Retarget a stacked PR to `main` before merging its base; verify `main` contains the commits after merge |
+
+Generalised lesson: any mechanical edit or merge sequence needs a cheap post-condition check (compile, `git log main`) before moving on.

@@ -239,6 +239,8 @@ Le middleware fait confiance au rôle contenu dans un JWT valable sept jours et 
 
 ### RM-010 — Réduire les requêtes N+1 et garantir l'unicité de la progression
 
+> **Statut : partiel — 2026-10-06 (PR #47).** Livré : `getWeekContentsByWeekIds` (`server/storage.ts`) et `GET /api/weeks` groupé ; `toggleTaskProgress` en upsert atomique ; migration `0002` (dédoublonnage + unique `(task_id, learner_id)` + index). **Reste :** mesure du nombre de requêtes, pagination, N+1 du scheduler de rappels.
+
 **Constat**
 
 Le chargement des semaines effectue des requêtes imbriquées pour objectifs, tâches, progressions, commentaires et utilisateurs. La table de progression ne possède pas de contrainte unique visible sur le couple tâche/apprenant.
@@ -259,6 +261,8 @@ Le chargement des semaines effectue des requêtes imbriquées pour objectifs, t�
 
 ### RM-011 — Rendre les tâches planifiées sûres en multi-instance
 
+> **Statut : partiel — 2026-10-06 (PR #48/#49).** Livré : `server/scheduler.ts`, `schedulerConfig.ts`, `jobRuns.ts` ; table `scheduled_job_runs` (migration `0003`) ; créneau réclamé une seule fois (lot idempotent par créneau, un lot en échec n'est pas rejoué) ; `SCHEDULER_ENABLED/TIMEZONE/MIDWEEK_CRON/ENDWEEK_CRON`. **Reste :** métriques (RM-017), reprise d'un lot interrompu.
+
 **Constat**
 
 Chaque instance de l'application démarre ses propres tâches `node-cron`. Plusieurs réplicas peuvent donc envoyer les mêmes rappels plusieurs fois. Le fuseau `Europe/Paris` est codé en dur.
@@ -277,6 +281,10 @@ Chaque instance de l'application démarre ses propres tâches `node-cron`. Plusi
 - Les horaires sont configurables sans modification du code.
 
 ### RM-012 — Ajouter un stockage objet partagé pour la production
+
+> **Statut : terminé, sauf validation contre un vrai bucket — 2026-10-06.**
+> **Comment :** `S3ObjectStorageAdapter` (`server/objectStorage.ts`, `OBJECT_STORAGE_PROVIDER=s3`), ACL en métadonnées d'objet, téléversement proxifié (pas de CORS), script idempotent `npm run storage:migrate`, procédure et rétention dans `docs/deployment.md`.
+> **Preuve :** tests unitaires avec client S3 simulé (`test/object-storage-adapter.test.ts`). **Reste :** test réel sur S3/MinIO.
 
 **Constat**
 
@@ -297,7 +305,7 @@ Le stockage sur disque fonctionne sur un hôte unique. Il ne convient pas à plu
 
 ### RM-018 — Ajouter des labs guidés et leur workflow de validation
 
-**Statut : en cours — première tranche verticale implémentée**
+**Statut : en cours — première tranche fusionnée le 2026-10-06 (migration `0004_labs.sql`, labs et soumissions dans le chargeur groupé). Non testé en navigateur : labs Python.**
 
 **Constat**
 

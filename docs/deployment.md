@@ -193,3 +193,21 @@ Real credentials belong in the environment or the chosen secret-management syste
 - **Rate limits** (per IP for sign-in/sign-up, per user otherwise; in memory, so per instance until a shared store exists — RM-011/RM-012): auth 20 / 15 min, AI generation 10 / h, uploads 60 / 15 min, jobs 6 / h. Override with `RATE_LIMIT_<AUTH|AI|UPLOAD|JOBS>_MAX` and `_WINDOW_MS`.
 - **Behind a reverse proxy / load balancer** set `TRUST_PROXY=<number of hops>` (usually `1`), otherwise every client shares the proxy's IP and the auth limit.
 - **Bodies**: JSON and form bodies capped at 1 MB; uploads at 5 MB and limited to PNG, JPEG, WebP, GIF (SVG refused). AI input: topic 200 characters, context 2000.
+
+## Shared object storage (S3-compatible)
+
+Multi-instance deployments must use `OBJECT_STORAGE_PROVIDER=s3` so all instances read the same evidence. Variables: `OBJECT_STORAGE_S3_BUCKET` (required), `OBJECT_STORAGE_S3_REGION`, `OBJECT_STORAGE_S3_ENDPOINT`, `OBJECT_STORAGE_S3_PREFIX`, `OBJECT_STORAGE_S3_FORCE_PATH_STYLE`. Grant the runtime identity only `s3:GetObject`, `s3:PutObject` and `s3:ListBucket` on the bucket/prefix; block all public access.
+
+### Migrating from the filesystem provider
+
+The database stores canonical `/objects/...` paths, so no row changes. 
+
+1. Configure the S3 variables next to the existing `OBJECT_STORAGE_LOCAL_DIR`.
+2. `npm run storage:migrate -- --dry-run`, then `npm run storage:migrate` (idempotent, source untouched, re-run after the cutover to catch late uploads).
+3. Switch `OBJECT_STORAGE_PROVIDER=s3` and redeploy; keep the old directory until verified.
+
+### Backup, retention and deletion
+
+- Enable bucket versioning and a lifecycle rule (suggested: keep non-current versions 30 days).
+- Evidence is retained as long as the learner account exists; deleting an account must be followed by deleting its objects (owner is recorded in the ACL metadata).
+- Replicate the bucket cross-region or snapshot it daily according to the provider's tooling; the filesystem directory, if still used, is backed up as a plain volume.

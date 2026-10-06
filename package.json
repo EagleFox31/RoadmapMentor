@@ -15,9 +15,12 @@
     "db:migrate": "tsx scripts/db-migrate.ts",
     "test": "tsx --test test/**/*.test.ts",
     "test:integration": "tsx --test test/integration/*.integration.ts",
+    "storage:migrate": "tsx scripts/migrate-object-storage.ts",
     "migrate:roadmap-domain": "tsx scripts/migrate-roadmap-domain.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1146.0",
+    "@aws-sdk/s3-request-presigner": "^3.1146.0",
     "@google-cloud/storage": "^8.2.0",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
