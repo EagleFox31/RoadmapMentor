@@ -80,6 +80,11 @@ export function registerCleanup() {
   });
 }
 
+// Paths are lazy (ids exist only after setup); name the test from the source text instead.
+function describePath(path: () => string): string {
+  return path.toString().replace(/^\(\)\s*=>\s*/, "").replace(/\$\{[^}]*\}/g, ":id").replace(/[`]/g, "");
+}
+
 export type AccessRow = [
   method: string,
   path: string | (() => string),
@@ -94,11 +99,72 @@ export type AccessRow = [
  */
 export function expectAccess(actors: Record<string, () => string | undefined>, rows: AccessRow[]) {
   for (const [method, path, actor, body, expected] of rows) {
-    const label = typeof path === "function" ? path().replace(/\d+/g, ":id").replace(/^.*?(\/api)/, "$1") || "(dynamic)" : path;
+    const label = typeof path === "function" ? describePath(path) : path;
     test(`${actor} ${method} ${label} -> ${expected}`, async () => {
       const resolved = typeof path === "function" ? path() : path;
       const res = await api(method, resolved, actors[actor]?.(), body);
       assert.equal(res.status, expected, `${method} ${resolved} as ${actor}: ${JSON.stringify(res.data)}`);
     });
   }
+}
+
+export interface MentoringFixture {
+  mentorA: Actor;
+  mentorB: Actor;
+  learner: Actor;
+  outsider: Actor;
+  roadmapId: number;
+  mentorshipId: number;
+  tokens: Record<"mentorA" | "mentorB" | "learner" | "outsider" | "anonymous", () => string | undefined>;
+}
+
+/**
+ * Two mentors, an attached learner and an unrelated learner, with one roadmap
+ * and one mentorship owned by mentorA. Labels keep fixtures of different
+ * files from colliding on e-mail addresses.
+ */
+export async function mentoringFixture(label: string): Promise<MentoringFixture> {
+  const mentorA = await ensureMentor(`${label}a`);
+  const mentorB = await ensureMentor(`${label}b`);
+  const learner = await register(`${label}.learner`);
+  const outsider = await register(`${label}.outsider`);
+
+  const roadmap = await api("POST", "/api/roadmaps", mentorA.token, { title: `${label} ${run}` });
+  assert.equal(roadmap.status, 201, JSON.stringify(roadmap.data));
+  const link = await api("POST", `/api/roadmaps/${roadmap.data.id}/mentorships`, mentorA.token, { learnerId: learner.id });
+  assert.ok([200, 201].includes(link.status), JSON.stringify(link.data));
+  assert.ok(Number.isInteger(link.data.id), `mentorship id missing: ${JSON.stringify(link.data)}`);
+
+  return {
+    mentorA,
+    mentorB,
+    learner,
+    outsider,
+    roadmapId: roadmap.data.id,
+    mentorshipId: link.data.id,
+    tokens: {
+      mentorA: () => mentorA.token,
+      mentorB: () => mentorB.token,
+      learner: () => learner.token,
+      outsider: () => outsider.token,
+      anonymous: () => undefined,
+    },
+  };
+}
+
+/** Creates a March 2026 package (XAF, 3 included sessions) on the fixture's mentorship. */
+export async function createPackage(f: MentoringFixture, overrides: Record<string, unknown> = {}) {
+  const res = await api("POST", `/api/mentorships/${f.mentorshipId}/packages`, f.mentorA.token, {
+    title: "Forfait mars",
+    basePriceMinor: 100000,
+    currency: "XAF",
+    periodStart: "2026-03-01",
+    periodEnd: "2026-03-31",
+    includedSessionCount: 3,
+    scopeDescription: "Accompagnement mensuel",
+    scopeItems: [{ title: "Revue de code" }],
+    ...overrides,
+  });
+  assert.equal(res.status, 201, JSON.stringify(res.data));
+  return res.data as { id: number };
 }
