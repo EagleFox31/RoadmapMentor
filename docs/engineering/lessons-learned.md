@@ -22,3 +22,11 @@ Generalised lesson: contract changes between layers (strict API schema vs. form 
 | RM-011 landed in the RM-010 branch instead of `main` | Stacked PRs: the base PR was merged first while the child still targeted its branch | Recovered through a follow-up PR to `main` (#49) | Retarget a stacked PR to `main` before merging its base; verify `main` contains the commits after merge |
 
 Generalised lesson: any mechanical edit or merge sequence needs a cheap post-condition check (compile, `git log main`) before moving on.
+
+## 2026-10-07 — Integration suites on a production build (RM-007)
+
+| Context | Root cause | Resolution | Prevention |
+| --- | --- | --- | --- |
+| New suites could not provision a second mentor against a production build | `create-test-users` exists in development only and creates a single mentor | `ensureMentor` provisions through `scripts/create-mentor.ts` (12+ character password policy), usable in dev and prod | CI runs the new suites on `dist/index.js` after the dev pass |
+| Access-matrix tests named from a lazy path crashed at definition time | Path callbacks read ids that only exist after `before()` | Test names derived from the callback source, ids resolved at run time | `expectAccess` helper in `test/integration/support/api.ts` |
+| Removing a guard might go unnoticed | Suites only proved the happy path and a few denials | `npm run test:access-mutation` weakens five guards and requires the matching suite to fail | Add an entry whenever a guard is added (`docs/engineering/testing.md`) |
