@@ -108,6 +108,24 @@ describe("weeks CRUD and access", { skip: !BASE && "TEST_BASE_URL not set" }, ()
     });
   });
 
+  describe("two roadmaps", () => {
+    test("a learner attached to roadmap A gets nothing from roadmap B", async () => {
+      const wb = await api("POST", "/api/weeks", mentorB.token, { roadmapId: roadmapB, number: 1, title: "Semaine B", ...dates });
+      assert.equal(wb.status, 201, JSON.stringify(wb.data));
+      track(`/api/weeks/${wb.data.id}`, mentorB.token);
+      assert.equal((await api("POST", `/api/weeks/${wb.data.id}/validate`, mentorB.token)).status, 200);
+
+      assert.equal((await api("GET", `/api/weeks?roadmapId=${roadmapB}`, learner.token)).status, 404);
+      assert.equal((await api("GET", `/api/weeks/${wb.data.id}`, learner.token)).status, 404);
+      assert.equal((await api("GET", `/api/weeks/${wb.data.id}/comments`, learner.token)).status, 404);
+      assert.equal((await api("GET", `/api/progress/summary?roadmapId=${roadmapB}`, learner.token)).status, 404);
+      assert.equal((await api("GET", `/api/roadmaps/${roadmapB}`, learner.token)).status, 404);
+      const own = await api("GET", `/api/weeks?roadmapId=${roadmapA}`, learner.token);
+      assert.equal(own.status, 200);
+      assert.ok(own.data.every((w: any) => w.roadmapId === roadmapA));
+    });
+  });
+
   describe("access matrix", () => {
     const week = () => `/api/weeks/${draftWeek}`;
     expectAccess(tokens, [
