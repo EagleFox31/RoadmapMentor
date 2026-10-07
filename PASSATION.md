@@ -4,6 +4,7 @@
 Enchaîner `docs/backlog.md`. Fusionnés : RM-020 (#54), RM-015 (#55), RM-014 (#56). RM-017 partiel (logs structurés + `x-request-id`) dans la PR #57 (`feat/rm-017-request-logging`), **à fusionner par l'utilisateur**. Suite : RM-016 (Terraform, choix du fournisseur à trancher) puis reste de RM-017.
 
 ## Fait
+- Test navigateur (dev et build prod) des messages d'erreur, pages lazy et fond WebP : `test/e2e/error-messages.e2e.py` (en CI). Il a révélé un bug de RM-014 (imports après les `lazy`, page blanche en dev), corrigé dans `App.tsx`. PR #59 = reprise de #58 (mal ciblée), à fusionner.
 - Messages d'erreur HTTP (branche `feat/http-error-messages`, empilée sur #57) : `server/http/errorCatalog.ts` (code + message FR), `errorEnvelope` (ajoute `code`/`message`/`requestId` à toute erreur `/api`, `error` inchangé), 404 JSON des routes `/api` inconnues, JSON mal formé/413, `ApiError` côté client, 500 sans fuite de `error.message`. Doc dans `docs/engineering/observability.md`. 102 unitaires, 126 intégration.
 - RM-014 (#56) : fond WebP 29 kB, pages en `React.lazy`, bundle initial 281 kB, `npm run check:bundle` (budgets JS 400/CSS 150/média 500 kB) + étape CI.
 - RM-017 partiel (#57) : `server/http/observability.ts` (`requestId`, `accessLog`, `logEvent`), 500 avec `requestId`, `docs/engineering/observability.md`, test `test/observability.test.ts`. Reste : métriques, alertes, procédures (dépend de RM-016).
@@ -29,7 +30,7 @@ Enchaîner `docs/backlog.md`. Fusionnés : RM-020 (#54), RM-015 (#55), RM-014 (#
 1. Fusionner la PR #57, recibler la PR des messages d'erreur sur `main`, la fusionner, puis `git checkout main && git pull`.
 2. RM-016 : choisir le fournisseur cloud (décision utilisateur), implémenter réseau/calcul/stockage/secrets, état distant, staging/prod. Puis finir RM-017 (métriques, alertes, procédures).
 3. RM-012 (S3) non testé sur vrai bucket/MinIO. RM-010 : mesure des requêtes, pagination, N+1 du scheduler. RM-011 : reprise d'un lot interrompu.
-4. Non testé en navigateur : labs (Python), sélecteur de roadmap, redirection 401, CSP en build prod, chargement des pages lazy et fond WebP (RM-014).
+4. Non testé en navigateur : labs (Python), sélecteur de roadmap, redirection 401.
 5. Branches distantes fusionnées à supprimer sur origin si souhaité.
 
 ## Pièges / contexte
@@ -44,3 +45,6 @@ Enchaîner `docs/backlog.md`. Fusionnés : RM-020 (#54), RM-015 (#55), RM-014 (#
 - Mentors de test : `ensureMentor` (script create-mentor, mot de passe 12+ caractères) ; `mentor@test.com` n'existe qu'en dev.
 - Windows : pas de `pkill` ; tuer le serveur de test via `netstat -ano | grep :5055` puis `taskkill //PID <pid> //F //T`.
 - **Mettre à jour PASSATION.md systématiquement à chaque PR/fin de tâche**, sans qu'on le demande.
+- **Tester dans le navigateur (Playwright, dev puis build prod) tout changement visible côté client avant de livrer** ; ne jamais lister cela comme « reste à faire ».
+- Une PR empilée dont la base est déjà fusionnée n'atteint pas `main` : toujours vérifier `git log main` / `ls` après la fusion.
+- Codex modifie `docs/backlog.md` et `test/http-hardening.test.ts` sans les commiter : ne pas les inclure (`git stash` avant de changer de branche).

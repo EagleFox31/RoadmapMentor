@@ -31,3 +31,11 @@ Generalised lesson: any mechanical edit or merge sequence needs a cheap post-con
 | Access-matrix tests named from a lazy path crashed at definition time | Path callbacks read ids that only exist after `before()` | Test names derived from the callback source, ids resolved at run time | `expectAccess` helper in `test/integration/support/api.ts` |
 | Removing a guard might go unnoticed | Suites only proved the happy path and a few denials | `npm run test:access-mutation` weakens five guards and requires the matching suite to fail | Add an entry whenever a guard is added (`docs/engineering/testing.md`) |
 | CI browser journeys hit the Vite dev server instead of the production build | `kill $!` on `npm run dev` stops the npm wrapper only; the child kept port 5055, the production server could not bind and the readiness probe still answered | Stop steps free the port (`fuser -k`) and fail if it still serves | Console/network diagnostics printed on failure; the stop step asserts the port is free |
+
+## 2026-10-07 — Blank page after lazy-loading pages (RM-014)
+
+| Context | Root cause | Resolution | Prevention |
+| --- | --- | --- | --- |
+| RM-014 was merged with `tsc`, unit tests and `vite build` green, but the dev app rendered a blank page (`Cannot access 'lazy' before initialization`) | The scripted edit inserted `const X = lazy(...)` lines between `import` statements, before the import that provides `lazy`; no browser run was done | Imports moved above the `lazy` declarations | `test/e2e/error-messages.e2e.py` (login error, invite error, lazy routes, `pageerror` and console errors fail the run) is part of CI; any UI-visible change is checked in a browser before delivery |
+
+Generalised lesson: a green build does not prove the UI renders. Run the browser journey for every client change.

@@ -4,16 +4,17 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AuthPage from "@/pages/auth-page";
-const RoadmapPage = lazy(() => import("@/pages/roadmap-page"));
-const PreferencesPage = lazy(() => import("@/pages/preferences"));
-const MentoringPage = lazy(() => import("@/pages/mentoring"));
-const RoadmapsPage = lazy(() => import("@/pages/roadmaps"));
-const InvitePage = lazy(() => import("@/pages/invite-page"));
 import NotFound from "@/pages/not-found";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { isAuthenticated, setCurrentUser } from "@/lib/auth";
 import mentorBg from "./assets/mentor-bg.webp";
+
+const RoadmapPage = lazy(() => import("@/pages/roadmap-page"));
+const PreferencesPage = lazy(() => import("@/pages/preferences"));
+const MentoringPage = lazy(() => import("@/pages/mentoring"));
+const RoadmapsPage = lazy(() => import("@/pages/roadmaps"));
+const InvitePage = lazy(() => import("@/pages/invite-page"));
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   if (!isAuthenticated()) {
