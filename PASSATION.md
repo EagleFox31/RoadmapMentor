@@ -4,6 +4,7 @@
 Enchaîner `docs/backlog.md`. Fusionnés : RM-020 (#54), RM-015 (#55), RM-014 (#56). RM-017 partiel (logs structurés + `x-request-id`) dans la PR #57 (`feat/rm-017-request-logging`), **à fusionner par l'utilisateur**. Suite : RM-016 (Terraform, choix du fournisseur à trancher) puis reste de RM-017.
 
 ## Fait
+- RM-016 (voie gratuite) : `render.yaml` (Blueprint Docker, plan free, migrations au démarrage, R2 via l'adaptateur S3, secrets `sync: false`) + guide « Render + Neon + R2 » dans `docs/deployment.md`. **Non déployé** : aucun compte Render/Neon/R2 touché par Claude. Le projet Vercel existant (`roadmap-mentor`, dernier déploiement 11/2025) est périmé et inadapté (serveur Express + scheduler).
 - RM-014 (#56) : fond WebP 29 kB, pages en `React.lazy`, bundle initial 281 kB, `npm run check:bundle` (budgets JS 400/CSS 150/média 500 kB) + étape CI.
 - RM-017 partiel (#57) : `server/http/observability.ts` (`requestId`, `accessLog`, `logEvent`), 500 avec `requestId`, `docs/engineering/observability.md`, test `test/observability.test.ts`. Reste : métriques, alertes, procédures (dépend de RM-016).
 - RM-015 (#55) : dépendances inutiles retirées, `nanoid` déclaré.
@@ -22,8 +23,9 @@ Enchaîner `docs/backlog.md`. Fusionnés : RM-020 (#54), RM-015 (#55), RM-014 (#
 - RM-020 : un renvoi fait tourner le jeton ; invitation en attente relancée = idempotente ; e-mail d'un mentor refusé (409) ; envoi non journalisé dans `email_notifications` (suivi par `send_count`/`last_sent_at`). `attachLearner` du service n'est pas encore réutilisé par la route `POST /api/roadmaps/:id/mentorships` (duplication légère).
 
 ## Reste à faire
+0. Déploiement Render (action de l'utilisateur) : créer Neon + bucket R2 + Blueprint Render + pinger (voir `docs/deployment.md`), puis vérifier `/health/ready`, une connexion, un envoi de preuve vers R2 et un rappel planifié. **Faire tourner les secrets vus à l'écran** (clé IA, mot de passe SMTP, JWT_SECRET) et vérifier que `.env` reste hors Git.
 1. Fusionner la PR #57 puis `git checkout main && git pull`.
-2. RM-016 : choisir le fournisseur cloud (décision utilisateur), implémenter réseau/calcul/stockage/secrets, état distant, staging/prod. Puis finir RM-017 (métriques, alertes, procédures).
+2. RM-016 : choix fait (Render gratuit + Neon + R2, pas de Terraform payant) ; `infra/terraform` (AWS) devient hors périmètre : à arbitrer/documenter. Puis finir RM-017 (métriques, alertes, procédures).
 3. RM-012 (S3) non testé sur vrai bucket/MinIO. RM-010 : mesure des requêtes, pagination, N+1 du scheduler. RM-011 : reprise d'un lot interrompu.
 4. Non testé en navigateur : labs (Python), sélecteur de roadmap, redirection 401, CSP en build prod, chargement des pages lazy et fond WebP (RM-014).
 5. Branches distantes fusionnées à supprimer sur origin si souhaité.

@@ -1,0 +1,66 @@
+# Render Blueprint — déploiement gratuit : application sur Render, PostgreSQL sur Neon,
+# preuves sur Cloudflare R2 (API S3). Guide pas à pas : docs/deployment.md (« Render + Neon + R2 »).
+#
+# Les valeurs marquées `sync: false` sont saisies une seule fois dans le tableau de bord Render
+# (jamais dans Git). Les migrations sont idempotentes : elles tournent à chaque démarrage.
+services:
+  - type: web
+    name: roadmapmentor
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health/ready
+    autoDeploy: true
+    # Le plan gratuit n'a pas de preDeployCommand : on migre avant de démarrer le serveur.
+    dockerCommand: sh -c "npm run db:migrate && npm run start"
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL # chaîne de connexion Neon (pooled), ex. postgresql://…neon.tech/…?sslmode=require
+        sync: false
+      - key: APP_URL # URL publique, ex. https://roadmapmentor.onrender.com (liens d'invitation et e-mails)
+        sync: false
+
+      # Preuves : Cloudflare R2 via l'adaptateur S3 existant.
+      - key: OBJECT_STORAGE_PROVIDER
+        value: s3
+      - key: OBJECT_STORAGE_S3_BUCKET
+        sync: false
+      - key: OBJECT_STORAGE_S3_ENDPOINT # https://<account_id>.r2.cloudflarestorage.com
+        sync: false
+      - key: OBJECT_STORAGE_S3_REGION
+        value: auto
+      - key: OBJECT_STORAGE_S3_FORCE_PATH_STYLE
+        value: "true"
+      - key: AWS_ACCESS_KEY_ID # jeton API R2 (lecture/écriture limitée au bucket)
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+
+      # Rappels planifiés (RM-011) : le serveur doit rester éveillé (voir le pinger dans le guide).
+      - key: SCHEDULER_ENABLED
+        value: "true"
+      - key: SCHEDULER_TIMEZONE
+        value: Europe/Paris
+
+      # E-mails (facultatif : sans SMTP, les envois sont désactivés).
+      - key: MAIL_HOST
+        sync: false
+      - key: MAIL_PORT
+        sync: false
+      - key: MAIL_USER
+        sync: false
+      - key: MAIL_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+
+      # Génération de roadmap par IA (facultatif).
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_BASE_URL
+        sync: false
+      - key: AI_MODEL
+        sync: false

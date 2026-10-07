@@ -211,3 +211,16 @@ The database stores canonical `/objects/...` paths, so no row changes.
 - Enable bucket versioning and a lifecycle rule (suggested: keep non-current versions 30 days).
 - Evidence is retained as long as the learner account exists; deleting an account must be followed by deleting its objects (owner is recorded in the ACL metadata).
 - Replicate the bucket cross-region or snapshot it daily according to the provider's tooling; the filesystem directory, if still used, is backed up as a plain volume.
+
+## Render + Neon + R2 (hébergement gratuit)
+
+Le fichier [`render.yaml`](../render.yaml) décrit l'application (image Docker du dépôt). La base et les preuves sont hébergées à part, toutes deux gratuites :
+
+1. **Neon** : créer un projet PostgreSQL, copier la chaîne de connexion (*pooled*) → `DATABASE_URL`. Aucun proxy websocket : le driver serverless parle directement à Neon (ne pas définir `DATABASE_WS_PROXY`).
+2. **Cloudflare R2** : créer un bucket privé et un jeton API limité à ce bucket (lecture/écriture). Renseigner `OBJECT_STORAGE_S3_BUCKET`, `OBJECT_STORAGE_S3_ENDPOINT` (`https://<account_id>.r2.cloudflarestorage.com`), `AWS_ACCESS_KEY_ID` et `AWS_SECRET_ACCESS_KEY`. Région `auto` et `OBJECT_STORAGE_S3_FORCE_PATH_STYLE=true` sont déjà dans le blueprint.
+3. **Render** : *New → Blueprint*, choisir ce dépôt. Saisir les variables `sync: false` dans le tableau de bord (jamais dans Git). `JWT_SECRET` est généré automatiquement. Après le premier déploiement, renseigner `APP_URL` avec l'URL publique et redéployer.
+4. **Pinger** : le plan gratuit met le service en veille après ~15 min sans trafic, ce qui arrêterait les rappels planifiés (le scheduler tourne dans le processus). Créer un moniteur gratuit (UptimeRobot ou cron-job.org) qui appelle `https://<service>.onrender.com/health/live` toutes les 5 minutes.
+
+Les migrations tournent à chaque démarrage (`npm run db:migrate`, idempotent). Le premier mentor se crée avec `scripts/create-mentor.ts` (via le *Shell* Render ou en local contre `DATABASE_URL`).
+
+Limites à connaître : démarrage à froid de quelques dizaines de secondes si le pinger est arrêté ; 750 h/mois d'instance gratuite (un seul service allumé en continu suffit) ; les conditions du plan gratuit sont celles de Render au moment du déploiement, à revérifier.
