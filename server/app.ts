@@ -9,6 +9,7 @@ import express, {
 
 import { registerRoutes } from "./routes";
 import { initializeScheduler } from "./scheduler";
+import { accessLog, errorFields, logEvent, requestId, requestIdOf } from "./http/observability";
 import { applySecurityHeaders, JSON_BODY_LIMIT } from "./http/hardening";
 
 export function log(message: string, source = "express") {
@@ -38,35 +39,8 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: false, limit: JSON_BODY_LIMIT }));
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
-  });
-
-  next();
-});
+app.use(requestId);
+app.use(accessLog);
 
 export default async function runApp(
   setup: (app: Express, server: Server) => Promise<void>,
@@ -75,10 +49,11 @@ export default async function runApp(
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
+    const message = status >= 500 ? "Internal Server Error" : err.message || "Error";
+    const id = requestIdOf(res);
+    if (status >= 500) logEvent("error", "unhandled_error", { requestId: id, ...errorFields(err) });
+    if (res.headersSent) return;
+    res.status(status).json({ message, requestId: id });
   });
 
   // importantly run the final setup after setting up all the other routes so
