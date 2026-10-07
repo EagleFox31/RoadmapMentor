@@ -33,6 +33,16 @@ Ce backlog transforme l'analyse du dépôt en travaux ordonnés et vérifiables.
 | RM-015 | P2 | Foundation | S | Nettoyer les dépendances et avertissements d'outillage | RM-005 |
 | RM-016 | P2 | Platform | L | Implémenter réellement l'infrastructure cloud Terraform | RM-006, RM-012 |
 | RM-017 | P2 | Release | M | Ajouter observabilité, alertes et procédures d'exploitation | RM-011, RM-016 |
+| GH-25 | P0 | Platform / Release | XL | Epic : automatiser l'infrastructure et la livraison de manière indépendante du fournisseur | RM-006, RM-012, RM-016, RM-017 |
+| GH-27 | P0 | Platform | M | Configurer HCP Terraform, l'état distant et l'identité AWS OIDC | GH-25 |
+| GH-28 | P0 | Platform | L | Provisionner une cible AWS minimale avec des modules réutilisables | GH-27 |
+| GH-29 | P0 | Platform | M | Amorcer l'hôte de façon idempotente sans SSH manuel | GH-28 |
+| GH-30 | P0 | Release | M | Publier des images de production immuables dans un registre neutre | GH-25 |
+| GH-31 | P0 | Release | L | Automatiser le déploiement depuis une image approuvée | GH-27, GH-28, GH-29, GH-30 |
+| GH-32 | P0 | Release | M | Ajouter les smoke tests post-déploiement et le rollback | GH-31, GH-34 |
+| GH-33 | P1 | Platform | M | Automatiser DNS et TLS derrière une frontière remplaçable | GH-28, GH-29 |
+| GH-34 | P0 | Reliability | M | Automatiser les sauvegardes et prouver la restauration | GH-28, GH-29, RM-012 |
+| GH-35 | P1 | Engineering | M | Ajouter détection de dérive, sécurité Terraform et garde-fous de coûts | GH-27, GH-28 |
 
 ## P0 — Bloquants
 

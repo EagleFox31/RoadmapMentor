@@ -1,6 +1,29 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getAuthToken, removeAuthToken } from "@/lib/auth";
 
+// Erreur d'API : `message` reste "<statut>: <texte>" (parsé par plusieurs pages), le reste est exposé en champs.
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    text: string,
+    readonly code?: string,
+    readonly reason?: string,
+    readonly requestId?: string,
+  ) {
+    super(`${status}: ${text}`);
+    this.name = "ApiError";
+  }
+}
+
+function parseBody(text: string): Record<string, any> | null {
+  try {
+    const body = JSON.parse(text);
+    return body && typeof body === "object" ? body : null;
+  } catch {
+    return null;
+  }
+}
+
 export function formatErrorBody(text: string): string {
   try {
     const body = JSON.parse(text);
@@ -11,8 +34,9 @@ export function formatErrorBody(text: string): string {
           return `${field}${issue.message ?? "invalide"}`;
         })
         .join("; ");
-      return `${body.error ?? "Validation failed"} (${details})`;
+      return `${body.message ?? body.error ?? "Validation failed"} (${details})`;
     }
+    if (typeof body?.message === "string") return body.message;
     if (typeof body?.error === "string") return body.error;
   } catch {
     // corps non JSON : conservé tel quel
@@ -34,7 +58,9 @@ async function throwIfResNotOk(res: Response) {
   endSessionOnUnauthorized(res);
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${formatErrorBody(text)}`);
+    const body = parseBody(text);
+    const suffix = res.status >= 500 && body?.requestId ? ` (réf. ${String(body.requestId).slice(0, 8)})` : "";
+    throw new ApiError(res.status, formatErrorBody(text) + suffix, body?.code, body?.reason, body?.requestId);
   }
 }
 
