@@ -185,6 +185,9 @@ jobs:
       - name: Build production bundle
         run: npm run build
 
+      - name: Check bundle budget
+        run: npm run check:bundle
+
       - name: Start production server
         run: |
           NODE_ENV=production node dist/index.js > "$RUNNER_TEMP/prod-server.log" 2>&1 &
