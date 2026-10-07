@@ -4,16 +4,16 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AuthPage from "@/pages/auth-page";
-import RoadmapPage from "@/pages/roadmap-page";
-import PreferencesPage from "@/pages/preferences";
-import MentoringPage from "@/pages/mentoring";
-import RoadmapsPage from "@/pages/roadmaps";
-import InvitePage from "@/pages/invite-page";
+const RoadmapPage = lazy(() => import("@/pages/roadmap-page"));
+const PreferencesPage = lazy(() => import("@/pages/preferences"));
+const MentoringPage = lazy(() => import("@/pages/mentoring"));
+const RoadmapsPage = lazy(() => import("@/pages/roadmaps"));
+const InvitePage = lazy(() => import("@/pages/invite-page"));
 import NotFound from "@/pages/not-found";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { isAuthenticated, setCurrentUser } from "@/lib/auth";
-import mentorBg from "./assets/mentor-bg.jpg";
+import mentorBg from "./assets/mentor-bg.webp";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   if (!isAuthenticated()) {
@@ -90,7 +90,11 @@ function App() {
           
           {/* Content */}
           <div className="relative z-10 min-h-screen">
-            {sessionReady && <Router />}
+            {sessionReady && (
+              <Suspense fallback={null}>
+                <Router />
+              </Suspense>
+            )}
           </div>
         </div>
         <Toaster />

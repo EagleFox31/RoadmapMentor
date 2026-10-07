@@ -438,6 +438,8 @@ Depuis RM-003, un mentor ne peut rattacher qu'un apprenant déjà inscrit. Un ap
 
 ### RM-014 — Réduire le poids du frontend et des médias
 
+> **Statut : livré — 2026-10-07.** Image de fond 13,8 MB → 29 kB (WebP 1920 px), médias inutilisés de `public/` supprimés, pages chargées à la demande (`React.lazy`), bundle initial 692 → 281 kB ; budget vérifié par `npm run check:bundle` (JS 400 kB/chunk, CSS 150 kB, média 500 kB, surchargeables) et étape CI.
+
 **Constat**
 
 Le build produit un bundle JavaScript principal d'environ 662 kB minifié et une image d'environ 13,8 MB.

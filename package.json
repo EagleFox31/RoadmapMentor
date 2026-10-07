@@ -8,6 +8,7 @@
     "build": "vite build && esbuild server/index-prod.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/index.js",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
+    "check:bundle": "node scripts/check-bundle-budget.mjs",
     "db:push": "drizzle-kit push",
     "mentor:create": "tsx scripts/create-mentor.ts",
     "user:set-status": "tsx scripts/set-user-status.ts",
