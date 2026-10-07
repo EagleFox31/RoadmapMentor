@@ -29,5 +29,5 @@ export const handleError = (res: any, error: any) => {
   }
   const id = requestIdOf(res);
   logEvent("error", "api_error", { requestId: id, ...errorFields(error) });
-  res.status(500).json({ error: error?.message || "Internal server error", requestId: id });
+  res.status(500).json({ error: "Internal server error", requestId: id });
 };

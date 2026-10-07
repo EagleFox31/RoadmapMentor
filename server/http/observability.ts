@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { describeError } from "./errorCatalog";
 import type { NextFunction, Request, Response } from "express";
 
 export const REQUEST_ID_HEADER = "x-request-id";
@@ -50,5 +51,24 @@ export function accessLog(req: Request, res: Response, next: NextFunction) {
       role: user?.role,
     });
   });
+  next();
+}
+
+// Décorateur de réponse : toute erreur /api reçoit `code` (stable), `message` (français) et `requestId`.
+// Le champ historique `error` n'est jamais modifié.
+export function errorEnvelope(req: Request, res: Response, next: NextFunction) {
+  if (!req.originalUrl.startsWith("/api")) return next();
+  const originalJson = res.json.bind(res);
+  res.json = ((body?: unknown) => {
+    if (res.statusCode >= 400 && body && typeof body === "object" && !Array.isArray(body)) {
+      const current = body as Record<string, unknown>;
+      if (typeof current.code !== "string") {
+        const english = typeof current.error === "string" ? current.error : current.message;
+        const { code, message } = describeError(res.statusCode, english);
+        return originalJson({ ...current, code, message, requestId: requestIdOf(res) });
+      }
+    }
+    return originalJson(body);
+  }) as Response["json"];
   next();
 }

@@ -53,7 +53,10 @@ describe("mentor attaches a learner by email", { skip: !BASE && "TEST_BASE_URL n
     const unknown = await api("GET", "/api/learners/lookup?email=nobody%40it.test", mentor);
     assert.equal(mentorLookup.status, 404);
     assert.equal(unknown.status, 404);
-    assert.deepEqual(mentorLookup.data, unknown.data);
+    // requestId diffère forcément d'une requête à l'autre : il ne doit pas révéler l'existence du compte
+    const { requestId: _a, ...mentorBody } = mentorLookup.data as Record<string, unknown>;
+    const { requestId: _b, ...unknownBody } = unknown.data as Record<string, unknown>;
+    assert.deepEqual(mentorBody, unknownBody);
     assert.equal((await api("GET", "/api/learners/lookup?email=", mentor)).status, 400);
   });
 
