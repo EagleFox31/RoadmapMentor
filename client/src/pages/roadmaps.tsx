@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Plus, Search, UserPlus } from "lucide-react";
+import { ArrowLeft, Loader2, Mail, Plus, Search, UserPlus } from "lucide-react";
 import { useLocation } from "wouter";
 import { TopBar } from "@/components/top-bar";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,21 @@ type MentorshipEntry = {
   status: "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED";
   mentor: Person | null;
   learner: Person | null;
+};
+
+type InvitationEntry = {
+  id: number;
+  email: string;
+  state: "PENDING" | "EXPIRED" | "ACCEPTED" | "REVOKED";
+  expiresAt: string;
+  sendCount: number;
+};
+
+const INVITATION_STATE_LABEL: Record<InvitationEntry["state"], string> = {
+  PENDING: "En attente",
+  EXPIRED: "Expirée",
+  ACCEPTED: "Acceptée",
+  REVOKED: "Révoquée",
 };
 
 const STATUS_LABEL: Record<MentorshipEntry["status"], string> = {
@@ -84,7 +99,7 @@ export default function RoadmapsPage() {
     onError: (error) =>
       setLookupError(
         /^404/.test(error instanceof Error ? error.message : "")
-          ? "Aucun apprenant avec cet e-mail. Il doit d’abord créer son compte."
+          ? "Aucun apprenant inscrit avec cet e-mail."
           : errorMessage(error),
       ),
   });
@@ -100,6 +115,60 @@ export default function RoadmapsPage() {
     },
     onError: (error) =>
       toast({ variant: "destructive", title: "Rattachement impossible", description: errorMessage(error) }),
+  });
+
+  const invitationsKey = ["/api/roadmaps", selectedId, "invitations"];
+  const invitations = useQuery<InvitationEntry[]>({
+    queryKey: invitationsKey,
+    queryFn: () => apiRequest("GET", `/api/roadmaps/${selectedId}/invitations`),
+    enabled: mentor && selectedId !== null,
+  });
+
+  const invite = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/roadmaps/${selectedId}/invitations`, { email: email.trim() }),
+    onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: invitationsKey });
+      queryClient.invalidateQueries({ queryKey: ["/api/mentorships"] });
+      if (result.outcome === "attached") {
+        toast({ title: "Apprenant rattaché", description: "Ce compte existait déjà." });
+      } else if (result.emailSent) {
+        toast({ title: "Invitation envoyée", description: email.trim() });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Invitation créée, e-mail non envoyé",
+          description: "Utilisez « Renvoyer » une fois l’envoi d’e-mails disponible.",
+        });
+      }
+      setEmail("");
+      setLookupError(null);
+    },
+    onError: (error) =>
+      toast({ variant: "destructive", title: "Invitation impossible", description: errorMessage(error) }),
+  });
+
+  const resend = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/invitations/${id}/resend`),
+    onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: invitationsKey });
+      toast(
+        result.emailSent
+          ? { title: "Invitation renvoyée" }
+          : { variant: "destructive", title: "E-mail non envoyé", description: "Réessayez plus tard." },
+      );
+    },
+    onError: (error) =>
+      toast({ variant: "destructive", title: "Renvoi impossible", description: errorMessage(error) }),
+  });
+
+  const revoke = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/invitations/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: invitationsKey });
+      toast({ title: "Invitation révoquée" });
+    },
+    onError: (error) =>
+      toast({ variant: "destructive", title: "Révocation impossible", description: errorMessage(error) }),
   });
 
   const alreadyAttached = found
@@ -299,9 +368,27 @@ export default function RoadmapsPage() {
                         </Button>
                       </div>
                       {lookupError && (
-                        <p className="text-sm text-red-300" role="alert">
-                          {lookupError}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <p className="text-sm text-red-300" role="alert">
+                            {lookupError}
+                          </p>
+                          {/^Aucun apprenant/.test(lookupError) && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={invite.isPending}
+                              onClick={() => invite.mutate()}
+                              data-testid="button-invite-learner"
+                            >
+                              {invite.isPending ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Mail className="mr-2 h-4 w-4" />
+                              )}
+                              Inviter par e-mail
+                            </Button>
+                          )}
+                        </div>
                       )}
                       {found && (
                         <div
@@ -332,6 +419,49 @@ export default function RoadmapsPage() {
                         </div>
                       )}
                     </form>
+                  )}
+                  {mentor && (invitations.data ?? []).length > 0 && (
+                    <div className="mt-6 space-y-2" data-testid="invitations-list">
+                      <h3 className="font-semibold text-foreground">Invitations</h3>
+                      {(invitations.data ?? []).map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 p-3"
+                          data-testid={`invitation-${entry.id}`}
+                        >
+                          <div>
+                            <div className="font-medium text-foreground">{entry.email}</div>
+                            <div className="text-sm text-slate-400">
+                              {INVITATION_STATE_LABEL[entry.state]}
+                              {entry.state === "PENDING" &&
+                                ` · expire le ${new Date(entry.expiresAt).toLocaleDateString("fr-FR")}`}
+                            </div>
+                          </div>
+                          {entry.state === "PENDING" && (
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={resend.isPending}
+                                onClick={() => resend.mutate(entry.id)}
+                                data-testid={`button-resend-${entry.id}`}
+                              >
+                                Renvoyer
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={revoke.isPending}
+                                onClick={() => revoke.mutate(entry.id)}
+                                data-testid={`button-revoke-${entry.id}`}
+                              >
+                                Révoquer
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </>
               )}

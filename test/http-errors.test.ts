@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { handleError } from "../server/http/errors";
 import {
   ConflictError,
+  GoneError,
   InvalidRequestError,
   NotFoundError,
 } from "../server/domain/errors";
@@ -44,6 +45,10 @@ test("business errors map to their HTTP status with the same body shape", () => 
   assert.deepEqual(run(new ConflictError("boom")), {
     status: 409,
     body: { error: "boom" },
+  });
+  assert.deepEqual(run(new GoneError("Invitation expired", "EXPIRED")), {
+    status: 410,
+    body: { error: "Invitation expired", reason: "EXPIRED" },
   });
 });
 

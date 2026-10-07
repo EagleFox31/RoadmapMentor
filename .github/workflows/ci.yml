@@ -142,6 +142,7 @@ jobs:
       DATABASE_WS_PROXY_INSECURE: "true"
       JWT_SECRET: ci-only-secret
       RATE_LIMIT_AUTH_MAX: "1000"
+      RATE_LIMIT_INVITATION_MAX: "1000"
       OBJECT_STORAGE_PROVIDER: filesystem
       PORT: "5055"
       TEST_BASE_URL: http://localhost:5055
@@ -205,6 +206,7 @@ jobs:
         run: |
           python test/e2e/learner.e2e.py
           python test/e2e/mentor.e2e.py
+          python test/e2e/invite.e2e.py
 
       - name: Browser diagnostics
         if: failure()

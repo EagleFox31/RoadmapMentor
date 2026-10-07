@@ -118,6 +118,7 @@ test("rate limits default safely and accept valid overrides only", () => {
   assert.equal(custom.auth.max, 500);
   assert.equal(custom.ai.max, DEFAULT_RATE_LIMITS.ai.max);
   assert.equal(custom.jobs.windowMs, DEFAULT_RATE_LIMITS.jobs.windowMs);
+  assert.equal(custom.invitation.max, DEFAULT_RATE_LIMITS.invitation.max);
 });
 
 test("trust proxy is off unless explicitly configured", () => {

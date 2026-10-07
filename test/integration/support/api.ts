@@ -65,6 +65,24 @@ export async function ensureMentor(label: string): Promise<Actor> {
   return login(email, MENTOR_PASSWORD);
 }
 
+/** Installs a known token on an invitation (the API never exposes the real one). */
+export function forgeInvitationToken(invitationId: number, options: { expired?: boolean } = {}): string {
+  const token = `it-${run}-${invitationId}-${Math.random().toString(36).slice(2)}`;
+  execFileSync(
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      "test/integration/support/set-invitation-token.ts",
+      `--id=${invitationId}`,
+      `--token=${token}`,
+      ...(options.expired ? ["--expired"] : []),
+    ],
+    { env: process.env, stdio: "pipe" },
+  );
+  return token;
+}
+
 const tracked: Array<{ path: string; token: string }> = [];
 
 /** Registers a resource to be deleted (best effort) once the file's tests end. */

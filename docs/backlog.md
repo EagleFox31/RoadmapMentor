@@ -372,7 +372,10 @@ Le type de ressource `VIDEO` existe déjà, mais toutes les ressources s'ouvrent
 
 ### RM-020 — Inviter un apprenant par e-mail avec inscription par lien
 
-> **Statut : à faire — conçu le 2026-10-05, demandé suite à RM-003.**
+> **Statut : terminé — 2026-10-07.**
+> **Comment :** table `invitations` (migration `0005`, additive), jeton aléatoire 32 octets dont seul le sha256 est stocké, expiration dérivée de `expires_at` (`INVITATION_TTL_HOURS`, 72 h par défaut). Code : `server/data/invitations.ts`, `server/services/invitations.ts` + `invitationTokens.ts`, `server/routes/invitations.ts`, `GoneError` → 410 `{reason}`, limiteur `invitation` (`RATE_LIMIT_INVITATION_*`, 30/h par utilisateur) ; acceptation publique limitée par le limiteur `auth`. Acceptation en une transaction (`FOR UPDATE`) : compte `LEARNER` + préférences + mentorat + jeton consommé ; schéma strict sans `role` ni `email`. Un renvoi fait tourner le jeton (l'ancien lien meurt) ; relancer une invitation en attente est idempotent. E-mail d'un apprenant existant : rattachement direct ; e-mail d'un mentor : 409. L'envoi n'est pas journalisé dans `email_notifications` (user_id obligatoire) : suivi par `send_count` / `last_sent_at` ; un échec SMTP renvoie `emailSent:false` sans annuler l'invitation. UI : `/invite/:token` (`invite-page.tsx`), bouton « Inviter par e-mail » et liste des invitations (renvoyer / révoquer) sur `/roadmaps`.
+> **Preuve :** `tsc` propre, 95 tests unitaires, 126 tests d'intégration (dont 23 d'invitations : idempotence, usage unique, expiration, révocation, concurrence, matrice d'accès), `npm run build`, parcours `test/e2e/invite.e2e.py` sur build de production, double `db:migrate` sans écriture.
+> **Reste :** envoi SMTP réel non testé ; le journal d'envoi dédié aux invitations n'existe pas.
 
 **Constat**
 

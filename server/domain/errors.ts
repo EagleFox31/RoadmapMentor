@@ -18,3 +18,10 @@ export class InvalidRequestError extends DomainError {}
 
 /** The request conflicts with the current state of the resource. */
 export class ConflictError extends DomainError {}
+
+/** The resource existed but can no longer be used (expired, consumed or revoked). */
+export class GoneError extends DomainError {
+  constructor(message: string, readonly reason: "EXPIRED" | "USED" | "REVOKED") {
+    super(message);
+  }
+}

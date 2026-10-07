@@ -87,6 +87,36 @@ export const mentorships = pgTable(
   }),
 );
 
+export const invitationStatusEnum = pgEnum("invitation_status", ["PENDING", "ACCEPTED", "REVOKED"]);
+
+// E-mail invitations for learners who have no account yet. Only the sha256 of the
+// token is stored; expiry is derived from expires_at (no EXPIRED status to maintain).
+export const invitations = pgTable(
+  "invitations",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    email: text("email").notNull(),
+    roadmapId: integer("roadmap_id").notNull().references(() => roadmaps.id, { onDelete: "cascade" }),
+    mentorId: integer("mentor_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    status: invitationStatusEnum("status").notNull().default("PENDING"),
+    expiresAt: timestamp("expires_at").notNull(),
+    sendCount: integer("send_count").notNull().default(1),
+    lastSentAt: timestamp("last_sent_at").notNull().defaultNow(),
+    acceptedAt: timestamp("accepted_at"),
+    acceptedUserId: integer("accepted_user_id").references(() => users.id, { onDelete: "set null" }),
+    revokedAt: timestamp("revoked_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    pendingUnique: uniqueIndex("invitations_pending_unique")
+      .on(table.roadmapId, table.mentorId, table.email)
+      .where(sql`status = 'PENDING'`),
+    roadmapIdx: index("invitations_roadmap_idx").on(table.roadmapId),
+  }),
+);
+
 // Monthly or fixed-period commercial terms for one mentorship.
 // Packages are append-only: when terms change, create a new package instead of
 // rewriting the historical agreement.
@@ -655,6 +685,18 @@ export const publicRegistrationSchema = insertUserSchema
   .omit({ role: true })
   .strict();
 
+export const createInvitationSchema = z
+  .object({ email: z.string().trim().toLowerCase().email() })
+  .strict();
+
+// No role and no email: an invitation can only ever create a LEARNER for its own address.
+export const acceptInvitationSchema = z
+  .object({
+    fullName: z.string().trim().min(1).max(200),
+    password: z.string().min(8),
+  })
+  .strict();
+
 export const insertRoadmapSchema = createInsertSchema(roadmaps).omit({
   createdAt: true,
   updatedAt: true,
@@ -904,6 +946,7 @@ export type Roadmap = typeof roadmaps.$inferSelect;
 export type InsertRoadmap = z.infer<typeof insertRoadmapSchema>;
 
 export type Mentorship = typeof mentorships.$inferSelect;
+export type Invitation = typeof invitations.$inferSelect;
 export type InsertMentorship = z.infer<typeof insertMentorshipSchema>;
 
 export type MentoringPackage = typeof mentoringPackages.$inferSelect;
