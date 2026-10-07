@@ -447,6 +447,11 @@ Le build produit un bundle JavaScript principal d'environ 662 kB minifié et une
 
 ### RM-015 — Nettoyer les dépendances et avertissements d'outillage
 
+> **Statut : terminé, avec deux avertissements amont acceptés — 2026-10-07.**
+> **Comment :** 20 paquets sans usage retirés (session/passport, `resend`, `framer-motion`, `react-icons`, `next-themes`, `google-auth-library`, `p-limit`, `zod-validation-error`, `tw-animate-css`, `@tailwindcss/vite` v4 incompatible avec Tailwind 3, présigneur S3, `@jridgewell/trace-mapping` et leurs `@types`) ; `nanoid` (utilisé par `server/index-dev.ts`) déclaré en devDependency ; base caniuse mise à jour ; scripts d'installation natifs arbitrés dans `allowScripts` (esbuild autorisé, `bufferutil` refusé : accélération optionnelle de `ws`). Tailwind reste en 3.4 (cohérent avec `tailwindcss-animate` et `@tailwindcss/typography`).
+> **Preuve :** `npm ci` sans avertissement `install-scripts`, `npm run build`, `tsc`, 95 tests unitaires.
+> **Reste (amont) :** l'avertissement PostCSS « `from` » vient du plugin Tailwind 3.4 (isolé par bissection ; disparaît avec une migration Tailwind 4) ; dépréciations `@esbuild-kit/*` (drizzle-kit) et `node-domexception` (transitives).
+
 **Travail**
 
 - Retirer les paquets inutilisés, notamment les anciens restes de session ou d'intégrations remplacées.
