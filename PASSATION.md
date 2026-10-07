@@ -4,6 +4,8 @@
 Enchaîner `docs/backlog.md`. Fusionnés : RM-020 (#54), RM-015 (#55), RM-014 (#56). RM-017 partiel (logs structurés + `x-request-id`) dans la PR #57 (`feat/rm-017-request-logging`), **à fusionner par l'utilisateur**. Suite : RM-016 (Terraform, choix du fournisseur à trancher) puis reste de RM-017.
 
 ## Fait
+- RM-017 (procédures) : `docs/engineering/runbook.md` (sondes/alertes à configurer, incident, restauration Neon, rotation des secrets) sur `infra/render-deploy` (PR #60). Métriques agrégées et alertes automatisées non faites. PR #57 et #58 fusionnées ; #59 ouverte.
+- Arbre de travail : modifications labs non commitées (Codex) sur cette branche, volontairement exclues du commit : ne pas les mélanger.
 - RM-016 (voie gratuite) : `render.yaml` (Blueprint Docker, plan free, migrations au démarrage, R2 via l'adaptateur S3, secrets `sync: false`) + guide « Render + Neon + R2 » dans `docs/deployment.md`. **Non déployé** : aucun compte Render/Neon/R2 touché par Claude. Le projet Vercel existant (`roadmap-mentor`, dernier déploiement 11/2025) est périmé et inadapté (serveur Express + scheduler).
 - RM-014 (#56) : fond WebP 29 kB, pages en `React.lazy`, bundle initial 281 kB, `npm run check:bundle` (budgets JS 400/CSS 150/média 500 kB) + étape CI.
 - RM-017 partiel (#57) : `server/http/observability.ts` (`requestId`, `accessLog`, `logEvent`), 500 avec `requestId`, `docs/engineering/observability.md`, test `test/observability.test.ts`. Reste : métriques, alertes, procédures (dépend de RM-016).
