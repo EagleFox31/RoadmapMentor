@@ -66,3 +66,48 @@ test("a 500 carries the request id in the body and the log", () => {
   assert.equal(entry.requestId, "rid-12345678");
   assert.equal(entry.event, "api_error");
 });
+
+import { describeError } from "../server/http/errorCatalog";
+import { errorEnvelope } from "../server/http/observability";
+
+test("catalog: exact message, generic not-found, then status fallback", () => {
+  assert.equal(describeError(401, "Invalid credentials").code, "AUTH_INVALID_CREDENTIALS");
+  assert.deepEqual(describeError(404, "Week not found"), { code: "WEEK_NOT_FOUND", message: "La semaine demandée est introuvable." });
+  assert.equal(describeError(404, "Mentorship not found").message, "Le mentorat demandé est introuvable.");
+  assert.equal(describeError(404, "Something odd not found").code, "NOT_FOUND");
+  assert.equal(describeError(418, "x").code, "BAD_REQUEST");
+  assert.equal(describeError(507, "x").code, "INTERNAL_ERROR");
+});
+
+test("every status used by the API has a French fallback message", () => {
+  for (const s of [400, 401, 403, 404, 405, 409, 410, 413, 415, 429, 500, 503]) {
+    assert.match(describeError(s).message, /\S/);
+  }
+});
+
+function envelope(url: string, status: number, body: unknown) {
+  let sent: any;
+  const res: any = {
+    locals: { requestId: "rid-12345678" },
+    statusCode: status,
+    json(b: unknown) { sent = b; return this; },
+  };
+  errorEnvelope({ originalUrl: url } as any, res, () => {});
+  res.json(body);
+  return sent;
+}
+
+test("envelope keeps `error` and adds code, French message and requestId", () => {
+  assert.deepEqual(envelope("/api/weeks/1", 404, { error: "Week not found" }), {
+    error: "Week not found",
+    code: "WEEK_NOT_FOUND",
+    message: "La semaine demandée est introuvable.",
+    requestId: "rid-12345678",
+  });
+});
+
+test("envelope leaves successes, non-API routes and already-coded bodies untouched", () => {
+  assert.deepEqual(envelope("/api/x", 200, { ok: true }), { ok: true });
+  assert.deepEqual(envelope("/health/ready", 503, { status: "not_ready" }), { status: "not_ready" });
+  assert.deepEqual(envelope("/api/x", 400, { error: "e", code: "CUSTOM" }), { error: "e", code: "CUSTOM" });
+});

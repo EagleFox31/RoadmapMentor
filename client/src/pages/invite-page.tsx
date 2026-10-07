@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { isAuthenticated, setAuthToken, setCurrentUser, removeAuthToken } from "@/lib/auth";
-import { apiRequest } from "@/lib/queryClient";
+import { ApiError, apiRequest } from "@/lib/queryClient";
 
 type InvitationInfo = {
   email: string;
@@ -21,11 +21,8 @@ type InvitationInfo = {
 const stripStatus = (message: string) => message.replace(/^\d{3}:\s*/, "");
 
 function problemMessage(error: unknown): string {
+  if (error instanceof ApiError && error.code === "INVITATION_NOT_FOUND") return "Ce lien d’invitation est invalide.";
   const raw = error instanceof Error ? error.message : "";
-  if (/^404/.test(raw)) return "Ce lien d’invitation est invalide.";
-  if (/expired/i.test(raw)) return "Cette invitation a expiré. Demandez un nouveau lien à votre mentor.";
-  if (/revoked/i.test(raw)) return "Cette invitation a été annulée par votre mentor.";
-  if (/already used/i.test(raw)) return "Cette invitation a déjà été utilisée. Connectez-vous avec votre compte.";
   return raw ? stripStatus(raw) : "Une erreur est survenue.";
 }
 

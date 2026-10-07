@@ -9,7 +9,7 @@ import express, {
 
 import { registerRoutes } from "./routes";
 import { initializeScheduler } from "./scheduler";
-import { accessLog, errorFields, logEvent, requestId, requestIdOf } from "./http/observability";
+import { accessLog, errorEnvelope, errorFields, logEvent, requestId, requestIdOf } from "./http/observability";
 import { applySecurityHeaders, JSON_BODY_LIMIT } from "./http/hardening";
 
 export function log(message: string, source = "express") {
@@ -31,6 +31,9 @@ declare module 'http' {
   }
 }
 applySecurityHeaders(app);
+app.use(requestId);
+app.use(errorEnvelope);
+app.use(accessLog);
 app.use(express.json({
   limit: JSON_BODY_LIMIT,
   verify: (req, _res, buf) => {
@@ -39,21 +42,27 @@ app.use(express.json({
 }));
 app.use(express.urlencoded({ extended: false, limit: JSON_BODY_LIMIT }));
 
-app.use(requestId);
-app.use(accessLog);
-
 export default async function runApp(
   setup: (app: Express, server: Server) => Promise<void>,
 ) {
   const server = await registerRoutes(app);
 
+  // Les routes /api inconnues répondent en JSON (et non par la page HTML du client).
+  app.use("/api", (_req, res) => {
+    res.status(404).json({ error: "Route not found" });
+  });
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    // body-parser : JSON mal formé (400), corps trop gros (413), type non pris en charge (415)
     const status = err.status || err.statusCode || 500;
-    const message = status >= 500 ? "Internal Server Error" : err.message || "Error";
-    const id = requestIdOf(res);
-    if (status >= 500) logEvent("error", "unhandled_error", { requestId: id, ...errorFields(err) });
+    const english =
+      err.type === "entity.parse.failed" ? "Malformed JSON body"
+      : err.type === "entity.too.large" ? "Request body too large"
+      : status >= 500 ? "Internal Server Error"
+      : err.message || "Error";
+    if (status >= 500) logEvent("error", "unhandled_error", { requestId: requestIdOf(res), ...errorFields(err) });
     if (res.headersSent) return;
-    res.status(status).json({ message, requestId: id });
+    res.status(status).json({ error: english });
   });
 
   // importantly run the final setup after setting up all the other routes so
