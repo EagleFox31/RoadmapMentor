@@ -28,6 +28,7 @@ with sync_playwright() as p:
     tid(page, "input-learner-email").fill(invitee)
     tid(page, "button-lookup-learner").click()
     tid(page, "button-invite-learner").click()
+    expect(tid(page, "invitations-list")).to_contain_text(invitee)
     invitations = api("GET", f"/api/roadmaps/{roadmap['id']}/invitations", mentor)
     assert len(invitations) == 1 and invitations[0]["email"] == invitee, invitations
     expect(tid(page, f"invitation-{invitations[0]['id']}")).to_contain_text(invitee)
