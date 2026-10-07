@@ -488,6 +488,8 @@ Les modules Terraform actuels décrivent des contrats typés, mais ne créent en
 
 ### RM-017 — Ajouter observabilité, alertes et procédures d'exploitation
 
+> **Statut : partiel — 2026-10-07.** Livré : identifiant de requête (`x-request-id`, renvoyé dans les 500), logs JSON structurés sans corps ni chemin brut, journal d'accès avec latence/statut/utilisateur (`docs/engineering/observability.md`). **Reste :** métriques base/email/jobs/IA, alertes, procédures d'incident/restauration/rotation (dépend de RM-016).
+
 **Travail**
 
 - Structurer les logs avec identifiant de requête et contexte utilisateur non sensible.

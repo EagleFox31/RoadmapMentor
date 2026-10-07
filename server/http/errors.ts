@@ -6,6 +6,7 @@ import {
   InvalidRequestError,
   NotFoundError,
 } from "../domain/errors";
+import { errorFields, logEvent, requestIdOf } from "./observability";
 
 export const handleError = (res: any, error: any) => {
   if (error instanceof NotFoundError) {
@@ -26,6 +27,7 @@ export const handleError = (res: any, error: any) => {
       issues: error.issues,
     });
   }
-  console.error("API Error:", error);
-  res.status(500).json({ error: error.message || "Internal server error" });
+  const id = requestIdOf(res);
+  logEvent("error", "api_error", { requestId: id, ...errorFields(error) });
+  res.status(500).json({ error: error?.message || "Internal server error", requestId: id });
 };
