@@ -9,7 +9,7 @@
 | Parcours navigateur | `TEST_BASE_URL=... python test/e2e/learner.e2e.py` puis `mentor.e2e.py` | idem + Playwright |
 | Contrôles d'accès (mutation) | `npm run test:access-mutation` | idem, `JWT_SECRET` exporté |
 
-`DATABASE_URL`, `DATABASE_WS_PROXY`, `DATABASE_WS_PROXY_INSECURE=true` et `JWT_SECRET` doivent être exportés ; ajouter `RATE_LIMIT_AUTH_MAX=1000` au serveur testé (les suites enchaînent beaucoup de connexions).
+`DATABASE_URL`, `DATABASE_WS_PROXY`, `DATABASE_WS_PROXY_INSECURE=true` et `JWT_SECRET` doivent être exportés ; ajouter `RATE_LIMIT_AUTH_MAX=1000` et `RATE_LIMIT_INVITATION_MAX=1000` au serveur testé (les suites enchaînent beaucoup de connexions).
 
 ## Conventions
 

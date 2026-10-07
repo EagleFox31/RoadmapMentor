@@ -2,6 +2,7 @@
 
 import {
   ConflictError,
+  GoneError,
   InvalidRequestError,
   NotFoundError,
 } from "../domain/errors";
@@ -12,6 +13,9 @@ export const handleError = (res: any, error: any) => {
   }
   if (error instanceof InvalidRequestError) {
     return res.status(400).json({ error: error.message });
+  }
+  if (error instanceof GoneError) {
+    return res.status(410).json({ error: error.message, reason: error.reason });
   }
   if (error instanceof ConflictError) {
     return res.status(409).json({ error: error.message });

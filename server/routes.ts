@@ -5,6 +5,7 @@ import { registerHealthRoutes } from "./routes/health";
 import { registerAuthRoutes } from "./routes/auth";
 import { registerObjectsRoutes } from "./routes/objects";
 import { registerRoadmapRoutes } from "./routes/roadmaps";
+import { registerInvitationRoutes } from "./routes/invitations";
 import { registerMentoringPackageRoutes } from "./routes/packages";
 import { registerMentoringSessionRoutes } from "./routes/sessions";
 import { registerBillingRoutes } from "./routes/billing";
@@ -22,6 +23,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAuthRoutes(app, deps);
   registerObjectsRoutes(app, deps);
   registerRoadmapRoutes(app);
+  registerInvitationRoutes(app, deps);
   registerMentoringPackageRoutes(app);
   registerMentoringSessionRoutes(app);
   registerBillingRoutes(app);

@@ -1,5 +1,6 @@
 import { UserRepository, type UserStore } from "./users";
 import { RoadmapRepository, type RoadmapStore } from "./roadmaps";
+import { InvitationRepository, type InvitationStore } from "./invitations";
 import { MentoringPackageRepository, type MentoringPackageStore } from "./mentoringPackages";
 import { ChangeRequestRepository, type ChangeRequestStore } from "./changeRequests";
 import { MentoringSessionRepository, type MentoringSessionStore } from "./mentoringSessions";
@@ -19,6 +20,7 @@ export type { WeekContents } from "./weekContents";
 export type IStorage =
   & UserStore
   & RoadmapStore
+  & InvitationStore
   & MentoringPackageStore
   & ChangeRequestStore
   & MentoringSessionStore
@@ -41,6 +43,7 @@ export function createStorage(): IStorage {
   const repositories: object[] = [
     new UserRepository(),
     new RoadmapRepository(),
+    new InvitationRepository(),
     new MentoringPackageRepository(),
     new ChangeRequestRepository(),
     new MentoringSessionRepository(),

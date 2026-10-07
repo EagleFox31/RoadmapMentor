@@ -36,6 +36,13 @@
       "when": 1791243684977,
       "tag": "0004_labs",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791330826350,
+      "tag": "0005_invitations",
+      "breakpoints": true
     }
   ]
 }

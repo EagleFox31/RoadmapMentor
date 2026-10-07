@@ -14,7 +14,7 @@ export function isAllowedUploadType(contentType: string | undefined): boolean {
 }
 
 export type LimiterConfig = { windowMs: number; max: number };
-export type RateLimitConfig = Record<"auth" | "ai" | "upload" | "jobs", LimiterConfig>;
+export type RateLimitConfig = Record<"auth" | "ai" | "upload" | "jobs" | "invitation", LimiterConfig>;
 
 const MINUTE = 60 * 1000;
 
@@ -23,6 +23,7 @@ export const DEFAULT_RATE_LIMITS: RateLimitConfig = {
   ai: { windowMs: 60 * MINUTE, max: 10 },
   upload: { windowMs: 15 * MINUTE, max: 60 },
   jobs: { windowMs: 60 * MINUTE, max: 6 },
+  invitation: { windowMs: 60 * MINUTE, max: 30 },
 };
 
 /** Overrides via RATE_LIMIT_<NAME>_MAX / RATE_LIMIT_<NAME>_WINDOW_MS (positive integers only). */
@@ -66,6 +67,7 @@ export function createLimiters(config: RateLimitConfig = resolveRateLimits()) {
     ai: createLimiter(config.ai, true),
     upload: createLimiter(config.upload, true),
     jobs: createLimiter(config.jobs, true),
+    invitation: createLimiter(config.invitation, true),
   };
 }
 

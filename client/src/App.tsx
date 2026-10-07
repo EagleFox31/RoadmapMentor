@@ -8,6 +8,7 @@ import RoadmapPage from "@/pages/roadmap-page";
 import PreferencesPage from "@/pages/preferences";
 import MentoringPage from "@/pages/mentoring";
 import RoadmapsPage from "@/pages/roadmaps";
+import InvitePage from "@/pages/invite-page";
 import NotFound from "@/pages/not-found";
 import { useEffect, useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
@@ -37,6 +38,7 @@ function Router() {
       <Route path="/login">
         <PublicRoute component={AuthPage} />
       </Route>
+      <Route path="/invite/:token" component={InvitePage} />
       <Route path="/roadmap">
         <ProtectedRoute component={RoadmapPage} />
       </Route>

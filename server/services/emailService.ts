@@ -106,6 +106,37 @@ export class EmailService {
   }
 
   /**
+   * Invitation d'un futur apprenant. Pas de journal `email_notifications` :
+   * la table exige un user_id et l'invité n'a pas encore de compte
+   * (le suivi passe par send_count / last_sent_at). Le lien n'est jamais journalisé.
+   */
+  async sendInvitation(
+    to: string,
+    mentorName: string,
+    roadmapTitle: string,
+    token: string,
+    expiresAt: Date,
+  ): Promise<boolean> {
+    const esc = (value: string) =>
+      value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    const inviteUrl = `${APP_URL}/invite/${token}`;
+    const subject = `${APP_NAME} - ${mentorName} vous invite`;
+    const html = `
+      <p>Bonjour,</p>
+      <p><strong>${esc(mentorName)}</strong> vous invite à rejoindre la roadmap <strong>${esc(roadmapTitle)}</strong> sur ${APP_NAME}.</p>
+      <p><a href="${inviteUrl}">Créer mon compte</a></p>
+      <p>Ce lien est personnel, à usage unique, et expire le ${expiresAt.toLocaleDateString("fr-FR")}.</p>
+    `;
+    try {
+      await transporter.sendMail({ from: FROM_EMAIL, to, subject, html });
+      return true;
+    } catch (error: any) {
+      console.error("[EMAIL ERROR] Invitation not sent:", error?.message ?? "unknown error");
+      return false;
+    }
+  }
+
+  /**
    * Template: Rappel de travailler sur les tâches
    */
   async sendTaskReminder(userId: number, userEmail: string, userName: string, weekNumber: number, pendingTasksCount: number): Promise<boolean> {
