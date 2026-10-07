@@ -31,10 +31,8 @@ Enchaîner `docs/backlog.md`. Fusionnés : RM-020 (#54), RM-015 (#55), RM-014 (#
 
 ## Reste à faire
 0. Déploiement Render (action de l'utilisateur) : créer Neon + bucket R2 + Blueprint Render + pinger (voir `docs/deployment.md`), puis vérifier `/health/ready`, une connexion, un envoi de preuve vers R2 et un rappel planifié. **Faire tourner les secrets vus à l'écran** (clé IA, mot de passe SMTP, JWT_SECRET) et vérifier que `.env` reste hors Git.
-1. Fusionner la PR #57 puis `git checkout main && git pull`.
-2. RM-016 : choix fait (Render gratuit + Neon + R2, pas de Terraform payant) ; `infra/terraform` (AWS) devient hors périmètre : à arbitrer/documenter. Puis finir RM-017 (métriques, alertes, procédures).
-1. Fusionner la PR #57, recibler la PR des messages d'erreur sur `main`, la fusionner, puis `git checkout main && git pull`.
-2. RM-016 : choisir le fournisseur cloud (décision utilisateur), implémenter réseau/calcul/stockage/secrets, état distant, staging/prod. Puis finir RM-017 (métriques, alertes, procédures).
+1. Fusionner la PR #60 (#57 et #58 déjà fusionnées ; #59 à vérifier), puis `git checkout main && git pull`.
+2. RM-016 : choix fait (Render gratuit + Neon + R2, pas de Terraform payant) ; `infra/terraform` (AWS) devient hors périmètre : à arbitrer/documenter. Puis finir RM-017 (métriques, alertes automatisées ; le runbook est fait).
 3. RM-012 (S3) non testé sur vrai bucket/MinIO. RM-010 : mesure des requêtes, pagination, N+1 du scheduler. RM-011 : reprise d'un lot interrompu.
 4. Non testé en navigateur : labs (Python), sélecteur de roadmap, redirection 401.
 5. Branches distantes fusionnées à supprimer sur origin si souhaité.
