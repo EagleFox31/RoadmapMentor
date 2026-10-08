@@ -11,7 +11,7 @@ export function registerAiGenerationRoutes(app: Express, { limiters }: RouteDeps
     const userName = req.user!.fullName;
     
     try {
-      const { topic, numberOfWeeks, skillLevel, additionalContext } = req.body;
+      const { topic, numberOfWeeks, skillLevel, additionalContext, startWeekNumber, baseDate } = req.body;
 
       if (!topic || !numberOfWeeks) {
         return res.status(400).json({ error: "topic and numberOfWeeks are required" });
@@ -35,6 +35,8 @@ export function registerAiGenerationRoutes(app: Express, { limiters }: RouteDeps
         numberOfWeeks,
         skillLevel: skillLevel || "intermédiaire",
         additionalContext,
+        startWeekNumber: startWeekNumber ? parseInt(startWeekNumber, 10) || undefined : undefined,
+        baseDate,
       });
 
       // Envoyer notification de succès de génération IA

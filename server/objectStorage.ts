@@ -58,6 +58,14 @@ export class ObjectNotFoundError extends Error {
   }
 }
 
+export class ObjectOwnershipError extends Error {
+  constructor() {
+    super("Object belongs to another user");
+    this.name = "ObjectOwnershipError";
+    Object.setPrototypeOf(this, ObjectOwnershipError.prototype);
+  }
+}
+
 function normalizeObjectKey(objectKey: string): string {
   const normalized = objectKey.replace(/\\/g, "/").replace(/^\/+/, "");
   if (
@@ -619,6 +627,12 @@ export class ObjectStorageService {
     }
 
     const objectKey = await this.getObjectEntityFile(normalizedPath);
+
+    const existingPolicy = await this.adapter.getAclPolicy(objectKey);
+    if (existingPolicy && existingPolicy.owner !== aclPolicy.owner) {
+      throw new ObjectOwnershipError();
+    }
+
     await this.adapter.setAclPolicy(objectKey, aclPolicy);
     return normalizedPath;
   }

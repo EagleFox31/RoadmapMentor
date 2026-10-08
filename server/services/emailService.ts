@@ -1,28 +1,23 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { db } from "../db";
 import { emailNotifications, emailNotificationPreferences, users } from "@shared/schema";
 import type { InsertEmailNotification } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
-// Configuration SMTP Hostinger
-const MAIL_PORT = parseInt(process.env.MAIL_PORT || "465");
-const transporter = nodemailer.createTransport({
-  host: process.env.MAIL_HOST,
-  port: MAIL_PORT,
-  secure: MAIL_PORT === 465, // true pour port 465 (SSL/TLS), false pour port 587 (STARTTLS)
-  auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS,
-  },
-});
-
-// Validation des variables d'environnement au démarrage
-if (!process.env.MAIL_HOST || !process.env.MAIL_USER || !process.env.MAIL_PASS) {
-  console.warn("[EMAIL WARNING] Missing SMTP configuration. Email sending may fail.");
-  console.warn("Required: MAIL_HOST, MAIL_USER, MAIL_PASS, MAIL_FROM");
+if (!process.env.RESEND_API_KEY) {
+  console.warn("[EMAIL WARNING] Missing RESEND_API_KEY. Email sending will fail.");
 }
 
-const FROM_EMAIL = process.env.MAIL_FROM || "Roadmap Mentor <support@xeptionetwork.shop>";
+let resendClient: Resend | null = null;
+function getResend(): Resend {
+  if (!resendClient) {
+    if (!process.env.RESEND_API_KEY) throw new Error("Missing RESEND_API_KEY");
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendClient;
+}
+
+const FROM_EMAIL = process.env.MAIL_FROM || "Roadmap Mentor <roadmapmentor@trigenys.com>";
 const APP_NAME = "Roadmap Mentor";
 const APP_URL =
   process.env.APP_URL?.replace(/\/$/, "") ||
@@ -72,15 +67,19 @@ export class EmailService {
   ): Promise<boolean> {
     try {
       console.log(`[EMAIL SEND] Sending to ${recipientEmail}: ${subject}`);
-      
-      const info = await transporter.sendMail({
+
+      const { data, error } = await getResend().emails.send({
         from: FROM_EMAIL,
         to: recipientEmail,
         subject,
         html,
       });
 
-      console.log(`[EMAIL SUCCESS] Email sent to ${recipientEmail} - MessageID: ${info.messageId}`);
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      console.log(`[EMAIL SUCCESS] Email sent to ${recipientEmail} - ID: ${data?.id}`);
       await this.logEmailNotification({
         userId,
         type,
@@ -128,7 +127,10 @@ export class EmailService {
       <p>Ce lien est personnel, à usage unique, et expire le ${expiresAt.toLocaleDateString("fr-FR")}.</p>
     `;
     try {
-      await transporter.sendMail({ from: FROM_EMAIL, to, subject, html });
+      const { error } = await getResend().emails.send({ from: FROM_EMAIL, to, subject, html });
+      if (error) {
+        throw new Error(error.message);
+      }
       return true;
     } catch (error: any) {
       console.error("[EMAIL ERROR] Invitation not sent:", error?.message ?? "unknown error");
