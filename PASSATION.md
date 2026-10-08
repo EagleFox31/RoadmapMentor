@@ -1,3 +1,15 @@
+# 2026-10-08 — Vérification du moteur Python en navigateur
+
+- Base : PR #70 fusionnée, `main` au commit `d801e43`, CI verte.
+- Régression observée dans le code : `PythonProvider lazy` diffère le démarrage du worker, alors que le bouton « Exécuter » est bloqué sur `!isReady` ; aucune exécution n'est possible. Retrait du chargement différé.
+- CSP de production : autorisation limitée à `https://cdn.jsdelivr.net` pour les scripts importés par le worker et les téléchargements WASM/stdlib du Pyodide `0.26.2` utilisé par `react-py@1.11.7`.
+- Test Playwright de production (nouveau) : vraie exécution Python dans Chromium, assertions, re-test après modification, soumission et traçabilité `CLIENT_UNVERIFIED`. Cet essai télécharge réellement Pyodide et nécessite une connexion CDN dans la CI.
+- Validations ultérieures : test sur l'URL de production Render avec les véritables secrets configurés, et recette Cloudflare R2 réelle.
+
+---
+
+## Passation précédente (archive)
+
 # État courant — 2026-10-08 (labs + CI frontend)
 
 - PR #69 fusionnée sur `main` au commit `4264c2b` ; les six jobs CI de la PR sont passés.

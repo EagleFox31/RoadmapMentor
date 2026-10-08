@@ -80,13 +80,15 @@ export function contentSecurityPolicy() {
     useDefaults: false,
     directives: {
       "default-src": ["'self'"],
-      "script-src": ["'self'", "'wasm-unsafe-eval'"],
+      // react-py imports the pinned Pyodide runtime from jsDelivr inside a worker.
+      "script-src": ["'self'", "'wasm-unsafe-eval'", "https://cdn.jsdelivr.net"],
       "worker-src": ["'self'", "blob:"],
       "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
       "img-src": ["'self'", "data:", "blob:"],
       // Signed upload URLs of the cloud storage provider.
-      "connect-src": ["'self'", "https://storage.googleapis.com"],
+      // Pyodide loads its WASM/stdlib and pyodide-http packages from the same CDN.
+      "connect-src": ["'self'", "https://storage.googleapis.com", "https://cdn.jsdelivr.net"],
       "object-src": ["'none'"],
       "base-uri": ["'self'"],
       "form-action": ["'self'"],

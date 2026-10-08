@@ -209,6 +209,7 @@ jobs:
         run: |
           python test/e2e/learner.e2e.py
           python test/e2e/mentor.e2e.py
+          python test/e2e/python-lab.e2e.py
           python test/e2e/invite.e2e.py
           python test/e2e/error-messages.e2e.py
 
