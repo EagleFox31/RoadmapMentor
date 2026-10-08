@@ -98,9 +98,9 @@ test("the CSP allows the fonts and signed uploads the frontend needs", () => {
   const { directives } = contentSecurityPolicy();
   assert.ok(directives["style-src"].includes("https://fonts.googleapis.com"));
   assert.ok(directives["font-src"].includes("https://fonts.gstatic.com"));
-  assert.ok(directives["connect-src"].includes("https://storage.googleapis.com"));
+  assert.ok(directives["connect-src"].includes("https:"), "external PDF previews require HTTPS CORS fetches");
   assert.ok(directives["script-src"].includes("https://cdn.jsdelivr.net"));
-  assert.ok(directives["connect-src"].includes("https://cdn.jsdelivr.net"));
+  assert.ok(!directives["connect-src"].includes("http:"), "never allow unrestricted HTTP PDF downloads");
   assert.ok(directives["worker-src"].includes("'self'"));
   assert.ok(directives["script-src"].includes("'wasm-unsafe-eval'"));
   assert.deepEqual(directives["frame-src"], [
