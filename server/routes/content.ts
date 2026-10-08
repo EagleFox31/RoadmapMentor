@@ -1,8 +1,9 @@
 import { type Express } from "express";
 import { storage } from "../storage";
-import { authMiddleware, requireMentor, type AuthRequest } from "../auth";
+import { authMiddleware, requireMentor, requireLearner, type AuthRequest } from "../auth";
 import { insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, type Week } from "@shared/schema";
 import { handleError } from "../http/errors";
+import { z } from "zod";
 import { canAccessWeek, getObjectiveAccess, getTaskAccess, getDeliverableAccess, getResourceAccess } from "../access/weekAccess";
 
 export function registerWeekContentRoutes(app: Express) {
@@ -206,6 +207,60 @@ export function registerWeekContentRoutes(app: Express) {
     } catch (error) {
       handleError(res, error);
     }
+  });
+
+  // Explicitly marked as consulted; this does not validate a skill or task.
+  app.get("/api/weeks/:weekId/resource-consultations", authMiddleware, requireLearner, async (req: AuthRequest, res) => {
+    try {
+      const id = Number(req.params.weekId);
+      if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid week id" });
+      const { week, allowed } = await canAccessWeek(req, id);
+      if (!week || !allowed) return res.status(404).json({ error: "Week not found" });
+      res.json({ resourceIds: await storage.getConsultedResourceIds(id, req.user!.id) });
+    } catch (error) { handleError(res, error); }
+  });
+
+  app.put("/api/resources/:id/consultation", authMiddleware, requireLearner, async (req: AuthRequest, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid resource id" });
+      const { resource, allowed } = await getResourceAccess(req, id);
+      if (!resource || !allowed || !resource.isApproved) return res.status(404).json({ error: "Resource not found" });
+      const { consulted } = z.object({ consulted: z.boolean() }).strict().parse(req.body);
+      await storage.setResourceConsulted(id, req.user!.id, consulted);
+      res.json({ resourceId: id, consulted });
+    } catch (error) { handleError(res, error); }
+  });
+
+  app.post("/api/resources/:id/report-unavailable", authMiddleware, requireLearner, async (req: AuthRequest, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid resource id" });
+      const { resource, allowed } = await getResourceAccess(req, id);
+      if (!resource || !allowed || !resource.isApproved) return res.status(404).json({ error: "Resource not found" });
+      await storage.reportUnavailableResource(id);
+      res.json({ reported: true });
+    } catch (error) { handleError(res, error); }
+  });
+
+  app.post("/api/resources/:id/approve", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid resource id" });
+      const { resource, allowed } = await getResourceAccess(req, id);
+      if (!resource || !allowed) return res.status(404).json({ error: "Resource not found" });
+      res.json(await storage.approveResource(id));
+    } catch (error) { handleError(res, error); }
+  });
+
+  app.post("/api/resources/:id/clear-unavailable", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid resource id" });
+      const { resource, allowed } = await getResourceAccess(req, id);
+      if (!resource || !allowed) return res.status(404).json({ error: "Resource not found" });
+      res.json(await storage.clearUnavailableReport(id));
+    } catch (error) { handleError(res, error); }
   });
 
   // ========== RESOURCE ROUTES ==========
