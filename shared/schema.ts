@@ -303,9 +303,23 @@ export const resources = pgTable("resources", {
   estimatedMinutes: integer("estimated_minutes"),
   isRequired: boolean("is_required").notNull().default(false),
   orderIndex: integer("order_index").notNull().default(0),
+  isApproved: boolean("is_approved").notNull().default(true),
+  unavailableReportedAt: timestamp("unavailable_reported_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   byWeek: index("resources_week_id_idx").on(table.weekId),
+}));
+
+// A learner can explicitly state that they consulted a resource. This is
+// independent of task completion, evidence submissions and competency reviews.
+export const resourceConsultations = pgTable("resource_consultations", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  resourceId: integer("resource_id").notNull().references(() => resources.id, { onDelete: "cascade" }),
+  learnerId: integer("learner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  consultedAt: timestamp("consulted_at").notNull().defaultNow(),
+}, (table) => ({
+  uniqueLearnerResource: uniqueIndex("resource_consultations_resource_learner_unique").on(table.resourceId, table.learnerId),
+  byLearner: index("resource_consultations_learner_id_idx").on(table.learnerId),
 }));
 
 // Short, guided exercises used to practise a newly introduced notion.
@@ -635,11 +649,17 @@ export const deliverablesRelations = relations(deliverables, ({ one }) => ({
   }),
 }));
 
-export const resourcesRelations = relations(resources, ({ one }) => ({
+export const resourcesRelations = relations(resources, ({ one, many }) => ({
   week: one(weeks, {
     fields: [resources.weekId],
     references: [weeks.id],
   }),
+  consultations: many(resourceConsultations),
+}));
+
+export const resourceConsultationsRelations = relations(resourceConsultations, ({ one }) => ({
+  resource: one(resources, { fields: [resourceConsultations.resourceId], references: [resources.id] }),
+  learner: one(users, { fields: [resourceConsultations.learnerId], references: [users.id] }),
 }));
 
 export const labsRelations = relations(labs, ({ one, many }) => ({
@@ -893,6 +913,8 @@ export const insertDeliverableSchema = createInsertSchema(deliverables).omit({
 
 export const insertResourceSchema = createInsertSchema(resources).omit({
   createdAt: true,
+  isApproved: true,
+  unavailableReportedAt: true,
 }).extend({
   label: z.string().trim().min(1).max(200),
   url: z.string().trim().max(2048).refine(

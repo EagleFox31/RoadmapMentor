@@ -258,6 +258,12 @@ export class WeekRepository implements WeekStore {
             label: r.label,
             url: r.url,
             resourceType: r.resourceType,
+            isApproved: false,
+            problemToSolve: r.problemToSolve,
+            practicePrompt: r.practicePrompt,
+            estimatedMinutes: r.estimatedMinutes,
+            isRequired: r.isRequired,
+            orderIndex: r.orderIndex,
           }));
 
           const insertedResources = await tx

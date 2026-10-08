@@ -117,9 +117,12 @@ export function contentSecurityPolicy() {
       "img-src": ["'self'", "data:", "blob:"],
       // Signed upload URLs of the cloud storage provider.
       // Pyodide loads its WASM/stdlib and pyodide-http packages from the same CDN.
-      "connect-src": ["'self'", "https://storage.googleapis.com", "https://cdn.jsdelivr.net"],
+      // Resource PDF previews explicitly initiated by learners fetch HTTPS
+      // documents in the browser only; CORS still controls readable responses.
+      // This broadens CSP connect-src: review alongside client-side PDF checks.
+      "connect-src": ["'self'", "https:"],
       // Only vetted video players may be embedded. Never allow arbitrary iframes.
-      "frame-src": ["https://www.youtube-nocookie.com", "https://player.vimeo.com"],
+      "frame-src": ["https://www.youtube-nocookie.com", "https://player.vimeo.com", "blob:"],
       "object-src": ["'none'"],
       "base-uri": ["'self'"],
       "form-action": ["'self'"],

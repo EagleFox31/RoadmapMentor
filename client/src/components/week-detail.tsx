@@ -245,6 +245,7 @@ export function WeekDetail({
           )}
         </div>
         <ResourcesList
+          weekId={week.id}
           resources={week.resources}
           onEdit={onEditResource}
           onDelete={onDeleteResource}

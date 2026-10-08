@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import pRetry, { AbortError } from "p-retry";
 import { z } from "zod";
 import { resolveAiConfig } from "./aiConfig";
+import { safeExternalResourceUrl } from "@shared/resourceLinks";
 
 // Provider, base URL and model come from the environment (see aiConfig.ts).
 const aiConfig = resolveAiConfig();
@@ -50,16 +51,9 @@ const deliverableSchema = z.object({
 });
 
 const resourceSchema = z.object({
-  label: z.string().trim().default(""),
-  url: z.string().trim().default("").refine((url) => {
-    if (!url) return true; // Empty URLs will be filtered out later
-    try {
-      new URL(url);
-      return url.startsWith('http://') || url.startsWith('https://');
-    } catch {
-      return false;
-    }
-  }, { message: "Invalid URL format" }),
+  label: z.string().trim().max(200).default(""),
+  // Links are syntactically checked; no live HTTP validation is claimed.
+  url: z.string().trim().max(2048).default(""),
   resourceType: z.enum(["DOC", "VIDEO", "COURSE", "ARTICLE", "OTHER"]).catch("OTHER"),
 });
 
@@ -82,7 +76,7 @@ const generatedWeekSchema = z.object({
   ...week,
   // Filter out deliverables/resources with empty titles/labels or invalid URLs
   deliverables: week.deliverables.filter(d => d.title.length > 0),
-  resources: week.resources.filter(r => r.label.length > 0 && r.url.length > 0),
+  resources: week.resources.filter(r => r.label.length > 0 && safeExternalResourceUrl(r.url) !== null),
 }));
 
 export interface GeneratedWeek {
@@ -133,7 +127,7 @@ export async function generateRoadmap(request: RoadmapGenerationRequest): Promis
   // Use provided baseDate or default to today (only when no startWeekNumber)
   const startDate = request.baseDate ? new Date(request.baseDate) : new Date();
   
-  const prompt = `Tu es un expert en mentorat et en pédagogie. Génère un plan de formation structuré sur ${request.numberOfWeeks} semaines pour apprendre "${request.topic}".
+  const prompt = `Tu es un expert en mentorat et en andragogie. Génère un parcours centré sur des problèmes réels et des expérimentations autonomes sur ${request.numberOfWeeks} semaines pour apprendre "${request.topic}".
 
 Niveau: ${request.skillLevel}
 ${request.additionalContext ? `Contexte additionnel: ${request.additionalContext}` : ""}
@@ -161,7 +155,7 @@ Pour chaque semaine, inclure un livrable de rendu avec:
 - instructions: Guide détaillé étape par étape
 
 RESSOURCES:
-- Les URLs des ressources doivent être des liens RÉELS et VALIDES
+- Propose des liens plausibles, sans prétendre les avoir vérifiés ; le mentor doit les contrôler avant approbation
 - Privilégie la documentation officielle et les sources de référence du domaine
 - Pour les vidéos, utilise des chaînes YouTube reconnues
 

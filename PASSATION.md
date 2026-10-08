@@ -1,3 +1,16 @@
+# 2026-10-08 — RM-019 : clôture du parcours ressources (andragogie)
+
+- Base : PR #77 fusionnée, CI main verte.
+- Migration `0007` additive : table consultations unique par apprenant et ressource, validation explicite des liens importés par IA, signalement des liens indisponibles.
+- État « consultée » déclaré et révocable, isolé des tâches et compétences validées.
+- Les liens IA importés restent cachés aux apprenants avant approbation du mentor ; modifier une URL force sa réapprobation et réinitialise ses consultations.
+- Le signalement d'un lien mort est manuel ; pas de robot serveur qui visite une URL non fiable.
+- Aperçu navigateur pour les PDF HTTPS terminés par .pdf, avec CORS, limite de 16 Mio, contrôle de signature et lien externe de secours.
+- Choix CSP explicite : `connect-src https:` autorise les fetch HTTPS déclenchés par l'apprenant pour des PDF distants (CORS requis), au prix d'une directive connect-src plus large ; `frame-src` conserve les lecteurs approuvés et les blobs locaux, `object-src 'none'` reste actif. Réviser ce compromis si un proxy PDF sécurisé ou une liste stable de fournisseurs est introduite.
+- Pas d'analytique de visionnage. Test réel conseillé avec un PDF externe autorisant CORS, et navigateur de production.
+
+---
+
 # 2026-10-08 — RM-019, lot 2 : ressources contextualisées par un problème réel
 
 - Base : PR #76 fusionnée sur `main` au commit `ab7abe5`.

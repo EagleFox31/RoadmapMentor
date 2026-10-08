@@ -12,6 +12,7 @@ RoadmapMentor structures a learning plan into weeks, objectives, tasks, delivera
 - **Mentor validation** — weeks can be reviewed and validated by a mentor
 - **Comments & follow-up** — learners can comment on weeks and keep progress discussions tied to the roadmap
 - **AI roadmap generation** — generate structured learning plans by topic, duration and skill level
+- **Andragogical resources** — problem-driven context, supported video/PDF preview, voluntary consultation (not a skill certification), mentor review of AI-imported links and unavailable-link reports
 - **Notifications** — configurable email notifications for reminders, validation, progress and collaboration events
 
 ## Domain model
