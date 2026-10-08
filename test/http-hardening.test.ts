@@ -116,7 +116,7 @@ test("only raster image types are accepted for uploads", () => {
 
 test("image uploads must match their claimed MIME signature", () => {
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
-  const gif = Buffer.from("GIF89a" + "\\x01".repeat(7), "binary");
+  const gif = Buffer.concat([Buffer.from("GIF89a"), Buffer.alloc(7)]);
   const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0xff, 0xd9]);
   const webp = Buffer.concat([
     Buffer.from("RIFF"), Buffer.alloc(4), Buffer.from("WEBPVP8 "), Buffer.alloc(8),
