@@ -9,7 +9,7 @@ import { Storage, type File } from "@google-cloud/storage";
 import type { Response } from "express";
 import { randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { PassThrough, type Readable } from "node:stream";
 import {
@@ -47,6 +47,7 @@ export interface ObjectStorageAdapter {
     objectId: string,
     body: Buffer,
     contentType: string,
+    aclPolicy: ObjectAclPolicy,
   ): Promise<void>;
 }
 
@@ -63,6 +64,14 @@ export class ObjectOwnershipError extends Error {
     super("Object belongs to another user");
     this.name = "ObjectOwnershipError";
     Object.setPrototypeOf(this, ObjectOwnershipError.prototype);
+  }
+}
+
+export class ObjectAlreadyExistsError extends Error {
+  constructor() {
+    super("Object already exists");
+    this.name = "ObjectAlreadyExistsError";
+    Object.setPrototypeOf(this, ObjectAlreadyExistsError.prototype);
   }
 }
 
@@ -356,6 +365,7 @@ export class FilesystemObjectStorageAdapter implements ObjectStorageAdapter {
     objectId: string,
     body: Buffer,
     contentType: string,
+    aclPolicy: ObjectAclPolicy,
   ): Promise<void> {
     if (!/^[0-9a-f-]{36}$/i.test(objectId)) {
       throw new Error("Invalid object id");
@@ -366,24 +376,29 @@ export class FilesystemObjectStorageAdapter implements ObjectStorageAdapter {
     await mkdir(path.dirname(targetPath), { recursive: true });
 
     try {
+      // Exclusive creation prevents another request from overwriting existing evidence.
       await writeFile(targetPath, body, { flag: "wx" });
     } catch (error: any) {
-      if (error?.code === "EEXIST") {
-        throw new Error("Object already exists");
-      }
+      if (error?.code === "EEXIST") throw new ObjectAlreadyExistsError();
       throw error;
     }
 
     const metadata: FilesystemMetadata = {
       contentType,
       size: body.byteLength,
-      aclPolicy: null,
+      aclPolicy,
     };
-    await writeFile(
-      this.metadataPath(objectKey),
-      JSON.stringify(metadata, null, 2),
-      "utf8",
-    );
+    try {
+      await writeFile(
+        this.metadataPath(objectKey),
+        JSON.stringify(metadata, null, 2),
+        { encoding: "utf8", flag: "wx" },
+      );
+    } catch (error) {
+      // Do not leave an unreadable orphan when metadata persistence fails.
+      await unlink(targetPath).catch(() => undefined);
+      throw error;
+    }
   }
 }
 
@@ -395,6 +410,15 @@ function isS3NotFound(error: any): boolean {
     error?.name === "NotFound" ||
     error?.name === "NoSuchKey" ||
     error?.$metadata?.httpStatusCode === 404
+  );
+}
+
+function isS3ConditionalConflict(error: any): boolean {
+  return (
+    error?.name === "PreconditionFailed" ||
+    error?.name === "ConditionalRequestConflict" ||
+    error?.$metadata?.httpStatusCode === 412 ||
+    error?.$metadata?.httpStatusCode === 409
   );
 }
 
@@ -525,22 +549,29 @@ export class S3ObjectStorageAdapter implements ObjectStorageAdapter {
     objectId: string,
     body: Buffer,
     contentType: string,
+    aclPolicy: ObjectAclPolicy,
   ): Promise<void> {
     if (!/^[0-9a-f-]{36}$/i.test(objectId)) {
       throw new Error("Invalid object id");
     }
     const objectKey = "uploads/" + objectId;
-    if (await this.exists(objectKey)) {
-      throw new Error("Object already exists");
+    try {
+      await this.client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: this.key(objectKey),
+          Body: body,
+          ContentType: contentType,
+          Metadata: { [S3_ACL_METADATA_KEY]: JSON.stringify(aclPolicy) },
+          // Cloudflare R2 supports conditional PutObject. This avoids the
+          // HEAD-then-PUT race that could overwrite a concurrent upload.
+          IfNoneMatch: "*",
+        }),
+      );
+    } catch (error) {
+      if (isS3ConditionalConflict(error)) throw new ObjectAlreadyExistsError();
+      throw error;
     }
-    await this.client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: this.key(objectKey),
-        Body: body,
-        ContentType: contentType,
-      }),
-    );
   }
 }
 
@@ -595,13 +626,17 @@ export class ObjectStorageService {
     objectId: string,
     body: Buffer,
     contentType: string,
+    aclPolicy: ObjectAclPolicy,
   ): Promise<void> {
     if (!this.adapter.writeDirectUpload) {
       throw new Error(
         "Direct application uploads are not supported by the active object storage provider",
       );
     }
-    await this.adapter.writeDirectUpload(objectId, body, contentType);
+    if (aclPolicy.visibility !== "private" || !aclPolicy.owner) {
+      throw new Error("Direct uploads must have a private owner");
+    }
+    await this.adapter.writeDirectUpload(objectId, body, contentType, aclPolicy);
   }
 
   async getObjectEntityFile(objectPath: string): Promise<string> {
@@ -634,11 +669,16 @@ export class ObjectStorageService {
     const objectKey = await this.getObjectEntityFile(normalizedPath);
 
     const existingPolicy = await this.adapter.getAclPolicy(objectKey);
+    if (!existingPolicy && this.adapter.name !== "replit") {
+      // Old failed direct uploads without ownership must not be claimable.
+      throw new ObjectOwnershipError();
+    }
     if (existingPolicy && existingPolicy.owner !== aclPolicy.owner) {
       throw new ObjectOwnershipError();
     }
-
-    await this.adapter.setAclPolicy(objectKey, aclPolicy);
+    if (existingPolicy?.visibility !== aclPolicy.visibility) {
+      await this.adapter.setAclPolicy(objectKey, aclPolicy);
+    }
     return normalizedPath;
   }
 

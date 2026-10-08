@@ -33,6 +33,10 @@ test("filesystem upload tickets bind the upload URL to its requester", { skip: !
 
   const saved = await put(owner.token, uploadTicket);
   assert.equal(saved.status, 201, await saved.text());
+
+  // Retrying the same signed ticket cannot overwrite the first upload.
+  const retry = await put(owner.token, uploadTicket);
+  assert.equal(retry.status, 409, await retry.text());
   const file = await fetch(BASE + objectPath, { headers: { Authorization: `Bearer ${owner.token}` } });
   assert.equal(file.status, 200);
   assert.equal(await file.arrayBuffer().then(b => Buffer.from(b).toString("base64")), image.toString("base64"));
