@@ -2,7 +2,7 @@ import express, { type Express } from "express";
 import { authMiddleware, type AuthRequest } from "../auth";
 import { storage } from "../storage";
 import { getTaskAccess, getLearnerIdsForWeek } from "../access/weekAccess";
-import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
+import { ObjectStorageService, ObjectNotFoundError, ObjectAlreadyExistsError } from "../objectStorage";
 import { ObjectPermission } from "../objectAcl";
 import { issueObjectUploadTicket, verifyObjectUploadTicket } from "../security/objectUploadTicket";
 import { isAllowedUploadType, MAX_UPLOAD_BYTES, ALLOWED_UPLOAD_TYPES } from "../http/hardening";
@@ -73,16 +73,14 @@ export function registerObjectsRoutes(app: Express, { limiters }: RouteDeps) {
           req.params.objectId,
           req.body,
           contentType,
+          { owner: req.user!.id.toString(), visibility: "private" },
         );
 
-        const objectPath = "/objects/uploads/" + req.params.objectId;
-        await objectStorageService.trySetObjectEntityAclPolicy(objectPath, {
-          owner: req.user!.id.toString(),
-          visibility: "private",
-        });
-
-        res.status(201).json({ objectPath });
+        res.status(201).json({ objectPath: "/objects/uploads/" + req.params.objectId });
       } catch (error) {
+        if (error instanceof ObjectAlreadyExistsError) {
+          return res.status(409).json({ error: "Object already uploaded" });
+        }
         handleError(res, error);
       }
     },

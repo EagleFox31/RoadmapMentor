@@ -1,3 +1,18 @@
+# 2026-10-08 — R2 / S3 : upload conditionnel et propriétaire défini à la création
+
+- Après fusion de la PR #73, `main` est au commit `d5e9c11`.
+- Les uploads directs exigent la politique de propriétaire privé dès le début.
+- **S3/R2 :** `PutObject` unique avec `IfNoneMatch: "*"` (création seulement si objet absent) et métadonnées `aclpolicy` dans la même opération. Plus de HEAD-then-PUT ni de CopyObject obligatoire après upload.
+- **Filesystem :** écriture exclusive (`wx`), sauvegarde immédiate des métadonnées privées, nettoyage du fichier en cas d'échec d'écriture des métadonnées.
+- Une seconde requête d'upload sur la même clé reçoit HTTP 409, sans remplacer les octets.
+- Anciennes preuves directes sans métadonnées de propriétaire : adoption refusée. Le provider legacy Replit conserve sa possibilité d'association initiale.
+- Tests S3 concurrents / ACL, filesystem et 409 via API ajoutés.
+- Vérifier la CI et effectuer un upload réel R2 depuis Render avant mise en production ouverte. Cette PR ne change pas les secrets.
+
+---
+
+## Passation précédente
+
 # 2026-10-08 — Sécurisation des preuves liées aux tâches
 
 - PR #71 et #72 fusionnées dans `main`, dernier merge `2d6ed1f`.
