@@ -2,6 +2,11 @@
 
 Ce backlog transforme l'analyse du dépôt en travaux ordonnés et vérifiables. Il couvre les écarts fonctionnels, la sécurité, la qualité, les performances et la préparation à la production observés le 5 octobre 2026.
 
+> **Audit de clôture du 8 octobre 2026 — état de `main` au commit `b68435f`.** 
+> Les 20 fiches RM représentent un inventaire historique, pas 20 développements à relancer. Les statuts actualisés sont détaillés ci-dessous et dans [l'audit de préparation à la release](engineering/release-readiness-2026-10-08.md). 
+> La CI GitHub valide le code et les migrations, **pas** les accès réels à Render, Neon, R2, Resend ni une restauration effectuée. 
+> **Décision de scope :** conserver l'architecture Render + Neon + R2 et différer tout déploiement AWS/HCP non justifié. Ne pas financer de nouvelle infrastructure simplement pour cocher RM-016 / GH-25.
+
 ## Légende
 
 - **P0 — Bloquant** : empêche un parcours essentiel ou une mise en production sûre.
@@ -48,11 +53,13 @@ Ce backlog transforme l'analyse du dépôt en travaux ordonnés et vérifiables.
 
 ### RM-001 — Réparer l'inscription publique
 
-> **Statut : terminé, sauf un critère (voir ci-dessous) — 2026-10-05.**
+> **État audité — 08/10/2026 :** **Fonctionnel, validé en CI.** Inscription LEARNER et erreurs de validation avec `formatErrorBody()`; l'ancien « reste JSON brut » est résolu dans le client.
+
+> **Historique du statut (avant cet audit) : terminé, sauf un critère (voir ci-dessous) — 2026-10-05.**
 > **Comment :** le champ `role` et le sélecteur « Mentor » ont été retirés du formulaire (`client/src/pages/auth-page.tsx`), qui n'envoie plus que `fullName`, `email` et `password`. `handleError` (`server/routes.ts`) renvoie désormais `400 { error: "Validation failed", issues }` pour toute `ZodError` au lieu de `500`. Le serveur garde la création forcée en `LEARNER` et le schéma strict.
 > **Pourquoi :** le schéma strict est le bon garde-fou anti-élévation de rôle ; c'était donc le client qui était faux. Une erreur de validation est une erreur client, pas interne.
 > **Preuve :** `test/integration/mentor-learner.integration.ts` (un appel public avec `role: "MENTOR"` renvoie 400) et `test/e2e/mentor-learner.e2e.py` (inscription réelle via l'interface, absence de sélecteur de rôle, arrivée sur `/roadmap` en « Apprenant »).
-> **Reste :** la notification d'erreur affiche encore le JSON brut du 400 ; il faut formater `issues` côté client.
+> **Historique :** cet écart de formatage a depuis été corrigé dans `client/src/lib/queryClient.ts`.
 
 
 **Constat**
@@ -76,7 +83,9 @@ Le formulaire envoie le champ `role`, alors que `publicRegistrationSchema` l'int
 
 ### RM-002 — Ajouter un parcours contrôlé de création des mentors
 
-> **Statut : implémenté, en attente de revue/PR — 2026-10-05.** Branche `feat/rm-002-mentor-bootstrap` (worktree `../roadmapmentor-rm002`, base `fix/rm-005-prod-deps`, non poussée). Mécanisme : commande opérateur `npm run mentor:create` (sans changement de schéma), idempotente, refuse de promouvoir un apprenant, mot de passe ≥ 12 caractères (généré et affiché une fois, ou `MENTOR_PASSWORD`), ligne `[audit]` à chaque création. Vérifié sur Postgres jetable : création, rejeu sans effet, conflit apprenant refusé, connexion du mentor créé, inscription publique avec `role` rejetée (400). Tests unitaires de la politique ; documentation opérateur dans `docs/deployment.md` et README. Limites : la trace d'audit est une ligne de log (pas de table dédiée) ; pas de création de mentor depuis l'interface (hors périmètre, invitation éventuelle à étudier avec RM-003).
+> **État audité — 08/10/2026 :** **Fonctionnel, validé par le code et les tests CI.** Commande opérateur `npm run mentor:create` et garde anti-promotion ; exécution sur l'installation live non attestée.
+
+> **Historique du statut (avant cet audit) : implémenté, en attente de revue/PR — 2026-10-05.** Branche `feat/rm-002-mentor-bootstrap` (worktree `../roadmapmentor-rm002`, base `fix/rm-005-prod-deps`, non poussée). Mécanisme : commande opérateur `npm run mentor:create` (sans changement de schéma), idempotente, refuse de promouvoir un apprenant, mot de passe ≥ 12 caractères (généré et affiché une fois, ou `MENTOR_PASSWORD`), ligne `[audit]` à chaque création. Vérifié sur Postgres jetable : création, rejeu sans effet, conflit apprenant refusé, connexion du mentor créé, inscription publique avec `role` rejetée (400). Tests unitaires de la politique ; documentation opérateur dans `docs/deployment.md` et README. Limites : la trace d'audit est une ligne de log (pas de table dédiée) ; pas de création de mentor depuis l'interface (hors périmètre, invitation éventuelle à étudier avec RM-003).
 
 **Constat**
 
@@ -97,7 +106,9 @@ La création de mentors existe uniquement dans la route de données de test, dé
 
 ### RM-003 — Fournir l'interface de gestion des roadmaps et mentorats
 
-> **Statut : implémenté, en attente de revue/PR — 2026-10-05.** Branche `feat/rm-003-mentoring-ui` (worktree `../roadmapmentor-rm003`, base `feat/rm-002-mentor-bootstrap`, non poussée). Livré : page `/roadmaps` (créer/consulter ses roadmaps, mentorats avec rôles et statuts, rattachement d'un apprenant par e-mail ; états chargement, vide, erreur, conflit « déjà rattaché »), bouton de navigation, route `GET /api/learners/lookup` (mentor uniquement, e-mail exact, comptes LEARNER seulement, 404 uniforme). Vérifié sur Postgres jetable : 18 tests d'intégration (dont 6 nouveaux : association d'un non-apprenant refusée, apprenant/non-membre sans accès), e2e UI (7 étapes) et ancien e2e (7 étapes) verts, `tsc`/build OK. À noter : la recherche par e-mail confirme l'existence d'un compte apprenant à un mentor (limiter le débit avec RM-009) ; pas de système d'invitation pour un apprenant non inscrit ; `routes.ts` est aussi modifié par le travail en cours dans le dossier principal (conflit de fusion possible, zones distinctes).
+> **État audité — 08/10/2026 :** **Fonctionnel, parcours API/E2E couverts.** Interface `/roadmaps` et rattachement/invitation des apprenants ; recette réelle de l'envoi e-mail toujours distincte (RM-020).
+
+> **Historique du statut (avant cet audit) : implémenté, en attente de revue/PR — 2026-10-05.** Branche `feat/rm-003-mentoring-ui` (worktree `../roadmapmentor-rm003`, base `feat/rm-002-mentor-bootstrap`, non poussée). Livré : page `/roadmaps` (créer/consulter ses roadmaps, mentorats avec rôles et statuts, rattachement d'un apprenant par e-mail ; états chargement, vide, erreur, conflit « déjà rattaché »), bouton de navigation, route `GET /api/learners/lookup` (mentor uniquement, e-mail exact, comptes LEARNER seulement, 404 uniforme). Vérifié sur Postgres jetable : 18 tests d'intégration (dont 6 nouveaux : association d'un non-apprenant refusée, apprenant/non-membre sans accès), e2e UI (7 étapes) et ancien e2e (7 étapes) verts, `tsc`/build OK. À noter : la recherche par e-mail confirme l'existence d'un compte apprenant à un mentor (limiter le débit avec RM-009) ; pas de système d'invitation pour un apprenant non inscrit ; `routes.ts` est aussi modifié par le travail en cours dans le dossier principal (conflit de fusion possible, zones distinctes).
 
 **Constat**
 
@@ -120,6 +131,8 @@ Les routes permettent de créer une roadmap et un mentorat, mais le frontend ne 
 
 ### RM-004 — Ajouter un contexte et un sélecteur multi-roadmap
 
+> **État audité — 08/10/2026 :** **Fonctionnel dans `main`.** `useActiveRoadmap`, paramètre `?roadmap=`, requêtes filtrées et clés de cache contextualisées ; isolation couverte dans la suite API.
+
 **Constat**
 
 Le backend isole plusieurs roadmaps, mais `/roadmap` charge toutes les semaines accessibles dans une seule liste. Les créations de semaine et les sauvegardes IA n'envoient pas de `roadmapId` et échouent lorsqu'un mentor possède plusieurs roadmaps.
@@ -141,6 +154,8 @@ Le backend isole plusieurs roadmaps, mais `/roadmap` charge toutes les semaines 
 
 ### RM-005 — Corriger les vulnérabilités des dépendances de production
 
+> **État audité — 08/10/2026 :** **À revalider avant ouverture.** Le verrouillage des dépendances, les tests et les builds passent, mais l'audit de vulnérabilités de production ACTUEL n'a pas été reproduit dans cette revue ; aucun zéro-vulnérabilité n'est affirmé.
+
 **Constat**
 
 `npm audit --omit=dev` remonte 48 vulnérabilités : 27 modérées, 18 élevées et 1 critique. Les chaînes concernées incluent notamment Drizzle ORM, Nodemailer, Express, `ws` et Google Cloud Storage. Certaines corrections impliquent des changements majeurs.
@@ -161,7 +176,9 @@ Le backend isole plusieurs roadmaps, mais `/roadmap` charge toutes les semaines 
 
 ### RM-006 — Introduire des migrations de base de données versionnées
 
-> **Statut : implémenté, en attente de revue/PR — 2026-10-05.** Branche `feat/rm-006-migrations` (worktree `../roadmapmentor-rm006`, base `fix/rm-005-prod-deps`, non poussée). Livré : migration initiale (`migrations/`), scripts `db:generate` / `db:migrate`, étape `migrate` de compose, gate CI `migrations` (dérive schéma/migrations, base vide, idempotence), docs de déploiement. Vérifié sur Postgres jetable : base vide = 19 tables, rejeu sans effet, base créée par `push` refusée sans `MIGRATE_BASELINE_EXISTING=true` puis baseline OK. `shared/schema.ts` non modifié : tout changement de schéma en cours (ex. labs RM-018) doit produire sa propre migration via `npm run db:generate`. Non vérifié : exécution réelle du job CI GitHub.
+> **État audité — 08/10/2026 :** **Fonctionnel en CI.** Migrations versionnées jusqu'à `0007`, dérive vérifiée et exécution idempotente sur PostgreSQL jetable. Historique de migration réel Neon à vérifier lors de la recette.
+
+> **Historique du statut (avant cet audit) : implémenté, en attente de revue/PR — 2026-10-05.** Branche `feat/rm-006-migrations` (worktree `../roadmapmentor-rm006`, base `fix/rm-005-prod-deps`, non poussée). Livré : migration initiale (`migrations/`), scripts `db:generate` / `db:migrate`, étape `migrate` de compose, gate CI `migrations` (dérive schéma/migrations, base vide, idempotence), docs de déploiement. Vérifié sur Postgres jetable : base vide = 19 tables, rejeu sans effet, base créée par `push` refusée sans `MIGRATE_BASELINE_EXISTING=true` puis baseline OK. `shared/schema.ts` non modifié : tout changement de schéma en cours (ex. labs RM-018) doit produire sa propre migration via `npm run db:generate`. Non vérifié : exécution réelle du job CI GitHub.
 
 **Constat**
 
@@ -186,10 +203,12 @@ Le dépôt utilise `drizzle-kit push` et ne contient pas de dossier de migration
 
 ### RM-007 — Ajouter les tests d'intégration API et les parcours E2E
 
-> **Statut : terminé — 2026-10-07.**
+> **État audité — 08/10/2026 :** **Terminé côté CI.** Tests API, E2E et contrôles d'accès exécutés par GitHub Actions sur code / build de production simulé. Les mentions anciennes « CI pas encore lancée » sont historiques.
+
+> **Historique du statut (avant cet audit) : terminé — 2026-10-07.**
 > **Comment :** `test/integration/support/api.ts` (acteurs, fixture de mentorat, matrice d'accès `expectAccess`) ; suites `weeks-crud`, `sessions`, `change-requests`, `billing` et isolation de deux roadmaps ; E2E scindé en `test/e2e/learner.e2e.py` et `mentor.e2e.py` ; job CI `integration` (serveur de développement, puis build de production) ; `npm run test:access-mutation`. Voir `docs/engineering/testing.md`.
 > **Preuve :** 103 tests d'intégration verts sur le serveur de développement, 73 sur le build de production (suites nouvelles), 9 étapes E2E vertes sur le build de production, 5 mutations de gardes d'accès détectées.
-> **Reste (hors périmètre) :** les anciennes suites s'appuient encore sur `mentor@test.com` (développement seulement) ; `roadmaps-ui.e2e.py` n'est pas en CI ; la CI n'a pas encore tourné sur GitHub.
+> **Historique :** les suites anciennes réservées au développement restent distinctes ; la CI GitHub s'exécute bien aujourd'hui sur `main`.
 
 **Constat**
 
@@ -212,6 +231,8 @@ Les tests unitaires ne couvraient pas les routes avec une vraie base ni les parc
 
 ### RM-008 — Renforcer le cycle de vie de l'authentification
 
+> **État audité — 08/10/2026 :** **Fonctionnel avec choix de sécurité résiduel.** Middleware recharge le compte/rôle et refuse les comptes désactivés ; synchronisation `/api/auth/me` et sortie sur 401. JWT en `localStorage` demeure un compromis à suivre, pas un défaut corrigé ici.
+
 **Constat**
 
 Le middleware fait confiance au rôle contenu dans un JWT valable sept jours et ne recharge pas l'utilisateur. Le client considère le contenu de `localStorage` comme source d'identité jusqu'à la prochaine connexion.
@@ -232,6 +253,8 @@ Le middleware fait confiance au rôle contenu dans un JWT valable sept jours et 
 
 ### RM-009 — Durcir la surface HTTP et les opérations coûteuses
 
+> **État audité — 08/10/2026 :** **Fonctionnel et testé en CI.** Limiteurs, enveloppes d'erreurs, CSP, uploads bornés et vérification du type réel d'image ; recettes en conditions réelles non équivalentes aux tests CI.
+
 **Travail**
 
 - Ajouter une limitation de débit sur la connexion, l'inscription et la génération IA.
@@ -248,7 +271,9 @@ Le middleware fait confiance au rôle contenu dans un JWT valable sept jours et 
 
 ### RM-010 — Réduire les requêtes N+1 et garantir l'unicité de la progression
 
-> **Statut : partiel — 2026-10-06 (PR #47).** Livré : `getWeekContentsByWeekIds` (`server/storage.ts`) et `GET /api/weeks` groupé ; `toggleTaskProgress` en upsert atomique ; migration `0002` (dédoublonnage + unique `(task_id, learner_id)` + index). **Reste :** mesure du nombre de requêtes, pagination, N+1 du scheduler de rappels.
+> **État audité — 08/10/2026 :** **Partiel.** Upsert atomique + index et chargement groupé livrés ; mesures N+1 sur données réalistes, pagination et requêtes des rappels non prouvées.
+
+> **Historique du statut (avant cet audit) : partiel — 2026-10-06 (PR #47).** Livré : `getWeekContentsByWeekIds` (`server/storage.ts`) et `GET /api/weeks` groupé ; `toggleTaskProgress` en upsert atomique ; migration `0002` (dédoublonnage + unique `(task_id, learner_id)` + index). **Reste :** mesure du nombre de requêtes, pagination, N+1 du scheduler de rappels.
 
 **Constat**
 
@@ -270,7 +295,9 @@ Le chargement des semaines effectue des requêtes imbriquées pour objectifs, t�
 
 ### RM-011 — Rendre les tâches planifiées sûres en multi-instance
 
-> **Statut : partiel — 2026-10-06 (PR #48/#49).** Livré : `server/scheduler.ts`, `schedulerConfig.ts`, `jobRuns.ts` ; table `scheduled_job_runs` (migration `0003`) ; créneau réclamé une seule fois (lot idempotent par créneau, un lot en échec n'est pas rejoué) ; `SCHEDULER_ENABLED/TIMEZONE/MIDWEEK_CRON/ENDWEEK_CRON`. **Reste :** métriques (RM-017), reprise d'un lot interrompu.
+> **État audité — 08/10/2026 :** **Partiel.** Verrou/idempotence par créneau implémenté. Pas de reprise démontrée d'un job interrompu, ni alertes d'échec de job (RM-017).
+
+> **Historique du statut (avant cet audit) : partiel — 2026-10-06 (PR #48/#49).** Livré : `server/scheduler.ts`, `schedulerConfig.ts`, `jobRuns.ts` ; table `scheduled_job_runs` (migration `0003`) ; créneau réclamé une seule fois (lot idempotent par créneau, un lot en échec n'est pas rejoué) ; `SCHEDULER_ENABLED/TIMEZONE/MIDWEEK_CRON/ENDWEEK_CRON`. **Reste :** métriques (RM-017), reprise d'un lot interrompu.
 
 **Constat**
 
@@ -291,7 +318,9 @@ Chaque instance de l'application démarre ses propres tâches `node-cron`. Plusi
 
 ### RM-012 — Ajouter un stockage objet partagé pour la production
 
-> **Statut : terminé, sauf validation contre un vrai bucket — 2026-10-06.**
+> **État audité — 08/10/2026 :** **Implémenté et testé avec faux S3.** Objets R2 privés, upload conditionnel et jetons d'accès dans le code ; recette multi-comptes sur le vrai bucket encore nécessaire.
+
+> **Historique du statut (avant cet audit) : terminé, sauf validation contre un vrai bucket — 2026-10-06.**
 > **Comment :** `S3ObjectStorageAdapter` (`server/objectStorage.ts`, `OBJECT_STORAGE_PROVIDER=s3`), ACL en métadonnées d'objet, téléversement proxifié (pas de CORS), script idempotent `npm run storage:migrate`, procédure et rétention dans `docs/deployment.md`.
 > **Preuve :** tests unitaires avec client S3 simulé (`test/object-storage-adapter.test.ts`). **Reste :** test réel sur S3/MinIO.
 
@@ -314,7 +343,9 @@ Le stockage sur disque fonctionne sur un hôte unique. Il ne convient pas à plu
 
 ### RM-018 — Ajouter des labs guidés et leur workflow de validation
 
-**Statut : en cours — première tranche fusionnée le 2026-10-06 (migration `0004_labs.sql`, labs et soumissions dans le chargeur groupé). Non testé en navigateur : labs Python.**
+> **État audité — 08/10/2026 :** **Fonctionnel côté labs Python, testé en Chromium de production CI.** Pyodide, assertions, soumissions non vérifiées côté serveur et revue du mentor disponibles ; l'intégration complète des brouillons de labs issus de l'IA doit être confirmée séparément avant de la déclarer aboutie.
+
+**Historique du statut (avant cet audit) : en cours — première tranche fusionnée le 2026-10-06 (migration `0004_labs.sql`, labs et soumissions dans le chargeur groupé). Non testé en navigateur : labs Python.**
 
 **Constat**
 
@@ -356,7 +387,9 @@ Le projet ne possède pas de modèle de lab. Les exercices sont actuellement rep
 
 ### RM-019 — Consulter et exploiter des ressources dans le parcours andragogique
 
-> **Statut : implémentation complète sur la branche RM-019 — validation CI requise avant fusion.** Lots 1 et 2 fusionnés dans main (lecteur YouTube/Vimeo et contextualisation problème → expérimentation). Dernier lot : consultation volontaire, aperçu de PDF compatibles, approbation explicite des liens issus de l'IA et signalement des liens indisponibles.
+> **État audité — 08/10/2026 :** **Terminé côté développement (PR #76, #77 et #78 fusionnées).** CI de `main` verte ; consultation volontaire, liens IA approuvés, vidéo et aperçu PDF compatibles. Recette sur PDF tiers toujours requise (CORS).
+
+> **Historique du statut (avant cet audit) : implémentation complète sur la branche RM-019 — validation CI requise avant fusion.** Lots 1 et 2 fusionnés dans main (lecteur YouTube/Vimeo et contextualisation problème → expérimentation). Dernier lot : consultation volontaire, aperçu de PDF compatibles, approbation explicite des liens issus de l'IA et signalement des liens indisponibles.
 
 **Parcours et contrôle :**
 
@@ -378,7 +411,9 @@ Le projet ne possède pas de modèle de lab. Les exercices sont actuellement rep
 
 ### RM-020 — Inviter un apprenant par e-mail avec inscription par lien
 
-> **Statut : terminé — 2026-10-07.**
+> **État audité — 08/10/2026 :** **Fonctionnel en CI.** Invitation et acceptation testées ; **réception Resend réelle non encore attestée** et historisation dédiée de l'envoi non implémentée.
+
+> **Historique du statut (avant cet audit) : terminé — 2026-10-07.**
 > **Comment :** table `invitations` (migration `0005`, additive), jeton aléatoire 32 octets dont seul le sha256 est stocké, expiration dérivée de `expires_at` (`INVITATION_TTL_HOURS`, 72 h par défaut). Code : `server/data/invitations.ts`, `server/services/invitations.ts` + `invitationTokens.ts`, `server/routes/invitations.ts`, `GoneError` → 410 `{reason}`, limiteur `invitation` (`RATE_LIMIT_INVITATION_*`, 30/h par utilisateur) ; acceptation publique limitée par le limiteur `auth`. Acceptation en une transaction (`FOR UPDATE`) : compte `LEARNER` + préférences + mentorat + jeton consommé ; schéma strict sans `role` ni `email`. Un renvoi fait tourner le jeton (l'ancien lien meurt) ; relancer une invitation en attente est idempotent. E-mail d'un apprenant existant : rattachement direct ; e-mail d'un mentor : 409. L'envoi n'est pas journalisé dans `email_notifications` (user_id obligatoire) : suivi par `send_count` / `last_sent_at` ; un échec SMTP renvoie `emailSent:false` sans annuler l'invitation. UI : `/invite/:token` (`invite-page.tsx`), bouton « Inviter par e-mail » et liste des invitations (renvoyer / révoquer) sur `/roadmaps`.
 > **Preuve :** `tsc` propre, 95 tests unitaires, 126 tests d'intégration (dont 23 d'invitations : idempotence, usage unique, expiration, révocation, concurrence, matrice d'accès), `npm run build`, parcours `test/e2e/invite.e2e.py` sur build de production, double `db:migrate` sans écriture.
 > **Reste :** envoi SMTP réel non testé ; le journal d'envoi dédié aux invitations n'existe pas.
@@ -411,7 +446,9 @@ Depuis RM-003, un mentor ne peut rattacher qu'un apprenant déjà inscrit. Un ap
 
 ### RM-013 — Découper les monolithes backend
 
-> **Statut : terminé — 2026-10-06.**
+> **État audité — 08/10/2026 :** **Terminé côté architecture et CI.** Routes et accès DB découpés par domaine ; ne pas relancer ce travail.
+
+> **Historique du statut (avant cet audit) : terminé — 2026-10-06.**
 > **Comment :** `server/routes.ts` (2 682 lignes) est un simple compositeur de 37 lignes ; 14 modules de routes par domaine dans `server/routes/` (`registerXRoutes(app, deps)`), contrôles d'accès partagés dans `server/access/` (`weekAccess`, `mentorshipAccess`), workflow de facturation dans `server/services/billingPeriods.ts`. `server/storage.ts` (1 268 lignes) est une façade de 4 lignes : un dépôt par agrégat dans `server/data/` (interface `XStore` + classe), composés par `createStorage()` qui refuse les noms de méthode dupliqués ; l'objet `storage` et ses 85 méthodes sont inchangés pour les appelants, les transactions restent dans leur dépôt, les appels inter-agrégats passent par `this.store()`. Erreurs métier typées (`server/domain/errors.ts`: `NotFoundError` 404, `InvalidRequestError` 400, `ConflictError` 409) converties en un seul endroit (`server/http/errors.ts`) ; plus de reconnaissance par texte de message dans les routes.
 > **Preuve :** découpage mécanique par script, 67 routes avant/après, 85 méthodes de stockage avant/après ; `tsc`, 91 tests unitaires, 30 tests d'intégration sur serveur frais et build verts. **Reste :** `RM-007` (CRUD semaines…) reste listé comme dépendance dans le tableau mais n'a pas bloqué ce travail.
 
@@ -434,7 +471,9 @@ Depuis RM-003, un mentor ne peut rattacher qu'un apprenant déjà inscrit. Un ap
 
 ### RM-014 — Réduire le poids du frontend et des médias
 
-> **Statut : livré — 2026-10-07.** Image de fond 13,8 MB → 29 kB (WebP 1920 px), médias inutilisés de `public/` supprimés, pages chargées à la demande (`React.lazy`), bundle initial 692 → 281 kB ; budget vérifié par `npm run check:bundle` (JS 400 kB/chunk, CSS 150 kB, média 500 kB, surchargeables) et étape CI.
+> **État audité — 08/10/2026 :** **Terminé et contrôlé en CI.** Chargement paresseux, médias optimisés, limites de bundle.
+
+> **Historique du statut (avant cet audit) : livré — 2026-10-07.** Image de fond 13,8 MB → 29 kB (WebP 1920 px), médias inutilisés de `public/` supprimés, pages chargées à la demande (`React.lazy`), bundle initial 692 → 281 kB ; budget vérifié par `npm run check:bundle` (JS 400 kB/chunk, CSS 150 kB, média 500 kB, surchargeables) et étape CI.
 
 **Constat**
 
@@ -455,7 +494,9 @@ Le build produit un bundle JavaScript principal d'environ 662 kB minifié et une
 
 ### RM-015 — Nettoyer les dépendances et avertissements d'outillage
 
-> **Statut : terminé, avec deux avertissements amont acceptés — 2026-10-07.**
+> **État audité — 08/10/2026 :** **Terminé sauf avertissements amont acceptés.** Réouverture seulement si un audit révèle un nouveau risque réel.
+
+> **Historique du statut (avant cet audit) : terminé, avec deux avertissements amont acceptés — 2026-10-07.**
 > **Comment :** 20 paquets sans usage retirés (session/passport, `resend`, `framer-motion`, `react-icons`, `next-themes`, `google-auth-library`, `p-limit`, `zod-validation-error`, `tw-animate-css`, `@tailwindcss/vite` v4 incompatible avec Tailwind 3, présigneur S3, `@jridgewell/trace-mapping` et leurs `@types`) ; `nanoid` (utilisé par `server/index-dev.ts`) déclaré en devDependency ; base caniuse mise à jour ; scripts d'installation natifs arbitrés dans `allowScripts` (esbuild autorisé, `bufferutil` refusé : accélération optionnelle de `ws`). Tailwind reste en 3.4 (cohérent avec `tailwindcss-animate` et `@tailwindcss/typography`).
 > **Preuve :** `npm ci` sans avertissement `install-scripts`, `npm run build`, `tsc`, 95 tests unitaires.
 > **Reste (amont) :** l'avertissement PostCSS « `from` » vient du plugin Tailwind 3.4 (isolé par bissection ; disparaît avec une migration Tailwind 4) ; dépréciations `@esbuild-kit/*` (drizzle-kit) et `node-domexception` (transitives).
@@ -475,6 +516,8 @@ Le build produit un bundle JavaScript principal d'environ 662 kB minifié et une
 - Le build reste reproductible à partir du lockfile.
 
 ### RM-016 — Implémenter réellement l'infrastructure cloud Terraform
+
+> **État audité — 08/10/2026 :** **Fondation uniquement, sans ressources fournisseur provisionnées.** Le chemin AWS/HCP prévu initialement est **différé** ; pas nécessaire pour publier sur Render + Neon + R2. Revoir les tickets liés à GH-25 selon l'architecture choisie, sans lancer d'infrastructure payante.
 
 **Constat**
 
@@ -496,7 +539,9 @@ Les modules Terraform actuels décrivent des contrats typés, mais ne créent en
 
 ### RM-017 — Ajouter observabilité, alertes et procédures d'exploitation
 
-> **Statut : partiel — 2026-10-07.** Livré : identifiant de requête (`x-request-id`, renvoyé dans les 500), logs JSON structurés sans corps ni chemin brut, journal d'accès avec latence/statut/utilisateur (`docs/engineering/observability.md`). **Reste :** métriques base/email/jobs/IA, alertes, procédures d'incident/restauration/rotation (dépend de RM-016).
+> **État audité — 08/10/2026 :** **Partiel.** Logs structurés et identifiants de requête disponibles ; métriques des services, alertes, exercices d'incident et restauration restent à compléter.
+
+> **Historique du statut (avant cet audit) : partiel — 2026-10-07.** Livré : identifiant de requête (`x-request-id`, renvoyé dans les 500), logs JSON structurés sans corps ni chemin brut, journal d'accès avec latence/statut/utilisateur (`docs/engineering/observability.md`). **Reste :** métriques base/email/jobs/IA, alertes, procédures d'incident/restauration/rotation (dépend de RM-016).
 
 **Travail**
 
