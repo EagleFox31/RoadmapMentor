@@ -45,8 +45,15 @@ with sync_playwright() as p:
     page.reload(); page.wait_for_load_state("networkidle")
     tid(page, f"card-week-{seeded['week']}").click()
     expect(tid(page, f"checkbox-task-{seeded['task']}")).to_have_attribute("data-state", "checked")
-    expect(tid(page, f"link-screenshot-{seeded['task']}")).to_be_visible()
-    steps.ok("completes a task with a screenshot as evidence (persisted after reload)")
+    proof_link = tid(page, f"link-screenshot-{seeded['task']}")
+    expect(proof_link).to_be_visible()
+    with page.expect_popup() as popup_info:
+        proof_link.click()
+    proof_tab = popup_info.value
+    proof_tab.wait_for_url("blob:**", timeout=15000)
+    assert proof_tab.url.startswith("blob:"), proof_tab.url
+    proof_tab.close()
+    steps.ok("completes a task with a screenshot, then opens it through authenticated evidence access")
 
     tid(page, "textarea-new-comment").fill("Bonjour mentor")
     tid(page, "button-submit-comment").click()
