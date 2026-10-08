@@ -30,6 +30,9 @@ with sync_playwright() as p:
     learner = api("POST", "/api/auth/login", body={"email": EMAIL, "password": PWD})
     seeded = seed_week(mentor, f"Semaine E2E {RUN}", validate=True, learner_id=learner["user"]["id"])
     hidden = seed_week(mentor, f"Brouillon E2E {RUN}", roadmap_id=seeded["roadmap"])
+    mentor_weeks = api("GET", f"/api/weeks?roadmapId={seeded['roadmap']}", mentor)
+    objective = next(w for w in mentor_weeks if w["id"] == seeded["week"])["objectives"][0]
+    second_task = api("POST", f"/api/objectives/{objective['id']}/tasks", mentor, {"label": "Deuxième tâche E2E"})
 
     login_ui(page, EMAIL, PWD)
     expect(tid(page, f"icon-validated-{seeded['week']}")).to_be_visible()
@@ -39,9 +42,23 @@ with sync_playwright() as p:
     tid(page, f"card-week-{seeded['week']}").click()
     box = tid(page, f"checkbox-task-{seeded['task']}")
     assert box.is_disabled(), "a task cannot be ticked without evidence"
-    page.set_input_files("#screenshot-upload", files=[{"name": "proof.png", "mimeType": "image/png", "buffer": PNG}])
-    page.wait_for_timeout(1500)
-    expect(box).to_have_attribute("data-state", "checked")
+    first_input = tid(page, f"input-upload-screenshot-{seeded['task']}")
+    second_input = tid(page, f"input-upload-screenshot-{second_task['id']}")
+    assert first_input.get_attribute("id") != second_input.get_attribute("id"), "file inputs must use unique ids"
+    for file_input in (first_input, second_input):
+        element_id = file_input.get_attribute("id")
+        assert page.locator(f'label[for="{element_id}"]').count() == 1, "each upload button must target its own input"
+    steps.ok("two screenshot upload buttons target distinct file inputs")
+
+    second_box = tid(page, f"checkbox-task-{second_task['id']}")
+    page.set_input_files(f'[data-testid="input-upload-screenshot-{second_task["id"]}"]',
+                         files=[{"name": "proof.png", "mimeType": "image/png", "buffer": PNG}])
+    expect(second_box).to_have_attribute("data-state", "checked", timeout=15000)
+    expect(box).to_have_attribute("data-state", "unchecked")
+    steps.ok("uploading proof for second task never completes first task")
+    page.set_input_files(f'[data-testid="input-upload-screenshot-{seeded["task"]}"]',
+                         files=[{"name": "proof.png", "mimeType": "image/png", "buffer": PNG}])
+    expect(box).to_have_attribute("data-state", "checked", timeout=15000)
     page.reload(); page.wait_for_load_state("networkidle")
     tid(page, f"card-week-{seeded['week']}").click()
     expect(tid(page, f"checkbox-task-{seeded['task']}")).to_have_attribute("data-state", "checked")

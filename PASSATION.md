@@ -1,3 +1,16 @@
+# 2026-10-08 — Multi-upload des preuves et vérification de type réel
+
+- `main` après PR #74 : `2917d0d`.
+- Les multiples tâches de la même semaine partageaient `id="screenshot-upload"`. Le `label htmlFor` ciblait potentiellement le premier uploader pour les autres tâches. `ScreenshotUploader` utilise désormais `useId()` et un test ID contextualisé par tâche.
+- La route de stockage validait le MIME déclaré sans vérifier les octets. Une requête annonçant `image/png` pouvait transmettre du texte HTML/SVG et être persistée. Vérification de signature PNG/JPEG/WebP/GIF avant l'écriture (contrôle de premier niveau, ne garantit pas le décodage complet).
+- Test API : SVG présenté comme PNG renvoie 415 et ne crée aucun fichier.
+- Playwright : deux tâches, deux inputs distincts, correspondance des labels, upload d'une tâche sans validation de l'autre, puis deux preuves persistées.
+- Aucune configuration Render, R2 ou Resend modifiée. La recette du bucket R2 réel reste ouverte.
+
+---
+
+## Passation précédente
+
 # 2026-10-08 — R2 / S3 : upload conditionnel et propriétaire défini à la création
 
 - Après fusion de la PR #73, `main` est au commit `d5e9c11`.

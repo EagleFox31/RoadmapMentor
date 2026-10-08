@@ -5,7 +5,7 @@ import { getTaskAccess, getLearnerIdsForWeek } from "../access/weekAccess";
 import { ObjectStorageService, ObjectNotFoundError, ObjectAlreadyExistsError } from "../objectStorage";
 import { ObjectPermission } from "../objectAcl";
 import { issueObjectUploadTicket, verifyObjectUploadTicket } from "../security/objectUploadTicket";
-import { isAllowedUploadType, MAX_UPLOAD_BYTES, ALLOWED_UPLOAD_TYPES } from "../http/hardening";
+import { isAllowedUploadType, hasRasterImageSignature, MAX_UPLOAD_BYTES, ALLOWED_UPLOAD_TYPES } from "../http/hardening";
 import { handleError } from "../http/errors";
 import type { RouteDeps } from "./deps";
 
@@ -65,8 +65,8 @@ export function registerObjectsRoutes(app: Express, { limiters }: RouteDeps) {
         }
 
         const contentType = req.headers["content-type"] || "";
-        if (!isAllowedUploadType(contentType)) {
-          return res.status(415).json({ error: "Only PNG, JPEG, WebP or GIF images are allowed" });
+        if (!isAllowedUploadType(contentType) || !hasRasterImageSignature(contentType, req.body)) {
+          return res.status(415).json({ error: "Only valid PNG, JPEG, WebP or GIF images are allowed" });
         }
 
         await objectStorageService.writeDirectUpload(

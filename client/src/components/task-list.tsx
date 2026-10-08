@@ -130,6 +130,7 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
                   )}
                   {!isCompleted && (
                     <ScreenshotUploader
+                      taskId={task.id}
                       onUploadComplete={(url) => handleScreenshotUpload(task.id, url)}
                       currentUrl={pendingScreenshots[task.id] || getTaskProgress(task)?.screenshotUrl}
                     />
