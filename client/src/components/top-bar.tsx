@@ -62,7 +62,7 @@ export function TopBar() {
           <Badge 
             className={`${
               isMentor() 
-                ? "bg-gradient-to-r from-success to-cyan-500 text-white border-0 shadow-lg" 
+                ? "bg-gradient-to-r from-success to-teal-500 text-white border-0 shadow-lg" 
                 : "bg-gradient-to-r from-primary to-accent text-white border-0 shadow-lg"
             } px-4 py-1.5 font-semibold`}
             data-testid="badge-user-role"

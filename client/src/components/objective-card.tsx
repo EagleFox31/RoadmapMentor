@@ -26,7 +26,7 @@ const objectiveIcons = {
 
 const objectiveGradientClasses = {
   CONCEPT: "bg-gradient-to-br from-primary to-accent",
-  ALGO: "bg-gradient-to-br from-accent to-pink-500",
+  ALGO: "bg-gradient-to-br from-accent to-teal-500",
   PROJECT: "bg-gradient-to-br from-destructive to-orange-500",
   OTHER: "bg-gradient-to-br from-muted-foreground to-gray-500",
 };

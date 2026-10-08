@@ -81,7 +81,7 @@ export function WeekModal({ isOpen, onClose, onSubmit, week, isLoading }: WeekMo
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border-white/20 text-white shadow-2xl max-w-md">
+      <DialogContent className="bg-gradient-to-br from-neutral-900/95 to-neutral-800/95 backdrop-blur-xl border-white/20 text-white shadow-2xl max-w-md">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">
             {week ? "Modifier la semaine" : "Nouvelle semaine"}
@@ -140,7 +140,7 @@ export function WeekModal({ isOpen, onClose, onSubmit, week, isLoading }: WeekMo
                     {startDate ? format(startDate, "d MMM yyyy", { locale: fr }) : "Choisir une date"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-white dark:bg-slate-800" align="start">
+                <PopoverContent className="w-auto p-0 bg-white dark:bg-neutral-800" align="start">
                   <Calendar
                     mode="single"
                     selected={startDate}
@@ -169,7 +169,7 @@ export function WeekModal({ isOpen, onClose, onSubmit, week, isLoading }: WeekMo
                     {endDate ? format(endDate, "d MMM yyyy", { locale: fr }) : "Choisir une date"}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-white dark:bg-slate-800" align="start">
+                <PopoverContent className="w-auto p-0 bg-white dark:bg-neutral-800" align="start">
                   <Calendar
                     mode="single"
                     selected={endDate}
@@ -216,7 +216,7 @@ export function WeekModal({ isOpen, onClose, onSubmit, week, isLoading }: WeekMo
             <Button
               type="submit"
               disabled={isLoading}
-              className="bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white"
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
               data-testid="button-save-week"
             >
               {isLoading ? "Enregistrement..." : week ? "Mettre à jour" : "Créer"}

@@ -139,15 +139,15 @@ export default function MentoringPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-slate-950/90 backdrop-blur-xl">
+    <div className="min-h-screen bg-neutral-950 text-white">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-neutral-950/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1450px] items-center gap-4 px-6 py-5">
           <Button variant="outline" size="icon" onClick={() => setLocation("/roadmap")} className="border-white/15 bg-white/5">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Mentorat & scope</h1>
-            <p className="text-sm text-slate-400">Inclus au forfait, demandes additionnelles et validation du supplément.</p>
+            <p className="text-sm text-neutral-400">Inclus au forfait, demandes additionnelles et validation du supplément.</p>
           </div>
         </div>
       </header>
@@ -157,17 +157,17 @@ export default function MentoringPage() {
           <h2 className="mb-3 font-semibold">Accompagnements</h2>
           {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : mentorships.map((m) => (
             <button key={m.id} onClick={() => setSelectedId(m.id)}
-              className={"mb-2 w-full rounded-2xl border p-4 text-left " + (selectedId === m.id ? "border-sky-400/40 bg-sky-400/10" : "border-white/10 bg-black/10")}>
+              className={"mb-2 w-full rounded-2xl border p-4 text-left " + (selectedId === m.id ? "border-emerald-400/40 bg-emerald-400/10" : "border-white/10 bg-black/10")}>
               <p className="font-medium">{m.roadmap.title}</p>
-              <p className="mt-1 text-xs text-slate-400">{isMentor() ? m.learner?.fullName : m.mentor?.fullName}</p>
+              <p className="mt-1 text-xs text-neutral-400">{isMentor() ? m.learner?.fullName : m.mentor?.fullName}</p>
             </button>
           ))}
         </aside>
 
         <section className="space-y-6">
-          {!selected ? <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-slate-400">Aucun mentorat sélectionné.</div> : <>
-            <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-sky-500/10 to-indigo-500/10 p-6">
-              <p className="text-xs uppercase tracking-[0.18em] text-sky-300">{selected.roadmap.title}</p>
+          {!selected ? <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-neutral-400">Aucun mentorat sélectionné.</div> : <>
+            <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-6">
+              <p className="text-xs uppercase tracking-[0.18em] text-emerald-300">{selected.roadmap.title}</p>
               <h2 className="mt-2 text-2xl font-bold">{isMentor() ? selected.learner?.fullName : selected.mentor?.fullName}</h2>
             </div>
 
@@ -180,9 +180,9 @@ export default function MentoringPage() {
                       <div><h3 className="font-semibold">{p.title}</h3><p className="mt-1 text-2xl font-bold text-emerald-300">{formatMoney(p.basePriceMinor, p.currency)}</p></div>
                       <Badge className="bg-emerald-400/10 text-emerald-200">Inclus</Badge>
                     </div>
-                    <p className="mt-3 text-sm text-slate-300">{p.periodStart} → {p.periodEnd} · {p.includedSessionCount} séance(s)</p>
-                    {p.sessionSchedule && <p className="mt-2 text-sm text-slate-400">{p.sessionSchedule}</p>}
-                    <p className="mt-4 text-sm text-slate-300">{p.scopeDescription}</p>
+                    <p className="mt-3 text-sm text-neutral-300">{p.periodStart} → {p.periodEnd} · {p.includedSessionCount} séance(s)</p>
+                    {p.sessionSchedule && <p className="mt-2 text-sm text-neutral-400">{p.sessionSchedule}</p>}
+                    <p className="mt-4 text-sm text-neutral-300">{p.scopeDescription}</p>
                     <div className="mt-4 space-y-2">{p.scopeItems.map((item) => (
                       <div key={item.id} className="flex gap-2 rounded-xl bg-emerald-400/5 px-3 py-2 text-sm"><CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-300" />{item.title}</div>
                     ))}</div>
@@ -212,8 +212,8 @@ export default function MentoringPage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-2"><ReceiptText className="h-5 w-5 text-amber-300" /><h2 className="font-semibold">Hors scope</h2></div>
                 {isLearner() && packages.length > 0 && <div className="rounded-3xl border border-amber-400/20 bg-amber-400/5 p-6">
-                  <p className="text-sm text-slate-300">Toute demande ici est additionnelle au forfait initial.</p>
-                  <select value={requestForm.packageId} onChange={(e) => setRequestForm({ ...requestForm, packageId: e.target.value })} className="mt-3 w-full rounded-md border border-white/10 bg-slate-900 px-3 py-2">
+                  <p className="text-sm text-neutral-300">Toute demande ici est additionnelle au forfait initial.</p>
+                  <select value={requestForm.packageId} onChange={(e) => setRequestForm({ ...requestForm, packageId: e.target.value })} className="mt-3 w-full rounded-md border border-white/10 bg-neutral-900 px-3 py-2">
                     <option value="">Forfait concerné</option>{packages.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
                   </select>
                   <Input placeholder="Sujet" value={requestForm.title} onChange={(e) => setRequestForm({ ...requestForm, title: e.target.value })} className="mt-3 border-white/10 bg-black/20" />
@@ -225,12 +225,12 @@ export default function MentoringPage() {
                   const draft = quoteDrafts[r.id] || { price: "", taskId: "" };
                   return <article key={r.id} className="rounded-3xl border border-white/10 bg-white/5 p-6">
                     <div className="flex items-start justify-between gap-4"><div><p className="text-xs text-amber-300">Hors scope</p><h3 className="mt-1 font-semibold">{r.title}</h3></div><Badge className="bg-amber-300/10 text-amber-100">{r.status}</Badge></div>
-                    <p className="mt-3 text-sm text-slate-300">{r.description}</p>
+                    <p className="mt-3 text-sm text-neutral-300">{r.description}</p>
                     {r.quotedPriceMinor !== null && <div className="mt-4 flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2"><CircleDollarSign className="h-4 w-4 text-amber-300" />Supplément : {formatMoney(r.quotedPriceMinor, r.currency)}</div>}
 
                     {isMentor() && r.status === "PROPOSED" && <div className="mt-4 grid gap-2 sm:grid-cols-[140px_1fr_auto]">
                       <Input type="number" placeholder="Prix XAF" value={draft.price} onChange={(e) => setQuoteDrafts({ ...quoteDrafts, [r.id]: { ...draft, price: e.target.value } })} className="border-white/10 bg-black/20" />
-                      <select value={draft.taskId} onChange={(e) => setQuoteDrafts({ ...quoteDrafts, [r.id]: { ...draft, taskId: e.target.value } })} className="rounded-md border border-white/10 bg-slate-900 px-3 py-2">
+                      <select value={draft.taskId} onChange={(e) => setQuoteDrafts({ ...quoteDrafts, [r.id]: { ...draft, taskId: e.target.value } })} className="rounded-md border border-white/10 bg-neutral-900 px-3 py-2">
                         <option value="">Tâche de roadmap liée</option>{tasks.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
                       </select>
                       <Button onClick={() => quoteRequest.mutate(r.id)}>Chiffrer</Button>

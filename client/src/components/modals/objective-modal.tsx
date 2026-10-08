@@ -66,7 +66,7 @@ export function ObjectiveModal({ isOpen, onClose, onSubmit, weekId, objective, i
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border-white/20 text-white shadow-2xl max-w-md">
+      <DialogContent className="bg-gradient-to-br from-neutral-900/95 to-neutral-800/95 backdrop-blur-xl border-white/20 text-white shadow-2xl max-w-md">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">
             {objective ? "Modifier l'objectif" : "Nouvel objectif"}
@@ -85,7 +85,7 @@ export function ObjectiveModal({ isOpen, onClose, onSubmit, weekId, objective, i
               <SelectTrigger className="bg-white/10 border-white/20 text-white" data-testid="select-objective-type">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/20 text-white">
+              <SelectContent className="bg-neutral-900 border-white/20 text-white">
                 <SelectItem value="CONCEPT">Concept à Maîtriser</SelectItem>
                 <SelectItem value="ALGO">Exercices Algo</SelectItem>
                 <SelectItem value="PROJECT">Projet</SelectItem>
@@ -152,7 +152,7 @@ export function ObjectiveModal({ isOpen, onClose, onSubmit, weekId, objective, i
             <Button
               type="submit"
               disabled={isLoading}
-              className="bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white"
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
               data-testid="button-save-objective"
             >
               {isLoading ? "Enregistrement..." : objective ? "Mettre à jour" : "Créer"}

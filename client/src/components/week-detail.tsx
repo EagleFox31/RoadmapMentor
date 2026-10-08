@@ -199,7 +199,7 @@ export function WeekDetail({
             <p className="text-sm text-muted-foreground">Testez les nouvelles notions dans un exercice court et guidé.</p>
           </div>
           {isMentor() && (
-            <Button onClick={onAddLab} className="bg-indigo-600 text-white" data-testid="button-add-lab">
+            <Button onClick={onAddLab} className="bg-teal-600 text-white" data-testid="button-add-lab">
               <Plus className="w-4 h-4 mr-2" />Ajouter un lab
             </Button>
           )}

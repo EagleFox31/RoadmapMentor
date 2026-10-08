@@ -166,10 +166,10 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
     <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <CalendarClock className="h-5 w-5 text-sky-300" />
+          <CalendarClock className="h-5 w-5 text-emerald-300" />
           <div>
             <h2 className="font-semibold">Séances de mentorat</h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-neutral-400">
               Planning, présence et consommation du forfait.
             </p>
           </div>
@@ -193,7 +193,7 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
               <p className="mt-2 text-2xl font-bold text-emerald-300">
                 {usage.usedSessionCount}/{usage.includedSessionCount}
               </p>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-neutral-400">
                 {usage.remainingSessionCount} séance(s) incluse(s) restante(s)
               </p>
             </div>
@@ -235,7 +235,7 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
             <select
               value={form.packageId}
               onChange={(e) => setForm({ ...form, packageId: e.target.value })}
-              className="rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm"
+              className="rounded-md border border-white/10 bg-neutral-900 px-3 py-2 text-sm"
             >
               <option value="">Forfait lié</option>
               {packages.map((item) => (
@@ -247,7 +247,7 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
             <select
               value={form.weekId}
               onChange={(e) => setForm({ ...form, weekId: e.target.value })}
-              className="rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm"
+              className="rounded-md border border-white/10 bg-neutral-900 px-3 py-2 text-sm"
             >
               <option value="">Semaine de roadmap (optionnel)</option>
               {weekOptions.map((week) => (
@@ -258,7 +258,7 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
             </select>
           </div>
 
-          <label className="mt-4 flex items-center gap-3 text-sm text-slate-300">
+          <label className="mt-4 flex items-center gap-3 text-sm text-neutral-300">
             <input
               type="checkbox"
               checked={form.isAdditional}
@@ -319,7 +319,7 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
         {isLoading ? (
           <Loader2 className="h-5 w-5 animate-spin" />
         ) : !data?.sessions.length ? (
-          <p className="rounded-2xl border border-dashed border-white/10 p-5 text-sm text-slate-400">
+          <p className="rounded-2xl border border-dashed border-white/10 p-5 text-sm text-neutral-400">
             Aucune séance pour ce mois.
           </p>
         ) : (
@@ -354,19 +354,19 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
                         </Badge>
                       )}
                   </div>
-                  <p className="mt-2 flex items-center gap-2 text-sm text-slate-400">
+                  <p className="mt-2 flex items-center gap-2 text-sm text-neutral-400">
                     <Clock3 className="h-4 w-4" />
                     {formatSessionDate(session.startsAt)} →{" "}
                     {formatSessionDate(session.endsAt)}
                   </p>
                 </div>
-                <Badge className="bg-white/10 text-slate-200">
+                <Badge className="bg-white/10 text-neutral-200">
                   {session.status}
                 </Badge>
               </div>
 
               {session.mentorNotes && (
-                <p className="mt-3 rounded-xl bg-white/5 p-3 text-sm text-slate-300">
+                <p className="mt-3 rounded-xl bg-white/5 p-3 text-sm text-neutral-300">
                   {session.mentorNotes}
                 </p>
               )}

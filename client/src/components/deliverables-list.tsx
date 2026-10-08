@@ -96,7 +96,7 @@ export function DeliverablesList({ deliverables, onEdit, onDelete }: Deliverable
       </div>
 
       <Dialog open={!!selectedDeliverable} onOpenChange={() => setSelectedDeliverable(null)}>
-        <DialogContent className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border-white/20 text-white shadow-2xl max-w-2xl">
+        <DialogContent className="bg-gradient-to-br from-neutral-900/95 to-neutral-800/95 backdrop-blur-xl border-white/20 text-white shadow-2xl max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center gap-2">
               <BookOpen className="w-6 h-6" />

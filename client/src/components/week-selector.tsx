@@ -86,7 +86,7 @@ export function WeekSelector({ weeks, selectedWeekId, onSelectWeek, progressByWe
                     </div>
                     <div className="h-2.5 bg-black/30 rounded-full overflow-hidden backdrop-blur-sm">
                       <div
-                        className="h-full bg-gradient-to-r from-success to-cyan-500 transition-all duration-500 rounded-full shadow-lg"
+                        className="h-full bg-gradient-to-r from-success to-teal-500 transition-all duration-500 rounded-full shadow-lg"
                         style={{ width: `${progress.percentage}%` }}
                       />
                     </div>
