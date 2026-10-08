@@ -45,14 +45,9 @@ services:
       - key: SCHEDULER_TIMEZONE
         value: Europe/Paris
 
-      # E-mails (facultatif : sans SMTP, les envois sont désactivés).
-      - key: MAIL_HOST
-        sync: false
-      - key: MAIL_PORT
-        sync: false
-      - key: MAIL_USER
-        sync: false
-      - key: MAIL_PASS
+      # E-mails via l'API HTTPS Resend (compatible avec Render Free).
+      # Vérifier le domaine expéditeur chez Resend avant tout envoi.
+      - key: RESEND_API_KEY
         sync: false
       - key: MAIL_FROM
         sync: false

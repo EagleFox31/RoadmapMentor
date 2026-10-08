@@ -29,7 +29,9 @@ export function registerObjectsRoutes(app: Express, { limiters }: RouteDeps) {
     async (req: AuthRequest, res) => {
       try {
         const objectStorageService = new ObjectStorageService();
-        if (objectStorageService.getProviderName() !== "filesystem") {
+        // Filesystem and S3-compatible providers use the same authenticated upload route.
+        // The legacy Replit adapter still uses provider-issued upload URLs.
+        if (!objectStorageService.supportsDirectUpload()) {
           return res.sendStatus(404);
         }
 
