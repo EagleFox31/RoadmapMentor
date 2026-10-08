@@ -5,15 +5,6 @@ import { handleError } from "../http/errors";
 import type { RouteDeps } from "./deps";
 
 export function registerAiGenerationRoutes(app: Express, { limiters }: RouteDeps) {
-  app.post("/api/ai/generate-lab", authMiddleware, requireMentor, limiters.ai, async (req: AuthRequest, res) => {
-    try {
-      const { generateLabDraft } = await import("../services/aiLabGenerator");
-      res.json({ lab: await generateLabDraft(req.body) });
-    } catch (error) {
-      handleError(res, error);
-    }
-  });
-
   app.post("/api/ai/generate-roadmap", authMiddleware, requireMentor, limiters.ai, async (req: AuthRequest, res) => {
     const userId = req.user!.id;
     const userEmail = req.user!.email;
