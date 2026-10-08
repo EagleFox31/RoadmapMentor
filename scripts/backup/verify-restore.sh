@@ -29,7 +29,18 @@ age -d -i "$AGE_IDENTITY_FILE" -o "$WORK/neon.dump" "$WORK/neon.dump.age"
 pg_restore --list "$WORK/neon.dump" >/dev/null
 # Only use a brand-new empty disposable database. Never pass the production
 # URL: the confirmation flag is NOT a substitute for human verification.
-pg_restore --exit-on-error --single-transaction --no-owner --no-privileges -d "$RECOVERY_DATABASE_URL" "$WORK/neon.dump"
-aws --endpoint-url "$R2_ENDPOINT" s3 cp "$SOURCE/evidence/" "$TARGET/" \
-  --recursive --metadata-directive COPY --only-show-errors
-printf 'restore: staged backup=%s; now verify rows, object ACL metadata and app access manually\n' "$BACKUP_RUN_ID"
+# Use a libpq environment variable: do not expose connection credentials in
+# process command arguments (ps). Recovery must be a fresh disposable DB.
+PGDATABASE="$RECOVERY_DATABASE_URL" pg_restore --exit-on-error --single-transaction --no-owner --no-privileges "$WORK/neon.dump"
+
+# Prevent a partial evidence restore from being mistaken for success. This is
+# an inventory count, not a metadata or ACL verification (still required live).
+EXPECTED_COUNT="$(sed -n 's/.*"evidenceCount":\([0-9][0-9]*\).*/\1/p' "$WORK/manifest.json")"
+[[ "$EXPECTED_COUNT" =~ ^[0-9]+$ ]] || die "invalid evidence count in snapshot manifest"
+if [[ "$EXPECTED_COUNT" -gt 0 ]]; then
+  aws --endpoint-url "$R2_ENDPOINT" s3 cp "$SOURCE/evidence/" "$TARGET/" \
+    --recursive --metadata-directive COPY --only-show-errors
+fi
+COPIED_COUNT="$(aws --endpoint-url "$R2_ENDPOINT" s3 ls "$TARGET/" --recursive | awk 'END {print NR+0}')"
+[[ "$COPIED_COUNT" == "$EXPECTED_COUNT" ]] || die "incomplete evidence restore: counts differ"
+printf 'restore: staged backup=%s verified_objects=%s; manually verify database records, ACL metadata and app access\n' "$BACKUP_RUN_ID" "$COPIED_COUNT"
