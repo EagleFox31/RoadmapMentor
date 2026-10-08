@@ -1,0 +1,71 @@
+name: Neon + R2 backup (opt-in)
+
+on:
+  schedule:
+    # UTC 02:17 = Cameroon 03:17. Workflow is disabled until explicitly enabled.
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+# No production credentials are available to pull requests.
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: roadmapmentor-neon-r2-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Scheduled encrypted snapshot
+    if: ${{ vars.RM_BACKUPS_ENABLED == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      NEON_BACKUP_DATABASE_URL: ${{ secrets.RM_NEON_UNPOOLED_URL }}
+      R2_ENDPOINT: ${{ vars.RM_R2_ENDPOINT }}
+      R2_EVIDENCE_BUCKET: ${{ vars.RM_R2_EVIDENCE_BUCKET }}
+      R2_BACKUP_BUCKET: ${{ vars.RM_R2_BACKUP_BUCKET }}
+      AGE_RECIPIENT: ${{ vars.RM_AGE_RECIPIENT }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.RM_BACKUP_R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.RM_BACKUP_R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_PAGER: ""
+    steps:
+      - name: Checkout trusted main
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install backup tooling
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y age awscli postgresql-client
+          # pg_dump must be at least as recent as the Neon database server.
+          pg_dump --version
+          age --version
+          aws --version
+
+      - name: Snapshot Neon and evidence to a separate private R2 bucket
+        run: bash scripts/backup/neon-r2-snapshot.sh
+
+      - name: Record operator summary (no secrets)
+        if: success()
+        run: |
+          echo "### Neon + R2 backup completed" >> "$GITHUB_STEP_SUMMARY"
+          echo "Backup generation is recorded in the private R2 backup bucket." >> "$GITHUB_STEP_SUMMARY"
+          echo "A completed snapshot is **not** proof of a successful restore." >> "$GITHUB_STEP_SUMMARY"
+
+  report-failure:
+    name: Alert issue #34 on snapshot failure
+    needs: backup
+    if: ${{ always() && vars.RM_BACKUPS_ENABLED == 'true' && needs.backup.result == 'failure' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Post minimal failure alert
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 34 --repo "$GITHUB_REPOSITORY" \
+            --body "⚠️ **Sauvegarde Neon/R2 échouée.** Vérifier le run GitHub Actions : https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID . Aucune restauration validée par ce job."
