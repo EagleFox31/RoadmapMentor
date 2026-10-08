@@ -3,9 +3,13 @@ import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { ObjectPermission } from "../server/objectAcl";
 import {
   FilesystemObjectStorageAdapter,
   S3ObjectStorageAdapter,
+  ObjectStorageService,
+  ObjectOwnershipError,
+  type ObjectStorageAdapter,
   resolveObjectStorageProviderName,
 } from "../server/objectStorage";
 
@@ -129,4 +133,58 @@ test("s3 adapter stores objects under prefix, keeps canonical paths and ACL", as
 
 test("s3 adapter requires a bucket", () => {
   assert.throws(() => new S3ObjectStorageAdapter({}), /OBJECT_STORAGE_S3_BUCKET/);
+});
+
+test("direct upload is supported for filesystem and S3, not for legacy indirect uploads", async () => {
+  const root = await mkdtemp(path.join(tmpdir(), "roadmapmentor-direct-"));
+  try {
+    const local = new ObjectStorageService(new FilesystemObjectStorageAdapter({
+      OBJECT_STORAGE_LOCAL_DIR: root,
+    }));
+    const { client } = fakeS3();
+    const remote = new ObjectStorageService(new S3ObjectStorageAdapter(
+      { OBJECT_STORAGE_S3_BUCKET: "test-bucket" }, client,
+    ));
+    const indirect = new ObjectStorageService({ name: "replit" } as ObjectStorageAdapter);
+
+    assert.equal(local.supportsDirectUpload(), true);
+    assert.equal(remote.supportsDirectUpload(), true);
+    assert.equal(indirect.supportsDirectUpload(), false);
+    await assert.rejects(indirect.writeDirectUpload("ignored", Buffer.from("x"), "image/png"), /not supported/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("S3 upload target, upload bytes, private ACL and owner enforcement work together", async () => {
+  const { client, objects } = fakeS3();
+  const storage = new ObjectStorageService(new S3ObjectStorageAdapter(
+    { OBJECT_STORAGE_S3_BUCKET: "bucket", OBJECT_STORAGE_S3_PREFIX: "prod" }, client,
+  ));
+
+  const { uploadURL, objectPath, requiresAuth } = await storage.getObjectEntityUploadTarget();
+  assert.equal(requiresAuth, true);
+  assert.match(uploadURL, /^\/api\/objects\/local-upload\/[0-9a-f-]{36}$/);
+  const objectId = uploadURL.split("/").at(-1)!;
+  assert.equal(objectPath, "/objects/uploads/" + objectId);
+
+  await storage.writeDirectUpload(objectId, Buffer.from("image-data"), "image/png");
+  assert.equal(objects.get("prod/uploads/" + objectId)?.body.toString(), "image-data");
+
+  await storage.trySetObjectEntityAclPolicy(objectPath, { owner: "learner-1", visibility: "private" });
+  const objectKey = await storage.getObjectEntityFile(objectPath);
+  assert.equal(await storage.canAccessObjectEntity({
+    objectFile: objectKey, userId: "learner-1", requestedPermission: ObjectPermission.READ,
+  }), true);
+  assert.equal(await storage.canAccessObjectEntity({
+    objectFile: objectKey, userId: "learner-2", requestedPermission: ObjectPermission.READ,
+  }), false);
+
+  await assert.rejects(
+    storage.trySetObjectEntityAclPolicy(objectPath, { owner: "learner-2", visibility: "public" }),
+    ObjectOwnershipError,
+  );
+  assert.equal(await storage.canAccessObjectEntity({
+    objectFile: objectKey, userId: "anonymous", requestedPermission: ObjectPermission.READ,
+  }), false);
 });

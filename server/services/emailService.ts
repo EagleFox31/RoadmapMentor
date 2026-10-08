@@ -91,7 +91,7 @@ export class EmailService {
 
       return true;
     } catch (error: any) {
-      console.error("[EMAIL ERROR] SMTP error:", error);
+      console.error("[EMAIL ERROR] Resend API error:", error);
       await this.logEmailNotification({
         userId,
         type,

@@ -127,14 +127,14 @@ No source-code modification should be required between machines; differences bel
 | `OPENAI_API_KEY` | For direct AI use | Preferred OpenAI credential outside Replit |
 | `AI_INTEGRATIONS_OPENAI_API_KEY` | Replit AI only | Replit AI integration credential |
 | `AI_INTEGRATIONS_OPENAI_BASE_URL` | Replit AI only | Replit AI integration endpoint |
-| `MAIL_HOST`, `MAIL_USER`, `MAIL_PASS` | For email delivery | SMTP transport |
-| `MAIL_PORT` | No | SMTP port; defaults to `465` |
-| `MAIL_FROM` | No | Sender identity |
+| `RESEND_API_KEY` | For email delivery | Resend HTTPS API token; keep it secret |
+| `MAIL_FROM` | For email delivery | Verified sender address/domain configured in Resend |
 | `OBJECT_STORAGE_PROVIDER` | For screenshot uploads | `filesystem` or `replit`; local/VPS default in `.env.example` is `filesystem` |
 | `OBJECT_STORAGE_LOCAL_DIR` | Filesystem provider | Directory for uploaded evidence; defaults to `.data/object-storage` |
 | `PRIVATE_OBJECT_DIR` | Replit provider | Replit object-storage bucket/prefix |
 
 Use `.env.example` as the canonical list. Never commit the populated `.env`.
+The Render Free deployment uses Resend over HTTPS, not outbound SMTP. Verify the sender domain and configure `RESEND_API_KEY` and `MAIL_FROM` in the hosting environment; code deployment alone does not activate email delivery.
 
 ## Upgrade an existing pre-roadmap database
 

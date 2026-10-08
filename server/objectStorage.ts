@@ -582,6 +582,11 @@ export class ObjectStorageService {
     return this.adapter.name;
   }
 
+  /** Both filesystem and S3/R2 provide authenticated, application-proxied uploads. */
+  supportsDirectUpload(): boolean {
+    return typeof this.adapter.writeDirectUpload === "function";
+  }
+
   async getObjectEntityUploadTarget(): Promise<ObjectUploadTarget> {
     return await this.adapter.createUploadTarget(randomUUID());
   }

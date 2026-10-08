@@ -1,4 +1,16 @@
-# Passation — 2026-10-07
+# État courant — 2026-10-08 (correctifs de recette, PR en préparation)
+
+- Branche `fix/rm-production-r2-resend-alignment` : l'upload direct applicatif doit fonctionner avec les adaptateurs filesystem **et** S3/R2. Le contrôle de propriété ACL introduit par la PR #68 est conservé ; tests ajoutés pour le chemin S3 et les permissions.
+- `render.yaml`, `.env.*.example`, README et guide de déploiement harmonisés avec Resend HTTPS (`RESEND_API_KEY`, `MAIL_FROM` vérifié). Aucun secret intégré au dépôt.
+- **À valider sur le vrai service** : variable Resend et domaine vérifié ; invitation e-mail reçue ; upload + téléchargement R2 ; `/health/ready` ; alertes et sauvegardes. Ces vérifications ne sont pas couvertes par un simple pipeline CI.
+- CI à vérifier sur la PR, puis poursuivre les labs Python (validation de résultats non fiable côté client), l'intégration frontend, la protection `main` et l'assainissement du backlog Terraform historique.
+- PR #54, #57, #59, #60 et #68 sont fusionnées dans `main` au 8 octobre.
+
+---
+
+## Archive de passation du 7 octobre (historique ; les statuts de PR ci-dessous peuvent être obsolètes)
+
+### Passation — 2026-10-07
 
 ## Objectif en cours
 Enchaîner `docs/backlog.md`. Fusionnés : RM-020 (#54), RM-015 (#55), RM-014 (#56). RM-017 partiel (logs structurés + `x-request-id`) dans la PR #57 (`feat/rm-017-request-logging`), **à fusionner par l'utilisateur**. Suite : RM-016 (Terraform, choix du fournisseur à trancher) puis reste de RM-017.
