@@ -6,6 +6,7 @@
 - Les liens IA importés restent cachés aux apprenants avant approbation du mentor ; modifier une URL force sa réapprobation et réinitialise ses consultations.
 - Le signalement d'un lien mort est manuel ; pas de robot serveur qui visite une URL non fiable.
 - Aperçu navigateur pour les PDF HTTPS terminés par .pdf, avec CORS, limite de 16 Mio, contrôle de signature et lien externe de secours.
+- Choix CSP explicite : `connect-src https:` autorise les fetch HTTPS déclenchés par l'apprenant pour des PDF distants (CORS requis), au prix d'une directive connect-src plus large ; `frame-src` conserve les lecteurs approuvés et les blobs locaux, `object-src 'none'` reste actif. Réviser ce compromis si un proxy PDF sécurisé ou une liste stable de fournisseurs est introduite.
 - Pas d'analytique de visionnage. Test réel conseillé avec un PDF externe autorisant CORS, et navigateur de production.
 
 ---
