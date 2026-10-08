@@ -6,7 +6,7 @@ RUN npm ci
 FROM deps AS build
 WORKDIR /app
 COPY . .
-RUN npm run build
+RUN npm run build && npx esbuild scripts/db-migrate.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/db-migrate.js
 
 FROM node:24-bookworm-slim AS runtime
 ENV NODE_ENV=production
@@ -15,6 +15,8 @@ WORKDIR /app
 COPY --chown=node:node package.json package-lock.json ./
 COPY --from=deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
+COPY --chown=node:node migrations ./migrations
+COPY --chown=node:node scripts/start-with-migrations.sh ./start-with-migrations.sh
 
 RUN mkdir -p /app/data && chown -R node:node /app
 USER node
