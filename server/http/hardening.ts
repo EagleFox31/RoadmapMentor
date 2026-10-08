@@ -118,6 +118,8 @@ export function contentSecurityPolicy() {
       // Signed upload URLs of the cloud storage provider.
       // Pyodide loads its WASM/stdlib and pyodide-http packages from the same CDN.
       "connect-src": ["'self'", "https://storage.googleapis.com", "https://cdn.jsdelivr.net"],
+      // Only vetted video players may be embedded. Never allow arbitrary iframes.
+      "frame-src": ["https://www.youtube-nocookie.com", "https://player.vimeo.com"],
       "object-src": ["'none'"],
       "base-uri": ["'self'"],
       "form-action": ["'self'"],

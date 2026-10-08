@@ -33,6 +33,14 @@ with sync_playwright() as p:
     mentor_weeks = api("GET", f"/api/weeks?roadmapId={seeded['roadmap']}", mentor)
     objective = next(w for w in mentor_weeks if w["id"] == seeded["week"])["objectives"][0]
     second_task = api("POST", f"/api/objectives/{objective['id']}/tasks", mentor, {"label": "Deuxième tâche E2E"})
+    video = api("POST", f"/api/weeks/{seeded['week']}/resources", mentor, {
+        "label": "Vidéo YouTube guidée", "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "resourceType": "VIDEO",
+    })
+    external = api("POST", f"/api/weeks/{seeded['week']}/resources", mentor, {
+        "label": "Vidéo non intégrable", "url": "https://example.org/video",
+        "resourceType": "VIDEO",
+    })
 
     login_ui(page, EMAIL, PWD)
     expect(tid(page, f"icon-validated-{seeded['week']}")).to_be_visible()
@@ -40,6 +48,17 @@ with sync_playwright() as p:
     steps.ok("sees the validated week and not the unvalidated one")
 
     tid(page, f"card-week-{seeded['week']}").click()
+    tid(page, f"button-play-resource-{video['id']}").click()
+    video_frame = tid(page, "iframe-resource-video")
+    expect(video_frame).to_have_attribute("src", "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0")
+    expect(tid(page, "link-resource-player-fallback")).to_have_attribute(
+        "href", "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    tid(page, "button-close-resource-player").click()
+    expect(video_frame).to_have_count(0)
+    assert tid(page, f"button-play-resource-{external['id']}").count() == 0
+    assert tid(page, f"button-open-resource-{external['id']}").count() == 1
+    steps.ok("plays supported video inline, closes player, keeps unsupported videos external")
+
     box = tid(page, f"checkbox-task-{seeded['task']}")
     assert box.is_disabled(), "a task cannot be ticked without evidence"
     first_input = tid(page, f"input-upload-screenshot-{seeded['task']}")

@@ -103,6 +103,9 @@ test("the CSP allows the fonts and signed uploads the frontend needs", () => {
   assert.ok(directives["connect-src"].includes("https://cdn.jsdelivr.net"));
   assert.ok(directives["worker-src"].includes("'self'"));
   assert.ok(directives["script-src"].includes("'wasm-unsafe-eval'"));
+  assert.deepEqual(directives["frame-src"], [
+    "https://www.youtube-nocookie.com", "https://player.vimeo.com",
+  ]);
 });
 
 test("only raster image types are accepted for uploads", () => {
