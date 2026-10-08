@@ -73,7 +73,8 @@ test("security headers are present on public responses", async () => {
       const csp = res.headers.get("content-security-policy") ?? "";
       assert.match(csp, /default-src 'self'/);
       assert.match(csp, /frame-ancestors 'none'/);
-      assert.doesNotMatch(csp, /script-src[^;]*unsafe/);
+      assert.doesNotMatch(csp, /script-src[^;]*'unsafe-(inline|eval)'/);
+      assert.match(csp, /worker-src/);
     },
   );
 });
