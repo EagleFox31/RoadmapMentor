@@ -39,6 +39,7 @@ test("consultation is learner-scoped and separate from task progress", { skip: !
   assert.ok(mentorWeeks.data[0].resources[0].unavailableReportedAt);
   assert.equal((await api("POST", `/api/resources/${resource.data.id}/clear-unavailable`, mentorB.token, {})).status, 404);
   assert.equal((await api("POST", `/api/resources/${resource.data.id}/clear-unavailable`, mentorA.token, {})).status, 200);
+  assert.equal((await api("PUT", action, learner.token, { consulted: true })).status, 200);
   const updated = await api("PUT", `/api/resources/${resource.data.id}`, mentorA.token, { url: "https://example.org/changed.pdf" });
   assert.equal(updated.data.isApproved, false);
   assert.equal(updated.data.unavailableReportedAt, null);
@@ -46,4 +47,6 @@ test("consultation is learner-scoped and separate from task progress", { skip: !
   assert.equal((await api("POST", `/api/resources/${resource.data.id}/approve`, learner.token, {})).status, 403);
   assert.equal((await api("POST", `/api/resources/${resource.data.id}/approve`, mentorB.token, {})).status, 404);
   assert.equal((await api("POST", `/api/resources/${resource.data.id}/approve`, mentorA.token, {})).status, 200);
+  assert.deepEqual((await api("GET", list, learner.token)).data.resourceIds, [],
+    "a replaced link is not already consulted");
 });
