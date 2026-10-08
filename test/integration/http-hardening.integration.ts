@@ -33,13 +33,24 @@ describe("HTTP hardening", { skip: !BASE && "TEST_BASE_URL not set" }, () => {
     assert.equal(res.status, 413);
   });
 
-  test("a scriptable image type is refused on upload", async () => {
-    const res = await fetch(`${BASE}/api/objects/local-upload/hardening-${Date.now()}`, {
+  test("a scriptable image type is refused even with a valid upload ticket", async () => {
+    const targetResponse = await fetch(`${BASE}/api/objects/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${mentor}` },
+      body: "{}",
+    });
+    assert.equal(targetResponse.status, 200);
+    const target = await targetResponse.json();
+    const res = await fetch(`${BASE}${target.uploadURL}`, {
       method: "PUT",
-      headers: { "Content-Type": "image/svg+xml", Authorization: `Bearer ${mentor}` },
+      headers: {
+        "Content-Type": "image/svg+xml",
+        Authorization: `Bearer ${mentor}`,
+        "X-Upload-Ticket": target.uploadTicket,
+      },
       body: "<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>",
     });
-    assert.ok([400, 404, 415].includes(res.status), String(res.status));
+    assert.ok([400, 415].includes(res.status), String(res.status));
     assert.notEqual(res.status, 201);
   });
 
