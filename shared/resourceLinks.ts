@@ -61,3 +61,11 @@ export function supportedVideoEmbed(input: unknown): SupportedVideoEmbed | null 
 
   return null;
 }
+
+/** Conservative first-pass PDF preview detection; the fetched bytes are verified later. */
+export function canPreviewPdf(input: unknown): boolean {
+  const safe = safeExternalResourceUrl(input);
+  if (!safe) return false;
+  const url = new URL(safe);
+  return url.protocol === "https:" && /\\.pdf$/i.test(url.pathname);
+}
