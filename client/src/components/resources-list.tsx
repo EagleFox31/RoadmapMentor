@@ -1,8 +1,13 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Video, GraduationCap, FileText, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { BookOpen, Video, GraduationCap, FileText, ExternalLink, Pencil, Trash2, Play } from "lucide-react";
 import type { Resource } from "@shared/schema";
+import { safeExternalResourceUrl, supportedVideoEmbed } from "@shared/resourceLinks";
 import { isMentor } from "@/lib/auth";
 
 interface ResourcesListProps {
@@ -18,7 +23,6 @@ const resourceIcons = {
   ARTICLE: BookOpen,
   OTHER: FileText,
 };
-
 const resourceColorClasses = {
   DOC: "bg-warning",
   VIDEO: "bg-destructive",
@@ -26,7 +30,6 @@ const resourceColorClasses = {
   ARTICLE: "bg-primary",
   OTHER: "bg-muted",
 };
-
 const resourceTypeLabels = {
   DOC: "Documentation",
   VIDEO: "Vidéo",
@@ -36,85 +39,114 @@ const resourceTypeLabels = {
 };
 
 export function ResourcesList({ resources, onEdit, onDelete }: ResourcesListProps) {
-  if (resources.length === 0) {
-    return (
-      <Card className="bg-card rounded-xl p-6 shadow-sm text-center">
-        <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-        <p className="text-muted-foreground text-sm">Aucune ressource disponible</p>
-      </Card>
-    );
-  }
+  const [activeVideo, setActiveVideo] = useState<Resource | null>(null);
+  const videoEmbed = activeVideo ? supportedVideoEmbed(activeVideo.url) : null;
+  const activeExternalUrl = activeVideo ? safeExternalResourceUrl(activeVideo.url) : null;
 
   return (
-    <div className="space-y-3">
-      {resources.map((resource) => {
-        const Icon = resourceIcons[resource.resourceType as keyof typeof resourceIcons] || FileText;
-        const colorClass = resourceColorClasses[resource.resourceType as keyof typeof resourceColorClasses];
-        const typeLabel = resourceTypeLabels[resource.resourceType as keyof typeof resourceTypeLabels];
+    <>
+      {resources.length === 0 ? (
+        <Card className="bg-card rounded-xl p-6 shadow-sm text-center">
+          <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
+          <p className="text-muted-foreground text-sm">Aucune ressource disponible</p>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {resources.map((resource) => {
+            const type = resource.resourceType as keyof typeof resourceIcons;
+            const Icon = resourceIcons[type] || FileText;
+            const colorClass = resourceColorClasses[type] || "bg-muted";
+            const typeLabel = resourceTypeLabels[type] || "Autre";
+            const externalUrl = safeExternalResourceUrl(resource.url);
+            const canPlay = type === "VIDEO" ? supportedVideoEmbed(resource.url) : null;
 
-        return (
-          <Card
-            key={resource.id}
-            className="bg-card rounded-xl p-4 shadow-md group hover:shadow-lg transition-shadow"
-            data-testid={`card-resource-${resource.id}`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 flex-1">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 ${colorClass}`}>
-                  <Icon className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge className="bg-muted text-foreground border-0 text-xs">
-                      {typeLabel}
-                    </Badge>
+            return (
+              <Card key={resource.id} className="bg-card rounded-xl p-4 shadow-md group hover:shadow-lg transition-shadow" data-testid={`card-resource-${resource.id}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 ${colorClass}`}>
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Badge className="bg-muted text-foreground border-0 text-xs mb-1">{typeLabel}</Badge>
+                      <h4 className="text-foreground font-medium text-sm truncate">{resource.label}</h4>
+                      {type === "VIDEO" && !canPlay && externalUrl && (
+                        <span className="text-xs text-muted-foreground">Lecture sur le site d'origine</span>
+                      )}
+                      {!externalUrl && (
+                        <span className="text-xs text-destructive">Lien invalide : contactez votre mentor</span>
+                      )}
+                    </div>
                   </div>
-                  <h4 className="text-foreground font-medium text-sm truncate">
-                    {resource.label}
-                  </h4>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1 ml-3">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  asChild
-                  className="h-8 w-8"
-                  data-testid={`button-open-resource-${resource.id}`}
-                >
-                  <a href={resource.url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                </Button>
-
-                {isMentor() && (
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => onEdit?.(resource)}
-                      className="h-8 w-8"
-                      data-testid={`button-edit-resource-${resource.id}`}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => onDelete?.(resource.id)}
-                      className="bg-destructive/10 text-destructive h-8 w-8"
-                      data-testid={`button-delete-resource-${resource.id}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                  <div className="flex items-center gap-1 ml-2">
+                    {canPlay && (
+                      <Button type="button" variant="outline" size="sm"
+                        onClick={() => setActiveVideo(resource)}
+                        data-testid={`button-play-resource-${resource.id}`}>
+                        <Play className="w-4 h-4 mr-1" />
+                        Lire ici
+                      </Button>
+                    )}
+                    {externalUrl && (
+                      <Button size="icon" variant="ghost" asChild className="h-8 w-8"
+                        data-testid={`button-open-resource-${resource.id}`}>
+                        <a href={externalUrl} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${resource.label} dans un nouvel onglet`}>
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </Button>
+                    )}
+                    {isMentor() && (
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        <Button size="icon" variant="ghost" onClick={() => onEdit?.(resource)}
+                          className="h-8 w-8" aria-label={`Modifier ${resource.label}`}
+                          data-testid={`button-edit-resource-${resource.id}`}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => onDelete?.(resource.id)}
+                          className="bg-destructive/10 text-destructive h-8 w-8"
+                          aria-label={`Supprimer ${resource.label}`}
+                          data-testid={`button-delete-resource-${resource.id}`}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      <Dialog open={Boolean(activeVideo)} onOpenChange={(open) => { if (!open) setActiveVideo(null); }}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{activeVideo?.label || "Vidéo"}</DialogTitle>
+            <DialogDescription>
+              {videoEmbed ? `Lecture intégrée depuis ${videoEmbed.provider}. La vidéo reste hébergée chez ce fournisseur.` : "Lecture indisponible dans l'application."}
+            </DialogDescription>
+          </DialogHeader>
+          {videoEmbed && (
+            <div className="aspect-video w-full overflow-hidden rounded-lg bg-black">
+              <iframe
+                title={`Lecteur vidéo : ${activeVideo?.label ?? "Ressource"}`}
+                src={videoEmbed.embedUrl}
+                className="h-full w-full border-0"
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+                data-testid="iframe-resource-video"
+              />
             </div>
-          </Card>
-        );
-      })}
-    </div>
+          )}
+          {activeExternalUrl && (
+            <a href={activeExternalUrl} target="_blank" rel="noopener noreferrer"
+              className="text-sm text-primary underline" data-testid="link-resource-player-fallback">
+              Ouvrir la vidéo sur le site d'origine
+            </a>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

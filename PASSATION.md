@@ -1,3 +1,17 @@
+# 2026-10-08 — RM-019, lot 1 : vidéos pédagogiques intégrées
+
+- Base : PR #75 fusionnée sur `main` au commit `c0e0c76`.
+- Lecture des URL vidéo YouTube/Youtu.be et Vimeo sous forme de lecteurs officiels intégrés dans le détail de semaine, fermeture du lecteur = démontage de l'iframe ; lien de secours vers la source.
+- Normalisation stricte des domaines et identifiants sur la couche partagée, pas d'iframe arbitraire, aucun lien `javascript:`/`data:` cliquable, y compris sur les vieilles ressources.
+- Validation à la création et modification des ressources, y compris l'import via les schémas ; aucune migration.
+- CSP `frame-src` limitée à `www.youtube-nocookie.com` et `player.vimeo.com`.
+- Tests unitaires de parsing et CSP, intégration des permissions et URL serveur, parcours Playwright pour l'apprenant.
+- RM-019 non entièrement terminé : métadonnées, lecteur PDF, lecture complète/consultation, validation de liens IA et vérifications de liens morts.
+
+---
+
+## Passation précédente
+
 # 2026-10-08 — Multi-upload des preuves et vérification de type réel
 
 - `main` après PR #74 : `2917d0d`.

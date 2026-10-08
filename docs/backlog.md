@@ -356,6 +356,8 @@ Le projet ne possède pas de modèle de lab. Les exercices sont actuellement rep
 
 ### RM-019 — Lire les vidéos et ressources compatibles dans l'application
 
+> **Statut : en cours — lot 1 (lecteur vidéo sûr).** Lecture YouTube/Vimeo dans une fenêtre responsive accessible, iframe autorisée uniquement sur les deux domaines des lecteurs, fallback externe pour les autres ressources. Les URL sont validées à la création/modification ; les anciennes ressources dangereuses ne deviennent jamais cliquables. Tests unitaires, API et Chromium ajoutés. **Reste :** champs pédagogiques (description, durée, obligatoire, ordre), visionneuse PDF, suivi explicite de consultation, modération des liens IA et gestion des vidéos supprimées.
+
 **Constat**
 
 Le type de ressource `VIDEO` existe déjà, mais toutes les ressources s'ouvrent dans un nouvel onglet. Le modèle ne stocke ni fournisseur, ni durée, ni description andragogique, ni caractère obligatoire.
