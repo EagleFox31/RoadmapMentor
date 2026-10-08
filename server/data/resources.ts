@@ -43,6 +43,11 @@ export class ResourceRepository implements ResourceStore {
     const [updated] = await db.update(resources)
       .set(changed ? { ...resource, isApproved: false, unavailableReportedAt: null } : resource)
       .where(eq(resources.id, id)).returning();
+    if (changed && updated) {
+      // A consultation of the previous URL cannot count as a consultation of
+      // this new document. Never carry the old self-report across link changes.
+      await db.delete(resourceConsultations).where(eq(resourceConsultations.resourceId, id));
+    }
     return updated || undefined;
   }
 
