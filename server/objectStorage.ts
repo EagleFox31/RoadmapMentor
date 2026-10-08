@@ -667,7 +667,6 @@ export class ObjectStorageService {
   async downloadObject(
     objectFile: string,
     res: Response,
-    cacheTtlSec: number = 3600,
   ) {
     try {
       const metadata = await this.adapter.getMetadata(objectFile);
