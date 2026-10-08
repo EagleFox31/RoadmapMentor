@@ -28,7 +28,8 @@ test("filesystem upload tickets bind the upload URL to its requester", { skip: !
 
   assert.equal((await put(attacker.token, uploadTicket)).status, 403, "other user must not claim URL");
   assert.equal((await put(owner.token, undefined)).status, 403, "bearer alone is insufficient");
-  assert.equal((await put(owner.token, uploadTicket, uploadURL.replace(/.$/, "0"))).status, 403, "ticket cannot be replayed for another object");
+  const otherIdPath = uploadURL.slice(0, -1) + (uploadURL.endsWith("0") ? "1" : "0");
+  assert.equal((await put(owner.token, uploadTicket, otherIdPath)).status, 403, "ticket cannot be replayed for another object");
 
   const saved = await put(owner.token, uploadTicket);
   assert.equal(saved.status, 201, await saved.text());
