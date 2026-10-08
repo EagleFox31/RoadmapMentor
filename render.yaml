@@ -12,7 +12,7 @@ services:
     healthCheckPath: /health/ready
     autoDeploy: true
     # Le plan gratuit n'a pas de preDeployCommand : on migre avant de démarrer le serveur.
-    dockerCommand: sh -c "npm run db:migrate && npm run start"
+    dockerCommand: sh ./start-with-migrations.sh
     envVars:
       - key: NODE_ENV
         value: production
