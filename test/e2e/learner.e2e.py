@@ -1,5 +1,6 @@
 """Learner journey: register, see validated weeks only, evidence, comment."""
 from playwright.sync_api import sync_playwright, expect
+import re
 from _support import *
 
 EMAIL = f"e2e.learner.{RUN}@it.test"
@@ -45,6 +46,17 @@ with sync_playwright() as p:
         "resourceType": "VIDEO",
     })
 
+    pdf_resource = api("POST", f"/api/weeks/{seeded['week']}/resources", mentor, {
+        "label": "Documentation PDF", "url": "https://docs.example.org/manual.pdf",
+        "resourceType": "DOC", "practicePrompt": "Lire puis appliquer au projet.",
+    })
+    # This PDF is fetched by the browser only; the app never proxies remote URLs.
+    page.route("https://docs.example.org/manual.pdf", lambda route: route.fulfill(
+        status=200,
+        headers={"Content-Type": "application/pdf", "Access-Control-Allow-Origin": "*"},
+        body=b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n",
+    ))
+
     login_ui(page, EMAIL, PWD)
     expect(tid(page, f"icon-validated-{seeded['week']}")).to_be_visible()
     assert tid(page, f"card-week-{hidden['week']}").count() == 0, "unvalidated week must stay hidden"
@@ -55,6 +67,22 @@ with sync_playwright() as p:
     expect(tid(page, f"resource-problem-{video['id']}")).to_contain_text("version stable")
     expect(tid(page, f"resource-practice-{video['id']}")).to_contain_text("Créer une branche")
     expect(tid(page, f"card-resource-{video['id']}")).to_contain_text("15 min indicatives")
+    consult_button = tid(page, f"button-consult-resource-{video['id']}")
+    expect(consult_button).to_contain_text("Marquer comme consultée")
+    consult_button.click()
+    expect(consult_button).to_contain_text("Consultée")
+    page.reload()
+    tid(page, f"card-week-{seeded['week']}").click()
+    expect(tid(page, f"button-consult-resource-{video['id']}")).to_contain_text("Consultée")
+    steps.ok("consultation is explicitly declared and survives a reload")
+
+    tid(page, f"button-preview-pdf-{pdf_resource['id']}").click()
+    expect(tid(page, "iframe-resource-pdf")).to_have_attribute("src", re.compile(r"^blob:"))
+    expect(tid(page, "link-resource-pdf-original")).to_have_attribute("href", "https://docs.example.org/manual.pdf")
+    tid(page, "button-close-pdf-preview").click()
+    expect(tid(page, "iframe-resource-pdf")).to_have_count(0)
+    steps.ok("previews a fetched PDF locally and keeps the source fallback")
+
     tid(page, f"button-play-resource-{video['id']}").click()
     video_frame = tid(page, "iframe-resource-video")
     expect(video_frame).to_have_attribute("src", "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0")
