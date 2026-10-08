@@ -133,7 +133,7 @@ export async function generateRoadmap(request: RoadmapGenerationRequest): Promis
   // Use provided baseDate or default to today (only when no startWeekNumber)
   const startDate = request.baseDate ? new Date(request.baseDate) : new Date();
   
-  const prompt = `Tu es un expert en mentorat Backend Python. Génère un plan de formation structuré sur ${request.numberOfWeeks} semaines pour apprendre "${request.topic}".
+  const prompt = `Tu es un expert en mentorat et en pédagogie. Génère un plan de formation structuré sur ${request.numberOfWeeks} semaines pour apprendre "${request.topic}".
 
 Niveau: ${request.skillLevel}
 ${request.additionalContext ? `Contexte additionnel: ${request.additionalContext}` : ""}
@@ -145,28 +145,24 @@ Chaque semaine DOIT contenir EXACTEMENT 3 objectifs dans cet ordre précis:
 1. **CONCEPT** (type: "CONCEPT"): Théorie et concepts à apprendre
    - Tâches : lectures, visionnage de tutoriels, compréhension des concepts
 
-2. **ALGO** (type: "ALGO"): Exercices pratiques de coding
-   - OBLIGATOIRE : Inclure des liens vers des exercices HackerRank ou LeetCode adaptés au niveau
-   - Tâches : résoudre X exercices sur la plateforme, pratiquer les algorithmes
+2. **PRATIQUE** (type: "ALGO"): Exercices pratiques
+   - Tâches adaptées à la discipline : exercices, études de cas, mises en situation
+   - Si la discipline s'y prête, inclure des liens vers des plateformes d'exercices adaptées
 
-3. **PROJECT** (type: "PROJECT"): Projet fil rouge e-commerce
-   - Ce projet évolue chaque semaine en fonction des concepts appris
-   - Tâches : implémenter une nouvelle fonctionnalité du projet e-commerce
-   - Exemple semaine 1 : Créer la structure du projet
-   - Exemple semaine 2 : Ajouter les modèles de données
-   - Exemple semaine 3 : Créer les endpoints API
-   - etc.
+3. **PROJET** (type: "PROJECT"): Projet fil rouge
+   - Un projet concret qui évolue chaque semaine en fonction des concepts appris
+   - Choisir un projet pertinent pour le sujet "${request.topic}"
+   - Tâches : implémenter une nouvelle partie du projet chaque semaine
 
 LIVRABLES:
-Pour chaque semaine, inclure un deliverable "Guide GitHub" avec:
-- title: "Code source sur GitHub"
-- description: "Pousser le code de la semaine sur votre repository GitHub"
-- instructions: "Guide détaillé étape par étape pour: 1) git init (si première fois), 2) git add ., 3) git commit -m 'Semaine X: [description]', 4) git push origin main"
+Pour chaque semaine, inclure un livrable de rendu avec:
+- title: Un titre clair décrivant le livrable attendu
+- description: Ce que l'apprenant doit produire
+- instructions: Guide détaillé étape par étape
 
 RESSOURCES:
 - Les URLs des ressources doivent être des liens RÉELS et VALIDES
-- Privilégie la documentation officielle Python/FastAPI
-- Pour les exercices ALGO, utilise des liens HackerRank ou LeetCode réels
+- Privilégie la documentation officielle et les sources de référence du domaine
 - Pour les vidéos, utilise des chaînes YouTube reconnues
 
 IMPORTANT: Génère exactement ${request.numberOfWeeks} semaines avec des numéros séquentiels (${startWeek}, ${startWeek + 1}, ${startWeek + 2}...).
