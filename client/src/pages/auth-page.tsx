@@ -103,7 +103,7 @@ export default function AuthPage() {
       <section className="flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
           <p className="lg:hidden text-sm font-medium mb-6">Roadmap Mentor</p>
-          <div role="tablist" className="mb-8 flex gap-6 border-b">
+          <div className="mb-8 flex gap-6 border-b">
             {[
               { login: true, label: "Connexion", testId: "button-show-login" },
               { login: false, label: "Inscription", testId: "button-show-register" },
@@ -111,8 +111,7 @@ export default function AuthPage() {
               <button
                 key={tab.testId}
                 type="button"
-                role="tab"
-                aria-selected={isLogin === tab.login}
+                aria-pressed={isLogin === tab.login}
                 onClick={() => setIsLogin(tab.login)}
                 className={`-mb-px border-b-2 pb-3 text-sm font-medium transition-colors ${
                   isLogin === tab.login
@@ -181,7 +180,7 @@ export default function AuthPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full"
+              className="w-full bg-emerald-700 text-white hover:bg-emerald-800 border-emerald-700"
               data-testid="button-submit-auth"
             >
               {isLoading ? "Chargement…" : isLogin ? "Se connecter" : "S'inscrire"}
