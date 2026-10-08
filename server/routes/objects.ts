@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import { authMiddleware, verifyToken, type AuthRequest } from "../auth";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
 import { ObjectPermission } from "../objectAcl";
+import { issueObjectUploadTicket, verifyObjectUploadTicket } from "../security/objectUploadTicket";
 import { isAllowedUploadType, MAX_UPLOAD_BYTES, ALLOWED_UPLOAD_TYPES } from "../http/hardening";
 import { handleError } from "../http/errors";
 import type { RouteDeps } from "./deps";
@@ -15,6 +16,18 @@ export function registerObjectsRoutes(app: Express, { limiters }: RouteDeps) {
       const objectStorageService = new ObjectStorageService();
       const uploadTarget =
         await objectStorageService.getObjectEntityUploadTarget();
+      // Direct-upload destinations must be bound to the authenticated requester.
+      // Keep legacy provider-signed URLs unchanged.
+      if (
+        objectStorageService.supportsDirectUpload() &&
+        uploadTarget.uploadURL.startsWith("/api/objects/local-upload/")
+      ) {
+        const objectId = uploadTarget.objectPath.split("/").at(-1)!;
+        return res.json({
+          ...uploadTarget,
+          uploadTicket: issueObjectUploadTicket(objectId, req.user!.id),
+        });
+      }
       res.json(uploadTarget);
     } catch (error) {
       handleError(res, error);
@@ -33,6 +46,16 @@ export function registerObjectsRoutes(app: Express, { limiters }: RouteDeps) {
         // The legacy Replit adapter still uses provider-issued upload URLs.
         if (!objectStorageService.supportsDirectUpload()) {
           return res.sendStatus(404);
+        }
+
+        // The bearer token alone is insufficient: an upload URL copied from
+        // another learner cannot be used to claim that learner's evidence.
+        if (!verifyObjectUploadTicket(
+          req.headers["x-upload-ticket"],
+          req.params.objectId,
+          req.user!.id,
+        )) {
+          return res.status(403).json({ error: "Invalid or expired upload ticket" });
         }
 
         if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
