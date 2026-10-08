@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +6,14 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { setAuthToken, setCurrentUser } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
+
+const BACKGROUNDS = [
+  "/roadmap1.png",
+  "/roadmap2.png",
+  "/roadmap3.png",
+  "/roadmap4.png",
+  "/roadmap6.png",
+];
 
 const POINTS = [
   { title: "Une feuille de route par semaine", text: "Objectifs, tâches et ressources de votre mentor, au même endroit." },
@@ -18,6 +26,14 @@ export default function AuthPage() {
   const { toast } = useToast();
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [bgIndex, setBgIndex] = useState(() => Math.floor(Math.random() * BACKGROUNDS.length));
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setBgIndex((i) => (i + 1) % BACKGROUNDS.length);
+    }, 6000);
+    return () => clearInterval(id);
+  }, []);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -60,11 +76,22 @@ export default function AuthPage() {
     <main className="min-h-[100dvh] w-full grid lg:grid-cols-[1.1fr_1fr] bg-background">
       <section
         aria-hidden="true"
-        className="hidden lg:flex flex-col justify-between bg-foreground text-background p-14"
+        className="relative hidden lg:flex flex-col justify-between bg-foreground text-background p-14 overflow-hidden"
       >
-        <span className="text-sm font-medium tracking-wide">Roadmap Mentor</span>
+        {BACKGROUNDS.map((src, i) => (
+          <div
+            key={src}
+            className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ${
+              i === bgIndex ? "opacity-25" : "opacity-0"
+            }`}
+            style={{ backgroundImage: `url('${src}')` }}
+          />
+        ))}
+        <div className="absolute inset-0 bg-gradient-to-br from-foreground/85 via-foreground/70 to-foreground/90" />
 
-        <div className="max-w-md">
+        <span className="relative text-sm font-medium tracking-wide">Roadmap Mentor</span>
+
+        <div className="relative max-w-md">
           <h2 className="text-4xl font-semibold leading-tight tracking-tight">
             Apprendre le backend Python avec quelqu'un qui relit votre travail.
           </h2>
@@ -78,7 +105,7 @@ export default function AuthPage() {
           </dl>
         </div>
 
-        <p className="text-sm text-background/50">Suivi de mentorat backend Python</p>
+        <p className="relative text-sm text-background/50">Suivi de mentorat backend Python</p>
       </section>
 
       <section className="flex items-center justify-center px-6 py-12">
