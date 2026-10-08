@@ -1,3 +1,16 @@
+# 2026-10-08 — Sécurisation des preuves liées aux tâches
+
+- PR #71 et #72 fusionnées dans `main`, dernier merge `2d6ed1f`.
+- Nouvelle PR : les preuves précédemment définies `visibility: public` dans `toggle-progress` deviennent privées. Les URLs de stockage ne sont plus accessibles anonymement ni via un autre compte.
+- Une nouvelle route `GET /api/tasks/:taskId/evidence/:learnerId` vérifie les permissions de l'apprenant ou du mentor du bon périmètre, avant de servir les octets.
+- La lecture frontend se fait via un `fetch` authentifié et ouverture d'un Blob URL, sans JWT dans la query string.
+- Validation stricte du chemin de capture (objet d'upload canonique uniquement). Cache `private, no-store`, y compris pour les captures héritées auparavant publiques. Tests d'intégration multi-comptes ajoutés.
+- **Recette réelle à faire** : authentification Render, screenshot upload vers R2, lecture apprenant et mentor, refus anonyme/hors périmètre. La CI n'utilise pas un vrai bucket R2.
+
+---
+
+## Archive
+
 # 2026-10-08 — Vérification du moteur Python en navigateur
 
 - Base : PR #70 fusionnée, `main` au commit `d801e43`, CI verte.

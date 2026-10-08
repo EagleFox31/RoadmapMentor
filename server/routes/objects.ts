@@ -1,5 +1,7 @@
 import express, { type Express } from "express";
-import { authMiddleware, verifyToken, type AuthRequest } from "../auth";
+import { authMiddleware, type AuthRequest } from "../auth";
+import { storage } from "../storage";
+import { getTaskAccess, getLearnerIdsForWeek } from "../access/weekAccess";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
 import { ObjectPermission } from "../objectAcl";
 import { issueObjectUploadTicket, verifyObjectUploadTicket } from "../security/objectUploadTicket";
@@ -86,46 +88,64 @@ export function registerObjectsRoutes(app: Express, { limiters }: RouteDeps) {
     },
   );
 
-  // Serve uploaded screenshots (public and private)
-  app.get("/objects/:objectPath(*)", async (req, res) => {
-    // Try to get user ID from token if provided, but don't require it
-    const authHeader = req.headers.authorization;
-    let userId: string | null = null;
-    
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      try {
-        const token = authHeader.substring(7);
-        const decoded = verifyToken(token) as { id?: number } | null;
-        if (decoded?.id) {
-          userId = decoded.id.toString();
-        }
-      } catch (error) {
-        // Token invalid or expired, but that's ok for public files
-      }
-    }
-    
-    const objectStorageService = new ObjectStorageService();
+  // Files must not become public merely because a learner completed a task.
+  // Direct object URLs are restricted to their uploader, including legacy
+  // objects whose metadata still says "public".
+  app.get("/objects/:objectPath(*)", authMiddleware, async (req: AuthRequest, res) => {
     try {
-      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
-      
-      // Check if file is public or if user has access
-      const canAccess = await objectStorageService.canAccessObjectEntity({
+      const objects = new ObjectStorageService();
+      const objectFile = await objects.getObjectEntityFile(req.path);
+      const isOwner = await objects.canAccessObjectEntity({
         objectFile,
-        userId: userId || "anonymous",
-        requestedPermission: ObjectPermission.READ,
+        userId: req.user!.id.toString(),
+        requestedPermission: ObjectPermission.WRITE,
       });
-      
-      if (!canAccess) {
-        return res.sendStatus(userId ? 403 : 401);
-      }
-      
-      objectStorageService.downloadObject(objectFile, res);
+      if (!isOwner) return res.sendStatus(403);
+      await objects.downloadObject(objectFile, res);
     } catch (error) {
-      console.error("Error accessing object:", error);
-      if (error instanceof ObjectNotFoundError) {
-        return res.sendStatus(404);
+      if (error instanceof ObjectNotFoundError) return res.sendStatus(404);
+      handleError(res, error);
+    }
+  });
+
+  // Authorization is derived from task progress and roadmap membership, not
+  // from a user-supplied storage path. Learners see only their own evidence;
+  // mentors can see evidence of learners belonging to their roadmap.
+  app.get("/api/tasks/:taskId/evidence/:learnerId", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const taskId = Number(req.params.taskId);
+      const learnerId = Number(req.params.learnerId);
+      if (!Number.isSafeInteger(taskId) || taskId <= 0 ||
+          !Number.isSafeInteger(learnerId) || learnerId <= 0) {
+        return res.status(400).json({ error: "Invalid evidence request" });
       }
-      return res.sendStatus(500);
+
+      const access = await getTaskAccess(req, taskId);
+      if (!access.allowed || !access.week || !access.task) return res.sendStatus(404);
+
+      if (req.user!.role === "LEARNER") {
+        if (req.user!.id !== learnerId) return res.sendStatus(403);
+      } else if (req.user!.role === "MENTOR") {
+        const members = await getLearnerIdsForWeek(access.week);
+        if (members !== null && !members.has(learnerId)) return res.sendStatus(404);
+      } else {
+        return res.sendStatus(403);
+      }
+
+      const progress = await storage.getTaskProgress(taskId, learnerId);
+      if (!progress?.screenshotUrl) return res.sendStatus(404);
+      const objects = new ObjectStorageService();
+      const objectPath = objects.normalizeObjectEntityPath(progress.screenshotUrl);
+      if (!objectPath.startsWith("/objects/uploads/")) return res.sendStatus(404);
+      const objectFile = await objects.getObjectEntityFile(objectPath);
+      // Prevent accidentally serving another uploader's private object if
+      // progress data was tampered with or misassigned.
+      const owner = await objects.getObjectOwner(objectFile);
+      if (owner !== learnerId.toString()) return res.sendStatus(403);
+      await objects.downloadObject(objectFile, res);
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) return res.sendStatus(404);
+      handleError(res, error);
     }
   });
 }

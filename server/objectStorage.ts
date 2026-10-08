@@ -642,6 +642,11 @@ export class ObjectStorageService {
     return normalizedPath;
   }
 
+  async getObjectOwner(objectFile: string): Promise<string | null> {
+    const acl = await this.adapter.getAclPolicy(objectFile);
+    return acl?.owner ?? null;
+  }
+
   async canAccessObjectEntity({
     userId,
     objectFile,
@@ -662,16 +667,13 @@ export class ObjectStorageService {
   async downloadObject(
     objectFile: string,
     res: Response,
-    cacheTtlSec: number = 3600,
   ) {
     try {
       const metadata = await this.adapter.getMetadata(objectFile);
-      const aclPolicy = await this.adapter.getAclPolicy(objectFile);
-      const isPublic = aclPolicy?.visibility === "public";
       const headers: Record<string, string | number> = {
         "Content-Type": metadata.contentType || "application/octet-stream",
-        "Cache-Control":
-          (isPublic ? "public" : "private") + ", max-age=" + cacheTtlSec,
+        // Evidence is always private, including legacy objects marked public.
+        "Cache-Control": "private, no-store",
       };
       if (metadata.size !== undefined) {
         headers["Content-Length"] = metadata.size;
