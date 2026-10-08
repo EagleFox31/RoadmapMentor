@@ -4,7 +4,8 @@
   "ignorePaths": [
     "README.md",
     "docs/**",
-    ".github/ISSUE_TEMPLATE/**"
+    ".github/ISSUE_TEMPLATE/**",
+    ".github/workflows/keepalive.yml"
   ],
   "surfaces": {
     "shared-contracts": {
@@ -65,7 +66,8 @@
       "paths": [
         "Dockerfile",
         "docker-compose.yml",
-        ".dockerignore"
+        ".dockerignore",
+        "render.yaml"
       ],
       "gates": [
         "container-build"
