@@ -127,7 +127,7 @@ export function registerWeekRoutes(app: Express) {
           ...week,
           objectives: objectivesWithTasks,
           deliverables: deliverablesByWeek.get(week.id) ?? [],
-          resources: resourcesByWeek.get(week.id) ?? [],
+          resources: (resourcesByWeek.get(week.id) ?? []).filter(resource => !isLearner || resource.isApproved),
           labs: labsWithSubmissions,
           comments: scopedComments,
         };
