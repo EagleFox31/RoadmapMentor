@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,11 +10,13 @@ import {
 } from "@/components/ui/dialog";
 import { BookOpen, Video, GraduationCap, FileText, ExternalLink, Pencil, Trash2, Play } from "lucide-react";
 import type { Resource } from "@shared/schema";
-import { safeExternalResourceUrl, supportedVideoEmbed } from "@shared/resourceLinks";
+import { canPreviewPdf, safeExternalResourceUrl, supportedVideoEmbed } from "@shared/resourceLinks";
+import { PdfResourceViewer } from "./PdfResourceViewer";
 import { isMentor } from "@/lib/auth";
 
 interface ResourcesListProps {
   resources: Resource[];
+  weekId: number;
   onEdit?: (resource: Resource) => void;
   onDelete?: (resourceId: number) => void;
 }
@@ -38,8 +43,39 @@ const resourceTypeLabels = {
   OTHER: "Autre",
 };
 
-export function ResourcesList({ resources, onEdit, onDelete }: ResourcesListProps) {
+export function ResourcesList({ resources, weekId, onEdit, onDelete }: ResourcesListProps) {
   const [activeVideo, setActiveVideo] = useState<Resource | null>(null);
+  const [activePdf, setActivePdf] = useState<Resource | null>(null);
+  const { toast } = useToast();
+  const mentor = isMentor();
+  const consultationsKey = ["/api/weeks", weekId, "resource-consultations"];
+  const { data: consultations } = useQuery<{ resourceIds: number[] }>({
+    queryKey: consultationsKey,
+    enabled: !mentor && weekId > 0,
+    queryFn: () => apiRequest("GET", `/api/weeks/${weekId}/resource-consultations`),
+  });
+  const consultedIds = new Set(consultations?.resourceIds ?? []);
+  const consultationMutation = useMutation({
+    mutationFn: ({ id, consulted }: { id: number; consulted: boolean }) =>
+      apiRequest("PUT", `/api/resources/${id}/consultation`, { consulted }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: consultationsKey }),
+    onError: () => toast({ title: "Impossible de mettre à jour la consultation", variant: "destructive" }),
+  });
+  const reportMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/resources/${id}/report-unavailable`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/weeks"] });
+      toast({ title: "Lien signalé au mentor" });
+    },
+  });
+  const approveMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/resources/${id}/approve`, {}),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/weeks"] }),
+  });
+  const resolveMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("POST", `/api/resources/${id}/clear-unavailable`, {}),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/weeks"] }),
+  });
   const videoEmbed = activeVideo ? supportedVideoEmbed(activeVideo.url) : null;
   const activeExternalUrl = activeVideo ? safeExternalResourceUrl(activeVideo.url) : null;
 
@@ -59,6 +95,8 @@ export function ResourcesList({ resources, onEdit, onDelete }: ResourcesListProp
             const typeLabel = resourceTypeLabels[type] || "Autre";
             const externalUrl = safeExternalResourceUrl(resource.url);
             const canPlay = type === "VIDEO" ? supportedVideoEmbed(resource.url) : null;
+            const pdfPreview = canPreviewPdf(resource.url);
+            const consulted = consultedIds.has(resource.id);
 
             return (
               <Card key={resource.id} className="bg-card rounded-xl p-4 shadow-md group hover:shadow-lg transition-shadow" data-testid={`card-resource-${resource.id}`}>
@@ -94,9 +132,26 @@ export function ResourcesList({ resources, onEdit, onDelete }: ResourcesListProp
                       {!externalUrl && (
                         <span className="text-xs text-destructive">Lien invalide : contactez votre mentor</span>
                       )}
+                      {mentor && !resource.isApproved && (
+                        <p className="text-xs text-amber-600" data-testid={`resource-pending-${resource.id}`}>
+                          Lien en attente de vérification : invisible pour l'apprenant
+                        </p>
+                      )}
+                      {resource.unavailableReportedAt && (
+                        <p className="text-xs text-destructive" data-testid={`resource-unavailable-${resource.id}`}>
+                          Lien signalé indisponible — vérification du mentor nécessaire
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-1 ml-2">
+                    {pdfPreview && (
+                      <Button type="button" variant="outline" size="sm"
+                        onClick={() => setActivePdf(resource)}
+                        data-testid={`button-preview-pdf-${resource.id}`}>
+                        Aperçu PDF
+                      </Button>
+                    )}
                     {canPlay && (
                       <Button type="button" variant="outline" size="sm"
                         onClick={() => setActiveVideo(resource)}
@@ -113,7 +168,41 @@ export function ResourcesList({ resources, onEdit, onDelete }: ResourcesListProp
                         </a>
                       </Button>
                     )}
-                    {isMentor() && (
+                    {!mentor && (
+                      <div className="flex flex-wrap items-center gap-1">
+                        <Button type="button" variant="outline" size="sm"
+                          disabled={consultationMutation.isPending}
+                          onClick={() => consultationMutation.mutate({ id: resource.id, consulted: !consulted })}
+                          data-testid={`button-consult-resource-${resource.id}`}>
+                          {consulted ? "Consultée ✓" : "Marquer comme consultée"}
+                        </Button>
+                        {!resource.unavailableReportedAt && (
+                          <Button type="button" variant="ghost" size="sm"
+                            disabled={reportMutation.isPending}
+                            onClick={() => reportMutation.mutate(resource.id)}
+                            data-testid={`button-report-resource-${resource.id}`}>
+                            Signaler un lien indisponible
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                    {mentor && !resource.isApproved && (
+                      <Button type="button" size="sm" variant="outline"
+                        disabled={approveMutation.isPending}
+                        onClick={() => approveMutation.mutate(resource.id)}
+                        data-testid={`button-approve-resource-${resource.id}`}>
+                        Vérifié — approuver
+                      </Button>
+                    )}
+                    {mentor && !!resource.unavailableReportedAt && (
+                      <Button type="button" size="sm" variant="outline"
+                        disabled={resolveMutation.isPending}
+                        onClick={() => resolveMutation.mutate(resource.id)}
+                        data-testid={`button-clear-report-${resource.id}`}>
+                        Lien corrigé
+                      </Button>
+                    )}
+                    {mentor && (
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                         <Button size="icon" variant="ghost" onClick={() => onEdit?.(resource)}
                           className="h-8 w-8" aria-label={`Modifier ${resource.label}`}
@@ -171,6 +260,11 @@ export function ResourcesList({ resources, onEdit, onDelete }: ResourcesListProp
           </div>
         </DialogContent>
       </Dialog>
+      <PdfResourceViewer
+        title={activePdf?.label ?? ""}
+        url={activePdf?.url ?? null}
+        onClose={() => setActivePdf(null)}
+      />
     </>
   );
 }
