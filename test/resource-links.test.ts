@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { safeExternalResourceUrl, supportedVideoEmbed } from "../shared/resourceLinks";
+import { canPreviewPdf, safeExternalResourceUrl, supportedVideoEmbed } from "../shared/resourceLinks";
 import { insertResourceSchema } from "../shared/schema";
 
 const videoId = "dQw4w9WgXcQ";
@@ -83,4 +83,12 @@ test("resource creation schema rejects scriptable and credential-bearing links",
   for (const url of ["javascript:alert(1)", "data:text/html,bad", "https://u:p@youtube.com/watch?v=" + videoId]) {
     assert.equal(insertResourceSchema.safeParse({ ...base, url }).success, false, url);
   }
+});
+
+test("PDF previews require a direct HTTPS .pdf URL", () => {
+  assert.equal(canPreviewPdf("https://docs.example.org/reference.pdf?v=3"), true);
+  assert.equal(canPreviewPdf("https://docs.example.org/REFERENCE.PDF"), true);
+  assert.equal(canPreviewPdf("https://docs.example.org/file.pdf.html"), false);
+  assert.equal(canPreviewPdf("http://docs.example.org/file.pdf"), false);
+  assert.equal(canPreviewPdf("https://docs.example.org/preview"), false);
 });
