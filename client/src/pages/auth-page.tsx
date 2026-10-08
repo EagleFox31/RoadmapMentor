@@ -82,12 +82,12 @@ export default function AuthPage() {
           <div
             key={src}
             className={`absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ${
-              i === bgIndex ? "opacity-25" : "opacity-0"
+              i === bgIndex ? "opacity-60" : "opacity-0"
             }`}
             style={{ backgroundImage: `url('${src}')` }}
           />
         ))}
-        <div className="absolute inset-0 bg-gradient-to-br from-foreground/85 via-foreground/70 to-foreground/90" />
+        <div className="absolute inset-0 bg-gradient-to-br from-foreground/70 via-foreground/50 to-foreground/80" />
 
         <span className="relative text-sm font-medium tracking-wide">Roadmap Mentor</span>
 
