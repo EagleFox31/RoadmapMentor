@@ -39,3 +39,11 @@ Generalised lesson: any mechanical edit or merge sequence needs a cheap post-con
 | RM-014 was merged with `tsc`, unit tests and `vite build` green, but the dev app rendered a blank page (`Cannot access 'lazy' before initialization`) | The scripted edit inserted `const X = lazy(...)` lines between `import` statements, before the import that provides `lazy`; no browser run was done | Imports moved above the `lazy` declarations | `test/e2e/error-messages.e2e.py` (login error, invite error, lazy routes, `pageerror` and console errors fail the run) is part of CI; any UI-visible change is checked in a browser before delivery |
 
 Generalised lesson: a green build does not prove the UI renders. Run the browser journey for every client change.
+
+## 2026-10-08 — Mentor e2e stale after the roadmap page was scoped to one roadmap
+
+| Context | Root cause | Resolution | Prevention |
+| --- | --- | --- | --- |
+| `mentor-learner.e2e.py` timed out waiting for `card-week-<id>` on a reused database | The page shows one active roadmap (first listed, or last stored); the test assumed the mentor's page listed the new roadmap. Repeated runs also exhausted the in-memory auth limiter (20 per 15 minutes), turning later runs into 429 failures | `open_roadmap` opens `/roadmap?roadmap=<id>` before each week lookup; run with `RATE_LIMIT_AUTH_MAX=1000` | A UI journey must select the entity under test explicitly; when a client change scopes a view, grep the e2e suites for the old assumption |
+
+Generalised lesson: a test that relies on "the first item in a list" breaks silently when data accumulates; address fixtures by id.
