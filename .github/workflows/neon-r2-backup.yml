@@ -41,9 +41,15 @@ jobs:
       - name: Install backup tooling
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y age awscli postgresql-client
-          # pg_dump must be at least as recent as the Neon database server.
-          pg_dump --version
+          sudo apt-get install -y ca-certificates curl age awscli
+          # Install a compatible PostgreSQL 18 client from the official PGDG repository.
+          sudo install -d -m 0755 /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-18
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+          /usr/lib/postgresql/18/bin/pg_dump --version
           age --version
           aws --version
 
