@@ -16,13 +16,6 @@ lab = api("POST", f"/api/weeks/{seeded['week']}/labs", mentor, {
     "testCode": "assert 1 == 1",
     "isPublished": True,
 })
-submission = api("PUT", f"/api/labs/{lab['id']}/submission", reg["token"], {
-    "code": "print('bonjour')",
-    "output": "Tests réussis",
-    "submit": True,
-})
-assert submission["executionTrust"] == "CLIENT_UNVERIFIED"
-
 with sync_playwright() as p:
     browser = p.chromium.launch()
     page = browser.new_page()
@@ -36,6 +29,16 @@ with sync_playwright() as p:
     tid(page, "button-validate-week").click()
     expect(tid(page, f"icon-validated-{seeded['week']}")).to_be_visible()
     steps.ok("validates the week from the UI")
+
+    # Learners cannot submit work until the mentor validates the week.
+    submission = api("PUT", f"/api/labs/{lab['id']}/submission", reg["token"], {
+        "code": "print('bonjour')",
+        "output": "Tests réussis",
+        "submit": True,
+    })
+    assert submission["executionTrust"] == "CLIENT_UNVERIFIED"
+    page.reload(); page.wait_for_load_state("networkidle")
+    tid(page, f"card-week-{seeded['week']}").click()
 
     lab_card = tid(page, f"card-lab-{lab['id']}")
     expect(lab_card).to_be_visible()
