@@ -41,7 +41,8 @@
         "postcss.config.*"
       ],
       "gates": [
-        "verify"
+        "verify",
+        "integration"
       ],
       "dependsOn": [
         "shared-contracts"

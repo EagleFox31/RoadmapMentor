@@ -1,5 +1,6 @@
 import { type Express } from "express";
 import { storage } from "../storage";
+import { asLabSubmissionView } from "../domain/labExecution";
 import { authMiddleware, requireMentor, type AuthRequest } from "../auth";
 import { insertWeekSchema, insertRoadmapBulkSchema, type Week } from "@shared/schema";
 import { handleError } from "../http/errors";
@@ -112,13 +113,13 @@ export function registerWeekRoutes(app: Express) {
           const submissions = submissionsByLab.get(lab.id) ?? [];
           return {
             ...lab,
-            submissions: isLearner
+            submissions: (isLearner
               ? submissions.filter((entry) => entry.learnerId === currentUserId)
               : roadmapLearnerIds === null
                 ? submissions
                 : submissions.filter((entry) =>
                     roadmapLearnerIds.has(entry.learnerId),
-                  ),
+                  )).map(asLabSubmissionView),
           };
         });
 

@@ -1001,7 +1001,9 @@ export type InsertResource = z.infer<typeof insertResourceSchema>;
 export type Lab = typeof labs.$inferSelect;
 export type InsertLab = z.infer<typeof insertLabSchema>;
 export type LabSubmission = typeof labSubmissions.$inferSelect;
-export type LabWithSubmissions = Lab & { submissions: LabSubmission[] };
+// Browser-supplied output cannot provide evidence of a server-verified Python run.
+export type LabSubmissionView = LabSubmission & { executionTrust: "CLIENT_UNVERIFIED" };
+export type LabWithSubmissions = Lab & { submissions: LabSubmissionView[] };
 
 export type TaskProgress = typeof taskProgress.$inferSelect;
 export type InsertTaskProgress = z.infer<typeof insertTaskProgressSchema>;

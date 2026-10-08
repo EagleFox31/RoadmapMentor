@@ -6,22 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Lab, LabSubmission } from "@shared/schema";
+import type { Lab, LabSubmissionView } from "@shared/schema";
 
 interface PythonLabRunnerProps {
   lab: Lab;
-  submission?: LabSubmission;
+  submission?: LabSubmissionView;
 }
 
 function Runner({ lab, submission }: PythonLabRunnerProps) {
   const [code, setCode] = useState(submission?.code || lab.starterCode || "");
-  const [hasRun, setHasRun] = useState(false);
+  const [lastExecutedCode, setLastExecutedCode] = useState<string | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
   const { runPython, stdout, stderr, isLoading, isReady, isRunning, interruptExecution } = usePython();
   const { toast } = useToast();
 
   useEffect(() => {
     setCode(submission?.code || lab.starterCode || "");
-    setHasRun(false);
+    setLastExecutedCode(null);
+    setRunError(null);
   }, [lab.id, lab.starterCode, submission?.code]);
 
   const executableCode = useMemo(
@@ -29,6 +31,8 @@ function Runner({ lab, submission }: PythonLabRunnerProps) {
     [code, lab.testCode],
   );
   const output = [stdout, stderr].filter(Boolean).join("\n").slice(0, 20000);
+  const executedCurrentCode = lastExecutedCode !== null && lastExecutedCode === code;
+  const canSubmit = executedCurrentCode && !stderr && !runError && !isRunning && !isLoading;
 
   const saveMutation = useMutation({
     mutationFn: async (submit: boolean) => apiRequest("PUT", `/api/labs/${lab.id}/submission`, {
@@ -46,14 +50,24 @@ function Runner({ lab, submission }: PythonLabRunnerProps) {
   });
 
   const execute = async () => {
-    setHasRun(false);
-    await runPython(executableCode);
-    setHasRun(true);
+    setLastExecutedCode(null);
+    setRunError(null);
+    const source = code;
+    try {
+      await runPython(executableCode);
+      setLastExecutedCode(source);
+    } catch (error) {
+      setRunError(error instanceof Error ? error.message : "Exécution impossible");
+    }
   };
 
   return (
     <div className="space-y-4">
       <div className="rounded-lg border bg-muted/30 p-3 text-sm whitespace-pre-wrap">{lab.instructions}</div>
+      <p className="text-sm text-muted-foreground">
+        Exécution locale dans le navigateur : cette sortie n'est pas vérifiée par le serveur.
+        La validation définitive appartient au mentor.
+      </p>
       <div className="space-y-2">
         <label htmlFor={`lab-code-${lab.id}`} className="text-sm font-medium">Votre code Python</label>
         <Textarea id={`lab-code-${lab.id}`} className="min-h-64 font-mono text-sm" spellCheck={false} value={code} onChange={(event) => setCode(event.target.value)} />
@@ -71,15 +85,22 @@ function Runner({ lab, submission }: PythonLabRunnerProps) {
         <Button type="button" variant="outline" onClick={() => saveMutation.mutate(false)} disabled={saveMutation.isPending}>
           <Save className="mr-2 h-4 w-4" />Enregistrer
         </Button>
-        <Button type="button" variant="secondary" onClick={() => saveMutation.mutate(true)} disabled={saveMutation.isPending || !hasRun || Boolean(stderr)}>
+        <Button type="button" variant="secondary" onClick={() => saveMutation.mutate(true)} disabled={saveMutation.isPending || !canSubmit}>
           <Send className="mr-2 h-4 w-4" />Envoyer au mentor
         </Button>
       </div>
 
-      {(hasRun || stdout || stderr) && (
-        <div className={`rounded-lg border p-3 font-mono text-sm whitespace-pre-wrap ${stderr ? "border-destructive/40 bg-destructive/5" : "border-green-500/40 bg-green-500/5"}`}>
-          <p className="mb-2 font-sans font-semibold">{stderr ? "Tests à corriger" : "Tests réussis"}</p>
-          {output || "Le programme s’est terminé sans sortie."}
+      {lastExecutedCode !== null && !executedCurrentCode && (
+        <p role="status" className="text-sm text-amber-700">
+          Code modifié depuis la dernière exécution : relancez le lab avant l'envoi.
+        </p>
+      )}
+      {(executedCurrentCode || runError) && (
+        <div role="status" className={`rounded-lg border p-3 font-mono text-sm whitespace-pre-wrap ${stderr || runError ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/30"}`}>
+          <p className="mb-2 font-sans font-semibold">
+            {stderr || runError ? "Erreur pendant l'exécution locale" : "Exécution locale terminée (non vérifiée)"}
+          </p>
+          {runError || output || "Le programme s’est terminé sans sortie."}
         </div>
       )}
       {submission?.mentorFeedback && (

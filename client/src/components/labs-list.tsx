@@ -89,10 +89,20 @@ export function LabsList({ labs, onEdit, onDelete }: LabsListProps) {
                     <div key={item.id} className="space-y-2 rounded-md bg-muted/40 p-3 text-sm">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span>Apprenant #{item.learnerId} · {statusLabels[item.status]}</span>
+                        {item.executionTrust === "CLIENT_UNVERIFIED" && (
+                          <Badge variant="outline">Résultat non vérifié</Badge>
+                        )}
                         <details>
                           <summary className="cursor-pointer text-primary">Voir la solution</summary>
                           <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-background p-2 text-xs">{item.code}</pre>
-                          {item.output && <pre className="mt-2 max-h-32 overflow-auto whitespace-pre-wrap rounded bg-background p-2 text-xs">{item.output}</pre>}
+                          {item.output && (
+                            <>
+                              <p className="mt-2 text-xs text-muted-foreground">
+                                Exécution locale non vérifiée : ce résultat est transmis par l'apprenant, pas par le serveur.
+                              </p>
+                              <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap rounded bg-background p-2 text-xs">{item.output}</pre>
+                            </>
+                          )}
                         </details>
                       </div>
                       {item.status === "SUBMITTED" && (
