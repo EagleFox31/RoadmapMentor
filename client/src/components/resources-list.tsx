@@ -132,19 +132,25 @@ export function ResourcesList({ resources, onEdit, onDelete }: ResourcesListProp
                 title={`Lecteur vidéo : ${activeVideo?.label ?? "Ressource"}`}
                 src={videoEmbed.embedUrl}
                 className="h-full w-full border-0"
-                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allow="autoplay; encrypted-media; picture-in-picture"
                 allowFullScreen
                 referrerPolicy="strict-origin-when-cross-origin"
                 data-testid="iframe-resource-video"
               />
             </div>
           )}
-          {activeExternalUrl && (
-            <a href={activeExternalUrl} target="_blank" rel="noopener noreferrer"
-              className="text-sm text-primary underline" data-testid="link-resource-player-fallback">
-              Ouvrir la vidéo sur le site d'origine
-            </a>
-          )}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {activeExternalUrl && (
+              <a href={activeExternalUrl} target="_blank" rel="noopener noreferrer"
+                className="text-sm text-primary underline" data-testid="link-resource-player-fallback">
+                Ouvrir la vidéo sur le site d'origine
+              </a>
+            )}
+            <Button type="button" variant="outline" onClick={() => setActiveVideo(null)}
+              data-testid="button-close-resource-player">
+              Fermer le lecteur
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>
