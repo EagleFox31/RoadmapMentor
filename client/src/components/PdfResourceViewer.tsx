@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { safeExternalResourceUrl } from "@shared/resourceLinks";
 
 const MAX_PREVIEW_BYTES = 16 * 1024 * 1024;
@@ -102,12 +103,17 @@ export function PdfResourceViewer({ title, url, onClose }: {
             data-testid="iframe-resource-pdf"
           />
         )}
-        {safe && (
-          <a href={safe} target="_blank" rel="noopener noreferrer"
-            className="text-sm text-primary underline" data-testid="link-resource-pdf-original">
-            Ouvrir le PDF sur son site d'origine
-          </a>
-        )}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {safe && (
+            <a href={safe} target="_blank" rel="noopener noreferrer"
+              className="text-sm text-primary underline" data-testid="link-resource-pdf-original">
+              Ouvrir le PDF sur son site d'origine
+            </a>
+          )}
+          <Button variant="outline" type="button" onClick={onClose} data-testid="button-close-pdf-preview">
+            Fermer l'aperçu
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
