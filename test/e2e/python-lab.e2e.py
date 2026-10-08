@@ -64,7 +64,7 @@ with sync_playwright() as p:
     expect(page.get_by_text("PYTHON_MODIFIED", exact=False).last).to_be_visible()
     expect(submit_btn).to_be_enabled()
     submit_btn.click()
-    expect(page.get_by_text("Lab envoyé")).to_be_visible(timeout=10000)
+    expect(page.get_by_text("Lab envoyé", exact=True)).to_be_visible(timeout=10000)
     steps.ok("executed code can be submitted")
 
     weeks = api("GET", f"/api/weeks?roadmapId={seeded['roadmap']}", learner["token"])
