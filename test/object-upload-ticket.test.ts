@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken";
 import { issueObjectUploadTicket, verifyObjectUploadTicket } from "../server/security/objectUploadTicket";
 import { resolveJwtSecret } from "../server/security";
 
+// Unit tests run without the application server, so set an isolated test secret.
+process.env.JWT_SECRET = "test-only-object-upload-ticket-signing-key";
 const objectId = "123e4567-e89b-42d3-a456-426614174000";
 
 test("ticket authorizes only the requesting user, exact object and a valid signature", () => {
