@@ -8,11 +8,11 @@ import { setAuthToken, setCurrentUser } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
 
 const BACKGROUNDS = [
-  "/roadmap1.png",
-  "/roadmap2.png",
-  "/roadmap3.png",
-  "/roadmap4.png",
-  "/roadmap6.png",
+  "/roadmap1.webp",
+  "/roadmap2.webp",
+  "/roadmap3.webp",
+  "/roadmap4.webp",
+  "/roadmap6.webp",
 ];
 
 const POINTS = [
