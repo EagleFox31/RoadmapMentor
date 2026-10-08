@@ -53,7 +53,7 @@ with sync_playwright() as p:
     expect(video_frame).to_have_attribute("src", "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0")
     expect(tid(page, "link-resource-player-fallback")).to_have_attribute(
         "href", "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-    page.get_by_role("dialog").press("Escape")
+    tid(page, "button-close-resource-player").click()
     expect(video_frame).to_have_count(0)
     assert tid(page, f"button-play-resource-{external['id']}").count() == 0
     assert tid(page, f"button-open-resource-{external['id']}").count() == 1
