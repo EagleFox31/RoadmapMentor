@@ -25,9 +25,13 @@ pg_restore --list "$WORK/neon.dump" >/dev/null
 age -r "$AGE_RECIPIENT" -o "$WORK/neon.dump.age" "$WORK/neon.dump"
 sha256sum "$WORK/neon.dump.age" | awk '{print $1}' > "$WORK/neon.dump.age.sha256"
 
-# Copy with metadata preserved (including the app ACL owner). Never use --delete.
+# Before marking a snapshot successful, compare source and destination
+# object counts. This detects partial copies without touching the source.
+SOURCE_COUNT="$(aws --endpoint-url "$R2_ENDPOINT" s3 ls "s3://$R2_EVIDENCE_BUCKET/" --recursive | awk 'END {print NR+0}')"
+# Preserve object metadata (including the app's 'aclpolicy' owner). No --delete.
 aws --endpoint-url "$R2_ENDPOINT" s3 cp "s3://$R2_EVIDENCE_BUCKET/" "$DEST/evidence/" --recursive --metadata-directive COPY --only-show-errors
 COUNT="$(aws --endpoint-url "$R2_ENDPOINT" s3 ls "$DEST/evidence/" --recursive | awk 'END {print NR+0}')"
+[[ "$COUNT" == "$SOURCE_COUNT" ]] || die "incomplete evidence copy: counts differ"
 aws --endpoint-url "$R2_ENDPOINT" s3 cp "$WORK/neon.dump.age" "$DEST/neon.dump.age" --only-show-errors
 aws --endpoint-url "$R2_ENDPOINT" s3 cp "$WORK/neon.dump.age.sha256" "$DEST/neon.dump.age.sha256" --only-show-errors
 HASH="$(cat "$WORK/neon.dump.age.sha256")"

@@ -31,7 +31,10 @@ function createFixture() {
     'done',
     'exit 22',
   ]);
-  executable(bin, "pg_restore", [ 'exit 0' ]);
+  executable(bin, "pg_restore", [
+    'if [[ "$*" == *"--exit-on-error"* ]]; then test -n "$PGDATABASE"; fi',
+    'exit 0',
+  ]);
   executable(bin, "age", [
     'out=""; input=""',
     'while [[ "$#" -gt 0 ]]; do',
