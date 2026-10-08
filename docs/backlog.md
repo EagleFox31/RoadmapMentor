@@ -354,35 +354,27 @@ Le projet ne possède pas de modèle de lab. Les exercices sont actuellement rep
 - La progression distingue clairement visionnage, tâches, labs et livrable final.
 - Les labs générés par IA restent en brouillon tant qu'un mentor ne les a pas validés.
 
-### RM-019 — Lire les vidéos et ressources compatibles dans l'application
+### RM-019 — Consulter et exploiter des ressources dans le parcours andragogique
 
-> **Statut : en cours — lot 1 (lecteur vidéo sûr).** Lecture YouTube/Vimeo dans une fenêtre responsive accessible, iframe autorisée uniquement sur les deux domaines des lecteurs, fallback externe pour les autres ressources. Les URL sont validées à la création/modification ; les anciennes ressources dangereuses ne deviennent jamais cliquables. Tests unitaires, API et Chromium ajoutés. **Reste :** visionneuse PDF, suivi explicite de consultation, modération des liens IA et gestion des vidéos supprimées.
+> **Statut : implémentation complète sur la branche RM-019 — validation CI requise avant fusion.** Lots 1 et 2 fusionnés dans main (lecteur YouTube/Vimeo et contextualisation problème → expérimentation). Dernier lot : consultation volontaire, aperçu de PDF compatibles, approbation explicite des liens issus de l'IA et signalement des liens indisponibles.
 
-> **Lot 2 : contexte andragogique.** Chaque ressource peut préciser le problème concret à résoudre, une mise en pratique autonome, une durée indicative, une priorité et un ordre. La lecture seule ne valide pas de compétence. Migration additive `0006` avec compatibilité des données historiques.
+**Parcours et contrôle :**
 
-**Constat historique**
+- Les vidéos YouTube/Vimeo compatibles se lisent dans une fenêtre intégrée, avec fermeture et lien externe de secours ; aucune iframe libre.
+- Une URL HTTPS finissant par `.pdf` propose un aperçu local : téléchargement par le navigateur sous les règles CORS du fournisseur, limite de 16 Mio, contrôle du préfixe PDF, iframe temporaire `blob:` dans un bac à sable, avec lien vers l'original. Les PDF externes sans CORS restent accessibles uniquement sur leur site.
+- Toute ressource peut décrire le problème réel qu'elle aide à résoudre, l'expérimentation autonome attendue, une durée indicative, une priorité et un ordre.
+- L'apprenant marque ou retire **volontairement** l'état « consultée ». Cette déclaration est individuelle, idempotente, ne valide aucune tâche/compétence et reste protégée par les permissions roadmap/semaine.
+- Les ressources importées par `POST /api/weeks/bulk` (parcours de génération IA) sont **en attente d'approbation du mentor**. Leurs liens n'apparaissent pas dans l'API apprenant avant cette approbation. Les ressources créées manuellement par le mentor restent visibles par défaut.
+- Modifier une URL la repasse en attente de validation, efface les signalements liés à l'ancienne URL et réinitialise les consultations du contenu remplacé.
+- L'apprenant peut signaler un lien devenu indisponible ; le mentor voit le signalement et le clôt explicitement une fois le lien corrigé. **Aucun robot ne parcourt des URL IA sur le serveur** (risque SSRF) ; la vérification de leur pertinence et disponibilité est humaine.
+- Les articles et documentations affichent leur contexte de résolution de problème et conservent le lien externe.
 
-Le type `VIDEO` existait déjà, mais toutes les ressources s'ouvraient dans un nouvel onglet. Le modèle ne stockait ni durée, ni contexte andragogique, ni caractère essentiel.
+**Recette et limites assumées :**
 
-**Travail**
-
-- Étendre les ressources avec contexte-problème, expérimentation autonome, durée indicative, ordre et caractère essentiel/complémentaire ; fournisseur vidéo déduit de l'URL.
-- Détecter et normaliser côté serveur les URL YouTube et Vimeo prises en charge.
-- Ajouter un lecteur vidéo intégré, responsive et accessible dans le détail de la semaine.
-- Afficher les PDF compatibles dans une visionneuse interne et conserver un lien externe de secours.
-- Afficher les articles et documentations sous forme de fiche avec résumé et ouverture externe.
-- Refuser l'intégration iframe de domaines arbitraires ; utiliser une liste de fournisseurs autorisés et une politique CSP adaptée.
-- Ajouter une action explicite « Marquer comme vue » ; ne pas prétendre qu'une vidéo est terminée sans signal fiable du lecteur.
-- Vérifier les liens proposés par l'IA et laisser le mentor les approuver avant publication.
-
-**Critères d'acceptation**
-
-- Une vidéo YouTube ou Vimeo valide peut être regardée sans quitter la semaine.
-- Une ressource non intégrable reste accessible dans un nouvel onglet avec une indication claire.
-- Une URL inconnue ne peut jamais devenir une iframe arbitraire.
-- Le lecteur fonctionne sur mobile, au clavier et en plein écran.
-- L'apprenant voit le problème, la mise en pratique autonome, la durée indicative et la priorité ; l'état de consultation reste à réaliser.
-- Un lien invalide ou supprimé est signalé au mentor sans casser l'affichage de la semaine.
+- Typage, tests unitaires, intégration API (droits mentor/apprenant, imports IA, consultations, approbation, signalements), Chromium (PDF, vidéo, conservation de la consultation) et migration versionnée `0007` soumis à CI.
+- Aucun suivi automatique de visionnage ou attestation de compétence.
+- La disponibilité d'un contenu externe n'est pas garantie en permanence ; liens morts signalés par les utilisateurs, pas détectés par un crawler.
+- L'aperçu PDF dépend de l'autorisation CORS et du lecteur PDF du navigateur ; l'original reste toujours accessible si l'aperçu est impossible.
 
 ### RM-020 — Inviter un apprenant par e-mail avec inscription par lien
 
