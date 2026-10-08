@@ -10,6 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -33,6 +35,11 @@ export function ResourceModal({ isOpen, onClose, onSubmit, weekId, resource, isL
     label: "",
     url: "",
     resourceType: "DOC" as "DOC" | "VIDEO" | "COURSE" | "ARTICLE" | "OTHER",
+    problemToSolve: "",
+    practicePrompt: "",
+    estimatedMinutes: "",
+    isRequired: false,
+    orderIndex: "0",
   });
 
   useEffect(() => {
@@ -41,12 +48,22 @@ export function ResourceModal({ isOpen, onClose, onSubmit, weekId, resource, isL
         label: resource.label,
         url: resource.url,
         resourceType: resource.resourceType as any,
+        problemToSolve: resource.problemToSolve ?? "",
+        practicePrompt: resource.practicePrompt ?? "",
+        estimatedMinutes: resource.estimatedMinutes?.toString() ?? "",
+        isRequired: resource.isRequired,
+        orderIndex: resource.orderIndex.toString(),
       });
     } else {
       setFormData({
         label: "",
         url: "",
         resourceType: "DOC",
+        problemToSolve: "",
+        practicePrompt: "",
+        estimatedMinutes: "",
+        isRequired: false,
+        orderIndex: "0",
       });
     }
   }, [resource, isOpen]);
@@ -55,19 +72,25 @@ export function ResourceModal({ isOpen, onClose, onSubmit, weekId, resource, isL
     e.preventDefault();
     onSubmit({
       ...formData,
+      label: formData.label.trim(),
+      url: formData.url.trim(),
+      problemToSolve: formData.problemToSolve.trim() || null,
+      practicePrompt: formData.practicePrompt.trim() || null,
+      estimatedMinutes: formData.estimatedMinutes ? Number(formData.estimatedMinutes) : null,
+      orderIndex: Number(formData.orderIndex || "0"),
       weekId,
     });
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-gradient-to-br from-neutral-900/95 to-neutral-800/95 backdrop-blur-xl border-white/20 text-white shadow-2xl max-w-md">
+      <DialogContent className="bg-gradient-to-br from-neutral-900/95 to-neutral-800/95 backdrop-blur-xl border-white/20 text-white shadow-2xl max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">
             {resource ? "Modifier la ressource" : "Nouvelle ressource"}
           </DialogTitle>
           <DialogDescription className="text-white/60">
-            {resource ? "Modifiez les informations de la ressource" : "Créez une nouvelle ressource pour cette semaine"}
+            Reliez la ressource à un problème réel et à une expérimentation autonome.
           </DialogDescription>
         </DialogHeader>
 
@@ -122,7 +145,54 @@ export function ResourceModal({ isOpen, onClose, onSubmit, weekId, resource, isL
             />
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+            <div className="space-y-2">
+            <Label htmlFor="resource-problem" className="text-white text-sm">
+              Quel problème concret cette ressource aide-t-elle à résoudre ?
+            </Label>
+            <Textarea id="resource-problem" value={formData.problemToSolve} maxLength={1200}
+              onChange={(e) => setFormData({ ...formData, problemToSolve: e.target.value })}
+              placeholder="Ex. Une modification casse le projet : comment retrouver une version stable ?"
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+              data-testid="input-resource-problem" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="resource-practice" className="text-white text-sm">
+              Que doit essayer l'apprenant ensuite, en autonomie ?
+            </Label>
+            <Textarea id="resource-practice" value={formData.practicePrompt} maxLength={1200}
+              onChange={(e) => setFormData({ ...formData, practicePrompt: e.target.value })}
+              placeholder="Ex. Créer une branche, provoquer un bug, diagnostiquer et corriger."
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
+              data-testid="input-resource-practice" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="resource-duration" className="text-white text-sm">Temps indicatif (min)</Label>
+              <Input id="resource-duration" type="number" min={1} max={480} step={1}
+                value={formData.estimatedMinutes}
+                onChange={(e) => setFormData({ ...formData, estimatedMinutes: e.target.value })}
+                className="bg-white/10 border-white/20 text-white" data-testid="input-resource-duration" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="resource-order" className="text-white text-sm">Ordre dans la semaine</Label>
+              <Input id="resource-order" type="number" min={0} max={10000} step={1}
+                value={formData.orderIndex}
+                onChange={(e) => setFormData({ ...formData, orderIndex: e.target.value })}
+                className="bg-white/10 border-white/20 text-white" data-testid="input-resource-order" />
+            </div>
+          </div>
+          <div className="flex items-start gap-3 rounded-lg border border-white/20 p-3">
+            <Checkbox id="resource-required" checked={formData.isRequired}
+              onCheckedChange={(checked) => setFormData({ ...formData, isRequired: checked === true })}
+              data-testid="checkbox-resource-required" />
+            <div>
+              <Label htmlFor="resource-required" className="text-white text-sm cursor-pointer">Ressource essentielle</Label>
+              <p className="text-xs text-white/70">
+                Indication du mentor. Regarder la ressource ne valide pas automatiquement une compétence.
+              </p>
+            </div>
+          </div>
+        <DialogFooter className="gap-2 sm:gap-0">
             <Button
               type="button"
               variant="outline"

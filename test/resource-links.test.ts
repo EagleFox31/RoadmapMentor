@@ -56,6 +56,26 @@ test("only credential-free HTTP(S) resource links are ever clickable", () => {
   }
 });
 
+test("andragogical context is validated, and stays optional for legacy resources", () => {
+  const base = { weekId: 1, label: "Git", resourceType: "DOC", url: "https://example.org/git" };
+  const legacy = insertResourceSchema.safeParse(base);
+  assert.equal(legacy.success, true);
+  if (legacy.success) {
+    assert.equal(legacy.data.isRequired, false);
+    assert.equal(legacy.data.orderIndex, 0);
+  }
+  assert.equal(insertResourceSchema.safeParse({
+    ...base, problemToSolve: "What caused this deployment failure?",
+    practicePrompt: "Reproduce it, correct it and document the fix.",
+    estimatedMinutes: 15, isRequired: true, orderIndex: 3,
+  }).success, true);
+  for (const bad of [
+    { estimatedMinutes: 0 }, { estimatedMinutes: 481 },
+    { orderIndex: -1 }, { isRequired: "yes" },
+    { practicePrompt: "x".repeat(1201) },
+  ]) assert.equal(insertResourceSchema.safeParse({ ...base, ...bad }).success, false, JSON.stringify(bad));
+});
+
 test("resource creation schema rejects scriptable and credential-bearing links", () => {
   const base = { weekId: 1, label: "Ressource", resourceType: "VIDEO" };
   assert.equal(insertResourceSchema.safeParse({ ...base, url: "https://youtu.be/" + videoId }).success, true);

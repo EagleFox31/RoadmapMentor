@@ -36,6 +36,9 @@ with sync_playwright() as p:
     video = api("POST", f"/api/weeks/{seeded['week']}/resources", mentor, {
         "label": "Vidéo YouTube guidée", "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
         "resourceType": "VIDEO",
+        "problemToSolve": "Comment retrouver une version stable après un bug ?",
+        "practicePrompt": "Créer une branche, reproduire le bug et revenir au commit stable.",
+        "estimatedMinutes": 15, "isRequired": True, "orderIndex": 1,
     })
     external = api("POST", f"/api/weeks/{seeded['week']}/resources", mentor, {
         "label": "Vidéo non intégrable", "url": "https://example.org/video",
@@ -48,6 +51,10 @@ with sync_playwright() as p:
     steps.ok("sees the validated week and not the unvalidated one")
 
     tid(page, f"card-week-{seeded['week']}").click()
+    expect(tid(page, f"resource-priority-{video['id']}")).to_contain_text("Essentielle")
+    expect(tid(page, f"resource-problem-{video['id']}")).to_contain_text("version stable")
+    expect(tid(page, f"resource-practice-{video['id']}")).to_contain_text("Créer une branche")
+    expect(tid(page, f"card-resource-{video['id']}")).to_contain_text("15 min indicatives")
     tid(page, f"button-play-resource-{video['id']}").click()
     video_frame = tid(page, "iframe-resource-video")
     expect(video_frame).to_have_attribute("src", "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0")
