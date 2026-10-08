@@ -54,6 +54,30 @@ describe("HTTP hardening", { skip: !BASE && "TEST_BASE_URL not set" }, () => {
     assert.notEqual(res.status, 201);
   });
 
+  test("SVG disguised as PNG cannot be saved as learner evidence", async () => {
+    const targetResponse = await fetch(`${BASE}/api/objects/upload`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${mentor}` },
+      body: "{}",
+    });
+    assert.equal(targetResponse.status, 200);
+    const target = await targetResponse.json();
+    const upload = await fetch(`${BASE}${target.uploadURL}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "image/png",
+        Authorization: `Bearer ${mentor}`,
+        "X-Upload-Ticket": target.uploadTicket,
+      },
+      body: "<svg xmlns='http://www.w3.org/2000/svg'><script>alert(1)</script></svg>",
+    });
+    assert.equal(upload.status, 415);
+    const get = await fetch(`${BASE}${target.objectPath}`, {
+      headers: { Authorization: `Bearer ${mentor}` },
+    });
+    assert.equal(get.status, 404, "rejected spoof must not create an object");
+  });
+
   test("AI generation rejects oversized or non-text input before any model call", async () => {
     const res = await fetch(`${BASE}/api/ai/generate-roadmap`, {
       method: "POST",

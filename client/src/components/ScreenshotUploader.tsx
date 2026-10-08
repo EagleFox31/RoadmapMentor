@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Upload, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
@@ -7,9 +7,13 @@ import { getAuthToken } from "@/lib/auth";
 interface ScreenshotUploaderProps {
   onUploadComplete: (url: string) => void;
   currentUrl?: string | null;
+  taskId: number;
 }
 
-export function ScreenshotUploader({ onUploadComplete, currentUrl }: ScreenshotUploaderProps) {
+export function ScreenshotUploader({ onUploadComplete, currentUrl, taskId }: ScreenshotUploaderProps) {
+  // Several task uploaders can coexist: a shared HTML id always targets the
+  // first file input, so each component needs a stable unique identifier.
+  const inputId = useId();
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -80,13 +84,14 @@ export function ScreenshotUploader({ onUploadComplete, currentUrl }: ScreenshotU
     <div className="flex items-center gap-2">
       <input
         type="file"
-        id="screenshot-upload"
+        id={inputId}
+        data-testid={`input-upload-screenshot-${taskId}`}
         accept="image/png,image/jpeg,image/webp,image/gif"
         onChange={handleFileSelect}
         className="hidden"
         disabled={isUploading}
       />
-      <label htmlFor="screenshot-upload">
+      <label htmlFor={inputId}>
         <Button
           type="button"
           size="sm"

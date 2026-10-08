@@ -13,6 +13,35 @@ export function isAllowedUploadType(contentType: string | undefined): boolean {
   return (ALLOWED_UPLOAD_TYPES as readonly string[]).includes(base);
 }
 
+/**
+ * Reject fake image uploads before they reach S3/R2. The MIME claimed by the
+ * caller is not proof of file format. Magic-byte checks are intentionally
+ * lightweight and do not substitute for image decoding or malware scanning.
+ */
+export function hasRasterImageSignature(contentType: string | undefined, data: Buffer): boolean {
+  const mime = (contentType ?? "").split(";")[0].trim().toLowerCase();
+  if (mime === "image/png") {
+    return data.length >= 24 &&
+      data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) &&
+      data.toString("ascii", 12, 16) === "IHDR";
+  }
+  if (mime === "image/jpeg") {
+    return data.length >= 4 &&
+      data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff;
+  }
+  if (mime === "image/gif") {
+    return data.length >= 13 &&
+      (data.toString("ascii", 0, 6) === "GIF87a" || data.toString("ascii", 0, 6) === "GIF89a");
+  }
+  if (mime === "image/webp") {
+    return data.length >= 16 &&
+      data.toString("ascii", 0, 4) === "RIFF" &&
+      data.toString("ascii", 8, 12) === "WEBP" &&
+      ["VP8 ", "VP8L", "VP8X"].includes(data.toString("ascii", 12, 16));
+  }
+  return false;
+}
+
 export type LimiterConfig = { windowMs: number; max: number };
 export type RateLimitConfig = Record<"auth" | "ai" | "upload" | "jobs" | "invitation", LimiterConfig>;
 
