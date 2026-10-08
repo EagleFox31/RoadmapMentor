@@ -4,6 +4,7 @@
     TEST_BASE_URL=http://localhost:5055 python test/e2e/mentor-learner.e2e.py
 
 Requires a dev-mode server on a disposable database (provisions mentor@test.com).
+Start it with RATE_LIMIT_AUTH_MAX=1000: the journey makes more auth calls than the default limiter allows.
 """
 import json, os, sys, time, urllib.request
 from playwright.sync_api import sync_playwright, expect
@@ -37,6 +38,13 @@ def login_ui(page, email, password):
     tid(page, "input-email").fill(email); tid(page, "input-password").fill(password)
     tid(page, "button-submit-auth").click()
     page.wait_for_url("**/roadmap", timeout=10000)
+
+
+def open_roadmap(page, roadmap_id):
+    """The page is scoped to one roadmap: open the one under test, not the first listed."""
+    page.wait_for_load_state("networkidle")
+    page.goto(f"{BASE}/roadmap?roadmap={roadmap_id}")
+    page.wait_for_load_state("networkidle")
 
 
 def logout_ui(page):
@@ -84,6 +92,7 @@ with sync_playwright() as p:
     # 3. Mentor validates the week from the UI (learners only see validated weeks)
     login_ui(page, "mentor@test.com", PWD)
     expect(tid(page, "badge-user-role")).to_contain_text("Mentor")
+    open_roadmap(page, rm["id"])
     tid(page, f"card-week-{wk['id']}").click()
     tid(page, "button-validate-week").click()
     expect(tid(page, f"icon-validated-{wk['id']}")).to_be_visible()
@@ -115,6 +124,7 @@ with sync_playwright() as p:
 
     # 5. Mentor reads the learner comment
     login_ui(page, "mentor@test.com", PWD)
+    open_roadmap(page, rm["id"])
     tid(page, f"card-week-{wk['id']}").click()
     expect(page.get_by_text("Bonjour mentor")).to_be_visible()
     ok("mentor sees the learner comment")
