@@ -18,19 +18,40 @@ test("mentor can create safe resource links but cannot store scriptable URLs", {
   const video = await api("POST", route, mentorA.token, {
     label: "Leçon vidéo", url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     resourceType: "VIDEO",
+    problemToSolve: "Comment retrouver la version stable d'un projet ?",
+    practicePrompt: "Introduire un bug, le diagnostiquer et le corriger.",
+    estimatedMinutes: 15, isRequired: true, orderIndex: 2,
   });
   assert.equal(video.status, 201, JSON.stringify(video.data));
+  assert.equal(video.data.isRequired, true);
+  assert.equal(video.data.orderIndex, 2);
+  assert.equal(video.data.estimatedMinutes, 15);
+  assert.match(video.data.practicePrompt, /diagnostiquer/);
 
   const vimeo = await api("PUT", `/api/resources/${video.data.id}`, mentorA.token, {
     url: "https://vimeo.com/123456789",
   });
   assert.equal(vimeo.status, 200, JSON.stringify(vimeo.data));
   assert.equal(vimeo.data.url, "https://vimeo.com/123456789");
+  assert.equal(vimeo.data.problemToSolve, video.data.problemToSolve, "partial update preserves the problem");
+  assert.equal(vimeo.data.isRequired, true);
 
   const badUpdate = await api("PUT", `/api/resources/${video.data.id}`, mentorA.token, {
     url: "javascript:alert(document.domain)",
   });
   assert.equal(badUpdate.status, 400);
+
+  for (const invalidContext of [
+    { estimatedMinutes: 0 }, { estimatedMinutes: 900 },
+    { orderIndex: -3 }, { isRequired: "true" },
+    { problemToSolve: "x".repeat(1201) },
+  ]) {
+    const bad = await api("POST", route, mentorA.token, {
+      label: "Invalid context", url: "https://example.org/resource",
+      resourceType: "ARTICLE", ...invalidContext,
+    });
+    assert.equal(bad.status, 400, JSON.stringify(bad.data));
+  }
 
   const learnerAttempt = await api("POST", route, learner.token, {
     label: "Role elevation", url: "https://vimeo.com/123456789", resourceType: "VIDEO",
