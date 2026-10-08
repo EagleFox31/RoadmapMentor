@@ -35,7 +35,7 @@ export function ScreenshotUploader({ onUploadComplete, currentUrl }: ScreenshotU
     try {
       // Get a provider-specific upload target. The application does not need
       // to know whether storage is Replit-backed or local/filesystem-backed.
-      const { uploadURL, objectPath, requiresAuth } = await apiRequest(
+      const { uploadURL, objectPath, requiresAuth, uploadTicket } = await apiRequest(
         "POST",
         "/api/objects/upload",
         {},
@@ -44,6 +44,9 @@ export function ScreenshotUploader({ onUploadComplete, currentUrl }: ScreenshotU
       const headers: Record<string, string> = {
         "Content-Type": file.type,
       };
+      if (uploadTicket) {
+        headers["X-Upload-Ticket"] = uploadTicket;
+      }
       if (requiresAuth) {
         const token = getAuthToken();
         if (token) {
