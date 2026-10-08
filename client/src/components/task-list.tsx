@@ -3,10 +3,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Image as ImageIcon, Users } from "lucide-react";
+import { Pencil, Trash2, Users } from "lucide-react";
 import type { Task, TaskProgressWithLearner } from "@shared/schema";
 import { isMentor, isLearner, getCurrentUser } from "@/lib/auth";
 import { ScreenshotUploader } from "./ScreenshotUploader";
+import { EvidenceLink } from "./EvidenceLink";
 
 interface TaskWithProgress extends Task {
   progress?: TaskProgressWithLearner[];
@@ -125,16 +126,7 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
               {isLearner() && (
                 <div className="flex items-center gap-2 flex-wrap">
                   {isCompleted && getTaskProgress(task)?.screenshotUrl && (
-                    <a 
-                      href={getTaskProgress(task)!.screenshotUrl!} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-primary hover:underline"
-                      data-testid={`link-screenshot-${task.id}`}
-                    >
-                      <ImageIcon className="w-3 h-3" />
-                      Voir la capture
-                    </a>
+                    <EvidenceLink taskId={task.id} learnerId={currentUser!.id} testId={`link-screenshot-${task.id}`} />
                   )}
                   {!isCompleted && (
                     <ScreenshotUploader
@@ -161,16 +153,7 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
                         {progress.learner?.fullName || `Apprenant #${progress.learnerId}`}:
                       </span>
                       {progress.screenshotUrl && (
-                        <a 
-                          href={progress.screenshotUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-primary hover:underline"
-                          data-testid={`link-screenshot-${task.id}-${progress.learnerId}`}
-                        >
-                          <ImageIcon className="w-3 h-3" />
-                          Voir la capture
-                        </a>
+                        <EvidenceLink taskId={task.id} learnerId={progress.learnerId} testId={`link-screenshot-${task.id}-${progress.learnerId}`} />
                       )}
                     </div>
                   ))}

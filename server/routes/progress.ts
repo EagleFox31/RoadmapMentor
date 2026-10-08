@@ -22,20 +22,27 @@ export function registerProgressRoutes(app: Express) {
         return res.status(404).json({ error: "Task not found" });
       }
 
-      const { screenshotUrl } = req.body;
-      let normalizedScreenshotUrl = screenshotUrl;
+      const { screenshotUrl } = req.body ?? {};
+      let normalizedScreenshotUrl: string | undefined;
 
-      if (screenshotUrl) {
+      if (screenshotUrl !== undefined && screenshotUrl !== null) {
+        if (typeof screenshotUrl !== "string") {
+          return res.status(400).json({ error: "Invalid screenshot URL" });
+        }
+
         const objectStorageService = new ObjectStorageService();
+        const normalized = objectStorageService.normalizeObjectEntityPath(screenshotUrl);
+        // Only screenshot objects issued by the application can complete a task.
+        if (!/^\\/objects\\/uploads\\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(normalized)) {
+          return res.status(400).json({ error: "Invalid screenshot path" });
+        }
+
         try {
           normalizedScreenshotUrl =
-            await objectStorageService.trySetObjectEntityAclPolicy(
-              screenshotUrl,
-              {
-                owner: authenticatedLearnerId.toString(),
-                visibility: "public",
-              },
-            );
+            await objectStorageService.trySetObjectEntityAclPolicy(normalized, {
+              owner: authenticatedLearnerId.toString(),
+              visibility: "private",
+            });
         } catch (error) {
           if (error instanceof ObjectOwnershipError) {
             return res.status(403).json({ error: "Access denied" });
