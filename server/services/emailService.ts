@@ -8,7 +8,14 @@ if (!process.env.RESEND_API_KEY) {
   console.warn("[EMAIL WARNING] Missing RESEND_API_KEY. Email sending will fail.");
 }
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient: Resend | null = null;
+function getResend(): Resend {
+  if (!resendClient) {
+    if (!process.env.RESEND_API_KEY) throw new Error("Missing RESEND_API_KEY");
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendClient;
+}
 
 const FROM_EMAIL = process.env.MAIL_FROM || "Roadmap Mentor <roadmapmentor@trigenys.com>";
 const APP_NAME = "Roadmap Mentor";
@@ -61,7 +68,7 @@ export class EmailService {
     try {
       console.log(`[EMAIL SEND] Sending to ${recipientEmail}: ${subject}`);
 
-      const { data, error } = await resend.emails.send({
+      const { data, error } = await getResend().emails.send({
         from: FROM_EMAIL,
         to: recipientEmail,
         subject,
@@ -120,7 +127,7 @@ export class EmailService {
       <p>Ce lien est personnel, à usage unique, et expire le ${expiresAt.toLocaleDateString("fr-FR")}.</p>
     `;
     try {
-      const { error } = await resend.emails.send({ from: FROM_EMAIL, to, subject, html });
+      const { error } = await getResend().emails.send({ from: FROM_EMAIL, to, subject, html });
       if (error) {
         throw new Error(error.message);
       }
