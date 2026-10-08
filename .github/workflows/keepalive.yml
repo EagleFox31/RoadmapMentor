@@ -1,0 +1,20 @@
+name: Keep-alive
+
+# Le plan gratuit Render met le service en veille après inactivité : un appel périodique
+# à /health/ready le garde éveillé. URL surchargeable via la variable de dépôt HEALTHCHECK_URL.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping health endpoint
+        env:
+          URL: ${{ vars.HEALTHCHECK_URL || 'https://roadmapmentor.onrender.com/health/ready' }}
+        run: curl --fail --silent --show-error --max-time 90 --retry 3 --retry-delay 10 --retry-all-errors "$URL"
