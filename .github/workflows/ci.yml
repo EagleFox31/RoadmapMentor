@@ -211,6 +211,8 @@ jobs:
           python test/e2e/mentor.e2e.py
           python test/e2e/python-lab.e2e.py
           python test/e2e/invite.e2e.py
+          python test/e2e/resources.e2e.py
+          python test/e2e/evidence.e2e.py
           python test/e2e/error-messages.e2e.py
 
       - name: Browser diagnostics
