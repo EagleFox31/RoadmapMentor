@@ -30,7 +30,7 @@ Les alertes sont à configurer dans les consoles UptimeRobot/Render : rien n'est
 | Secret | Effet de la rotation |
 |---|---|
 | `JWT_SECRET` | déconnecte tous les utilisateurs |
-| Mot de passe SMTP | envois d'e-mails interrompus jusqu'au redéploiement |
+| Clé API Resend (ou mot de passe SMTP) | envois d'e-mails interrompus jusqu'au redéploiement |
 | Clé IA | génération désactivée jusqu'au redéploiement |
 | Clés R2 | créer la nouvelle clé, mettre à jour Render, redéployer, puis révoquer l'ancienne |
 | `DATABASE_URL` (mot de passe Neon) | réinitialiser dans Neon puis mettre à jour Render immédiatement |

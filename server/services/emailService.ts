@@ -1,25 +1,14 @@
-import nodemailer from "nodemailer";
+import { createMailTransport } from "./mailTransport";
 import { db } from "../db";
 import { emailNotifications, emailNotificationPreferences, users } from "@shared/schema";
 import type { InsertEmailNotification } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
-// Configuration SMTP Hostinger
-const MAIL_PORT = parseInt(process.env.MAIL_PORT || "465");
-const transporter = nodemailer.createTransport({
-  host: process.env.MAIL_HOST,
-  port: MAIL_PORT,
-  secure: MAIL_PORT === 465, // true pour port 465 (SSL/TLS), false pour port 587 (STARTTLS)
-  auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS,
-  },
-});
+const transporter = createMailTransport();
 
-// Validation des variables d'environnement au démarrage
-if (!process.env.MAIL_HOST || !process.env.MAIL_USER || !process.env.MAIL_PASS) {
-  console.warn("[EMAIL WARNING] Missing SMTP configuration. Email sending may fail.");
-  console.warn("Required: MAIL_HOST, MAIL_USER, MAIL_PASS, MAIL_FROM");
+if (transporter.provider === "none") {
+  console.warn("[EMAIL WARNING] No mail provider configured: emails are disabled.");
+  console.warn("Set RESEND_API_KEY, or MAIL_HOST, MAIL_USER, MAIL_PASS; and MAIL_FROM.");
 }
 
 const FROM_EMAIL = process.env.MAIL_FROM || "Roadmap Mentor <support@xeptionetwork.shop>";
@@ -73,14 +62,14 @@ export class EmailService {
     try {
       console.log(`[EMAIL SEND] Sending to ${recipientEmail}: ${subject}`);
       
-      const info = await transporter.sendMail({
+      const info = await transporter.send({
         from: FROM_EMAIL,
         to: recipientEmail,
         subject,
         html,
       });
 
-      console.log(`[EMAIL SUCCESS] Email sent to ${recipientEmail} - MessageID: ${info.messageId}`);
+      console.log(`[EMAIL SUCCESS] Email sent to ${recipientEmail} - ID: ${info.id}`);
       await this.logEmailNotification({
         userId,
         type,
@@ -92,7 +81,7 @@ export class EmailService {
 
       return true;
     } catch (error: any) {
-      console.error("[EMAIL ERROR] SMTP error:", error);
+      console.error("[EMAIL ERROR] Send failed:", error?.message ?? "unknown error");
       await this.logEmailNotification({
         userId,
         type,
@@ -128,7 +117,7 @@ export class EmailService {
       <p>Ce lien est personnel, à usage unique, et expire le ${expiresAt.toLocaleDateString("fr-FR")}.</p>
     `;
     try {
-      await transporter.sendMail({ from: FROM_EMAIL, to, subject, html });
+      await transporter.send({ from: FROM_EMAIL, to, subject, html });
       return true;
     } catch (error: any) {
       console.error("[EMAIL ERROR] Invitation not sent:", error?.message ?? "unknown error");

@@ -45,7 +45,10 @@ services:
       - key: SCHEDULER_TIMEZONE
         value: Europe/Paris
 
-      # E-mails (facultatif : sans SMTP, les envois sont désactivés).
+      # E-mails (facultatif : sans fournisseur, les envois sont désactivés).
+      # Resend (HTTPS) : le port SMTP 465 est bloqué sur Render.
+      - key: RESEND_API_KEY
+        sync: false
       - key: MAIL_HOST
         sync: false
       - key: MAIL_PORT
