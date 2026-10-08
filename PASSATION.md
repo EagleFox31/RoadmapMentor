@@ -1,4 +1,15 @@
-# 2026-10-08 — RM-019, lot 1 : vidéos pédagogiques intégrées
+# 2026-10-08 — RM-019, lot 2 : ressources contextualisées par un problème réel
+
+- Base : PR #76 fusionnée sur `main` au commit `ab7abe5`.
+- Le mentor associe une ressource au problème concret qu'elle aide à résoudre et à l'expérimentation autonome attendue.
+- Durée indicative, ordre et priorité essentielle/complémentaire sont des métadonnées, pas une validation automatique des compétences.
+- Migration additive `0006` : anciennes ressources conservées, priorité complémentaire et ordre 0 par défaut.
+- Suite à vérifier en CI : saisie et édition mentor, lecture apprenant, tests API et migration.
+- Restent : consultation déclarative, lecteur PDF, validation des liens IA, suivi des liens morts.
+
+---
+
+# 2026-10-08 — RM-019, lot 1 : vidéos intégrées au parcours andragogique
 
 - Base : PR #75 fusionnée sur `main` au commit `c0e0c76`.
 - Lecture des URL vidéo YouTube/Youtu.be et Vimeo sous forme de lecteurs officiels intégrés dans le détail de semaine, fermeture du lecteur = démontage de l'iframe ; lien de secours vers la source.

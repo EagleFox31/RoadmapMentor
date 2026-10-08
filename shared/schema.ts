@@ -297,6 +297,12 @@ export const resources = pgTable("resources", {
   label: text("label").notNull(),
   url: text("url").notNull(),
   resourceType: resourceTypeEnum("resource_type").notNull().default("OTHER"),
+  // An andragogical resource starts with a concrete problem and ends in practice.
+  problemToSolve: text("problem_to_solve"),
+  practicePrompt: text("practice_prompt"),
+  estimatedMinutes: integer("estimated_minutes"),
+  isRequired: boolean("is_required").notNull().default(false),
+  orderIndex: integer("order_index").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   byWeek: index("resources_week_id_idx").on(table.weekId),
@@ -893,6 +899,11 @@ export const insertResourceSchema = createInsertSchema(resources).omit({
     (value) => safeExternalResourceUrl(value) !== null,
     "Resource URL must be an HTTP(S) URL without credentials",
   ),
+  problemToSolve: z.string().trim().max(1200).nullable().optional(),
+  practicePrompt: z.string().trim().max(1200).nullable().optional(),
+  estimatedMinutes: z.number().int().min(1).max(480).nullable().optional(),
+  isRequired: z.boolean().default(false),
+  orderIndex: z.number().int().min(0).max(10000).default(0),
 });
 
 export const insertLabSchema = createInsertSchema(labs)

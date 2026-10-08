@@ -356,15 +356,17 @@ Le projet ne possède pas de modèle de lab. Les exercices sont actuellement rep
 
 ### RM-019 — Lire les vidéos et ressources compatibles dans l'application
 
-> **Statut : en cours — lot 1 (lecteur vidéo sûr).** Lecture YouTube/Vimeo dans une fenêtre responsive accessible, iframe autorisée uniquement sur les deux domaines des lecteurs, fallback externe pour les autres ressources. Les URL sont validées à la création/modification ; les anciennes ressources dangereuses ne deviennent jamais cliquables. Tests unitaires, API et Chromium ajoutés. **Reste :** champs pédagogiques (description, durée, obligatoire, ordre), visionneuse PDF, suivi explicite de consultation, modération des liens IA et gestion des vidéos supprimées.
+> **Statut : en cours — lot 1 (lecteur vidéo sûr).** Lecture YouTube/Vimeo dans une fenêtre responsive accessible, iframe autorisée uniquement sur les deux domaines des lecteurs, fallback externe pour les autres ressources. Les URL sont validées à la création/modification ; les anciennes ressources dangereuses ne deviennent jamais cliquables. Tests unitaires, API et Chromium ajoutés. **Reste :** visionneuse PDF, suivi explicite de consultation, modération des liens IA et gestion des vidéos supprimées.
 
-**Constat**
+> **Lot 2 : contexte andragogique.** Chaque ressource peut préciser le problème concret à résoudre, une mise en pratique autonome, une durée indicative, une priorité et un ordre. La lecture seule ne valide pas de compétence. Migration additive `0006` avec compatibilité des données historiques.
 
-Le type de ressource `VIDEO` existe déjà, mais toutes les ressources s'ouvrent dans un nouvel onglet. Le modèle ne stocke ni fournisseur, ni durée, ni description andragogique, ni caractère obligatoire.
+**Constat historique**
+
+Le type `VIDEO` existait déjà, mais toutes les ressources s'ouvraient dans un nouvel onglet. Le modèle ne stockait ni durée, ni contexte andragogique, ni caractère essentiel.
 
 **Travail**
 
-- Étendre les ressources avec description, fournisseur, durée estimée, ordre et caractère obligatoire ou facultatif.
+- Étendre les ressources avec contexte-problème, expérimentation autonome, durée indicative, ordre et caractère essentiel/complémentaire ; fournisseur vidéo déduit de l'URL.
 - Détecter et normaliser côté serveur les URL YouTube et Vimeo prises en charge.
 - Ajouter un lecteur vidéo intégré, responsive et accessible dans le détail de la semaine.
 - Afficher les PDF compatibles dans une visionneuse interne et conserver un lien externe de secours.
@@ -379,7 +381,7 @@ Le type de ressource `VIDEO` existe déjà, mais toutes les ressources s'ouvrent
 - Une ressource non intégrable reste accessible dans un nouvel onglet avec une indication claire.
 - Une URL inconnue ne peut jamais devenir une iframe arbitraire.
 - Le lecteur fonctionne sur mobile, au clavier et en plein écran.
-- L'apprenant voit la durée, le statut obligatoire ou facultatif et son état de consultation.
+- L'apprenant voit le problème, la mise en pratique autonome, la durée indicative et la priorité ; l'état de consultation reste à réaliser.
 - Un lien invalide ou supprimé est signalé au mentor sans casser l'affichage de la semaine.
 
 ### RM-020 — Inviter un apprenant par e-mail avec inscription par lien
