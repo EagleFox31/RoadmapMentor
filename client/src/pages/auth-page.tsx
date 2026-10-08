@@ -3,11 +3,16 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Rocket, Code, Database, Cloud } from "lucide-react";
 import { setAuthToken, setCurrentUser } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
+
+const STEPS = [
+  { label: "Fondations Python", state: "done" },
+  { label: "API et persistance", state: "done" },
+  { label: "Tests et qualité", state: "current" },
+  { label: "Déploiement", state: "todo" },
+] as const;
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
@@ -31,15 +36,15 @@ export default function AuthPage() {
         : formData;
 
       const response = await apiRequest("POST", endpoint, payload);
-      
+
       setAuthToken(response.token);
       setCurrentUser(response.user);
-      
+
       toast({
         title: "Authentification réussie",
         description: `Bienvenue ${response.user.fullName} !`,
       });
-      
+
       setLocation("/roadmap");
     } catch (error: any) {
       toast({
@@ -53,106 +58,122 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden bg-gradient-to-br from-[#667eea] via-[#764ba2] to-[#1e3a8a]">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-20 left-20 text-[200px]">
-          <Rocket className="w-48 h-48 rotate-45 opacity-20" />
-        </div>
-        <div className="absolute bottom-20 right-20 text-[200px]">
-          <Code className="w-48 h-48 -rotate-12 opacity-20" />
-        </div>
-        <div className="absolute top-1/2 left-1/3">
-          <Database className="w-32 h-32 opacity-15" />
-        </div>
-        <div className="absolute top-1/3 right-1/4">
-          <Cloud className="w-40 h-40 opacity-15" />
-        </div>
-      </div>
+    <main className="min-h-[100dvh] w-full grid lg:grid-cols-[1.1fr_1fr] bg-background">
+      <section
+        aria-hidden="true"
+        className="hidden lg:flex flex-col justify-between bg-foreground text-background p-14"
+      >
+        <span className="text-sm font-medium tracking-wide">Roadmap Mentor</span>
 
-      {/* Auth Card */}
-      <div className="relative z-10 min-h-screen flex items-center justify-center p-6">
-        <Card className="w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-2xl p-8 animate-slide-up">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 mb-4 shadow-lg">
-              <Rocket className="w-10 h-10 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold text-white mb-2">
-              Roadmap Mentor
-            </h1>
-            <p className="text-white/80 text-sm">
-              Suivi de Mentorat Backend Python
-            </p>
+        <div>
+          <h2 className="text-5xl font-semibold leading-[1.05] tracking-tight max-w-md">
+            Un parcours, un mentor, des preuves.
+          </h2>
+          <ol className="mt-12 space-y-5 max-w-sm">
+            {STEPS.map((step, i) => (
+              <li key={step.label} className="flex items-center gap-4">
+                <span
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs tabular-nums ${
+                    step.state === "done"
+                      ? "bg-background text-foreground border-background"
+                      : step.state === "current"
+                        ? "border-background"
+                        : "border-background/30 text-background/50"
+                  }`}
+                >
+                  {i + 1}
+                </span>
+                <span
+                  className={
+                    step.state === "todo" ? "text-background/50" : "text-background"
+                  }
+                >
+                  {step.label}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <p className="text-sm text-background/60">
+          Suivi de mentorat backend Python
+        </p>
+      </section>
+
+      <section className="flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          <p className="lg:hidden text-sm font-medium mb-6">Roadmap Mentor</p>
+          <div role="tablist" className="mb-8 flex gap-6 border-b">
+            {[
+              { login: true, label: "Connexion", testId: "button-show-login" },
+              { login: false, label: "Inscription", testId: "button-show-register" },
+            ].map((tab) => (
+              <button
+                key={tab.testId}
+                type="button"
+                role="tab"
+                aria-selected={isLogin === tab.login}
+                onClick={() => setIsLogin(tab.login)}
+                className={`-mb-px border-b-2 pb-3 text-sm font-medium transition-colors ${
+                  isLogin === tab.login
+                    ? "border-foreground text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+                data-testid={tab.testId}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
+          <h1 className="text-3xl font-semibold tracking-tight">
+            {isLogin ? "Connexion" : "Créer un compte"}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {isLogin
+              ? "Reprenez votre parcours là où vous l'avez laissé."
+              : "Rejoignez votre mentor et suivez votre progression."}
+          </p>
 
-          <div className="flex gap-2 mb-6">
-            <Button
-              type="button"
-              variant={isLogin ? "default" : "outline"}
-              className={`flex-1 ${isLogin ? "bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600" : "bg-white/5 border-white/20 text-white hover:bg-white/10"} transition-all`}
-              onClick={() => setIsLogin(true)}
-              data-testid="button-show-login"
-            >
-              Connexion
-            </Button>
-            <Button
-              type="button"
-              variant={!isLogin ? "default" : "outline"}
-              className={`flex-1 ${!isLogin ? "bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600" : "bg-white/5 border-white/20 text-white hover:bg-white/10"} transition-all`}
-              onClick={() => setIsLogin(false)}
-              data-testid="button-show-register"
-            >
-              Inscription
-            </Button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
             {!isLogin && (
               <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-white text-sm font-medium">
-                  Nom complet
-                </Label>
+                <Label htmlFor="fullName">Nom complet</Label>
                 <Input
                   id="fullName"
                   type="text"
+                  autoComplete="name"
                   placeholder="Pavel Durov"
                   value={formData.fullName}
                   onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                   required
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/15 transition-all"
                   data-testid="input-fullname"
                 />
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-white text-sm font-medium">
-                Email
-              </Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
                 placeholder="pavel@example.com"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/15 transition-all"
                 data-testid="input-email"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-white text-sm font-medium">
-                Mot de passe
-              </Label>
+              <Label htmlFor="password">Mot de passe</Label>
               <Input
                 id="password"
                 type="password"
-                placeholder="••••••••"
+                autoComplete={isLogin ? "current-password" : "new-password"}
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 required
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:bg-white/15 transition-all"
                 data-testid="input-password"
               />
             </div>
@@ -160,26 +181,26 @@ export default function AuthPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white font-semibold py-3 rounded-lg shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-200"
+              className="w-full"
               data-testid="button-submit-auth"
             >
-              {isLoading ? "Chargement..." : isLogin ? "Se connecter" : "S'inscrire"}
+              {isLoading ? "Chargement…" : isLogin ? "Se connecter" : "S'inscrire"}
             </Button>
           </form>
 
-          <p className="text-center text-white/60 text-xs mt-6">
+          <p className="mt-6 text-sm text-muted-foreground">
             {isLogin ? "Pas encore de compte ?" : "Déjà un compte ?"}{" "}
             <button
               type="button"
               onClick={() => setIsLogin(!isLogin)}
-              className="text-sky-300 hover:text-sky-200 underline transition-colors"
+              className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
               data-testid="button-toggle-auth-mode"
             >
               {isLogin ? "S'inscrire" : "Se connecter"}
             </button>
           </p>
-        </Card>
-      </div>
-    </div>
+        </div>
+      </section>
+    </main>
   );
 }
