@@ -52,7 +52,7 @@ export function ResourcesList({ resources, onEdit, onDelete }: ResourcesListProp
         </Card>
       ) : (
         <div className="space-y-3">
-          {resources.map((resource) => {
+          {[...resources].sort((a, b) => a.orderIndex - b.orderIndex || a.id - b.id).map((resource) => {
             const type = resource.resourceType as keyof typeof resourceIcons;
             const Icon = resourceIcons[type] || FileText;
             const colorClass = resourceColorClasses[type] || "bg-muted";
@@ -70,6 +70,24 @@ export function ResourcesList({ resources, onEdit, onDelete }: ResourcesListProp
                     <div className="flex-1 min-w-0">
                       <Badge className="bg-muted text-foreground border-0 text-xs mb-1">{typeLabel}</Badge>
                       <h4 className="text-foreground font-medium text-sm truncate">{resource.label}</h4>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <span data-testid={`resource-priority-${resource.id}`}>
+                          {resource.isRequired ? "Essentielle" : "Complémentaire"}
+                        </span>
+                        {resource.estimatedMinutes != null && (
+                          <span>{resource.estimatedMinutes} min indicatives</span>
+                        )}
+                      </div>
+                      {resource.problemToSolve && (
+                        <p className="text-sm text-foreground/80 mt-2 whitespace-pre-wrap" data-testid={`resource-problem-${resource.id}`}>
+                          <strong>Problème à résoudre :</strong> {resource.problemToSolve}
+                        </p>
+                      )}
+                      {resource.practicePrompt && (
+                        <p className="text-sm text-foreground/80 mt-1 whitespace-pre-wrap" data-testid={`resource-practice-${resource.id}`}>
+                          <strong>À expérimenter :</strong> {resource.practicePrompt}
+                        </p>
+                      )}
                       {type === "VIDEO" && !canPlay && externalUrl && (
                         <span className="text-xs text-muted-foreground">Lecture sur le site d'origine</span>
                       )}
