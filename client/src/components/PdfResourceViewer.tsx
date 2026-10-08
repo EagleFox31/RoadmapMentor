@@ -51,9 +51,8 @@ export function PdfResourceViewer({ title, url, onClose }: {
             if (done) break;
             size += value.byteLength;
             if (size > MAX_PREVIEW_BYTES) throw new Error("PDF too large");
-            for (const octet of value) {
-              if (prefix.length === 5) break;
-              prefix.push(octet);
+            for (let i = 0; i < value.byteLength && prefix.length < 5; i++) {
+              prefix.push(value[i]);
             }
             const copy = new Uint8Array(value.byteLength);
             copy.set(value);
