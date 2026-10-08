@@ -98,6 +98,10 @@ test("the CSP allows the fonts and signed uploads the frontend needs", () => {
   assert.ok(directives["style-src"].includes("https://fonts.googleapis.com"));
   assert.ok(directives["font-src"].includes("https://fonts.gstatic.com"));
   assert.ok(directives["connect-src"].includes("https://storage.googleapis.com"));
+  assert.ok(directives["script-src"].includes("https://cdn.jsdelivr.net"));
+  assert.ok(directives["connect-src"].includes("https://cdn.jsdelivr.net"));
+  assert.ok(directives["worker-src"].includes("'self'"));
+  assert.ok(directives["script-src"].includes("'wasm-unsafe-eval'"));
 });
 
 test("only raster image types are accepted for uploads", () => {

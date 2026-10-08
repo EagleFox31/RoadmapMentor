@@ -73,13 +73,18 @@ function Runner({ lab, submission }: PythonLabRunnerProps) {
         <Textarea id={`lab-code-${lab.id}`} className="min-h-64 font-mono text-sm" spellCheck={false} value={code} onChange={(event) => setCode(event.target.value)} />
       </div>
 
+      {!isReady && (
+        <p role="status" className="text-xs text-muted-foreground">
+          Initialisation de Python dans votre navigateur. Une connexion réseau est nécessaire au premier lancement.
+        </p>
+      )}
       <div className="flex flex-wrap gap-2">
         {isRunning ? (
           <Button type="button" variant="destructive" onClick={interruptExecution}><Square className="mr-2 h-4 w-4" />Arrêter</Button>
         ) : (
           <Button type="button" onClick={execute} disabled={!isReady || isLoading || !code.trim()}>
             <Play className="mr-2 h-4 w-4" />
-            {isLoading ? "Chargement de Python..." : "Exécuter les tests"}
+            {!isReady || isLoading ? "Chargement de Python..." : "Exécuter les tests"}
           </Button>
         )}
         <Button type="button" variant="outline" onClick={() => saveMutation.mutate(false)} disabled={saveMutation.isPending}>
@@ -113,5 +118,8 @@ function Runner({ lab, submission }: PythonLabRunnerProps) {
 }
 
 export default function PythonLabRunner(props: PythonLabRunnerProps) {
-  return <PythonProvider lazy timeout={30_000}><Runner {...props} /></PythonProvider>;
+  // Lazy mode never initializes Pyodide until runPython(), but the UI correctly
+  // disables execution until isReady: that combination deadlocks the runner.
+  // Mount the worker when the lab dialog opens instead.
+  return <PythonProvider timeout={30_000}><Runner {...props} /></PythonProvider>;
 }
