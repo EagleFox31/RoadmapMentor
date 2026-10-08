@@ -103,14 +103,14 @@ export function MentoringBilling({ mentorshipId, packages }: Props) {
           <WalletCards className="h-5 w-5 text-emerald-300" />
           <div>
             <h2 className="font-semibold">Facturation & paiements</h2>
-            <p className="text-xs text-slate-400">Forfait, suppléments acceptés, montant dû et paiements enregistrés.</p>
+            <p className="text-xs text-neutral-400">Forfait, suppléments acceptés, montant dû et paiements enregistrés.</p>
           </div>
         </div>
       </div>
 
       {isMentor() && unbilledPackages.length > 0 && (
         <div className="mt-5 grid gap-3 rounded-2xl border border-emerald-300/15 bg-emerald-300/5 p-5 md:grid-cols-[1fr_180px_auto]">
-          <select value={createForm.packageId} onChange={(e) => setCreateForm({ ...createForm, packageId: e.target.value })} className="rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm">
+          <select value={createForm.packageId} onChange={(e) => setCreateForm({ ...createForm, packageId: e.target.value })} className="rounded-md border border-white/10 bg-neutral-900 px-3 py-2 text-sm">
             <option value="">Forfait à facturer</option>
             {unbilledPackages.map((item) => <option key={item.id} value={item.id}>{item.title} · {money(item.basePriceMinor, item.currency)}</option>)}
           </select>
@@ -123,7 +123,7 @@ export function MentoringBilling({ mentorshipId, packages }: Props) {
 
       <div className="mt-6 space-y-4">
         {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : periods.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-white/10 p-5 text-sm text-slate-400">Aucune période de facturation pour ce mentorat.</p>
+          <p className="rounded-2xl border border-dashed border-white/10 p-5 text-sm text-neutral-400">Aucune période de facturation pour ce mentorat.</p>
         ) : periods.map((period) => {
           const payment = paymentDrafts[period.id] || { amount: "", method: "", reference: "", note: "" };
           const charge = chargeDrafts[period.id] || { description: "", amount: "" };
@@ -132,16 +132,16 @@ export function MentoringBilling({ mentorshipId, packages }: Props) {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <h3 className="text-lg font-semibold">{period.title}</h3>
-                  <p className="mt-1 text-sm text-slate-400">{period.periodStart} → {period.periodEnd} · échéance {period.dueDate}</p>
+                  <p className="mt-1 text-sm text-neutral-400">{period.periodStart} → {period.periodEnd} · échéance {period.dueDate}</p>
                 </div>
                 <Badge className="bg-emerald-300/10 text-emerald-100">{statusText[period.status]}</Badge>
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-2xl bg-white/5 p-4"><p className="text-xs text-slate-400">Forfait</p><p className="mt-1 text-xl font-bold">{money(period.baseAmountMinor, period.currency)}</p></div>
-                <div className="rounded-2xl bg-white/5 p-4"><p className="text-xs text-slate-400">Extras</p><p className="mt-1 text-xl font-bold text-amber-200">{money(period.extrasMinor, period.currency)}</p></div>
-                <div className="rounded-2xl bg-white/5 p-4"><p className="text-xs text-slate-400">Payé</p><p className="mt-1 text-xl font-bold text-emerald-200">{money(period.paidMinor, period.currency)}</p></div>
-                <div className="rounded-2xl bg-white/5 p-4"><p className="text-xs text-slate-400">Reste dû</p><p className="mt-1 text-xl font-bold text-rose-200">{money(period.outstandingMinor, period.currency)}</p></div>
+                <div className="rounded-2xl bg-white/5 p-4"><p className="text-xs text-neutral-400">Forfait</p><p className="mt-1 text-xl font-bold">{money(period.baseAmountMinor, period.currency)}</p></div>
+                <div className="rounded-2xl bg-white/5 p-4"><p className="text-xs text-neutral-400">Extras</p><p className="mt-1 text-xl font-bold text-amber-200">{money(period.extrasMinor, period.currency)}</p></div>
+                <div className="rounded-2xl bg-white/5 p-4"><p className="text-xs text-neutral-400">Payé</p><p className="mt-1 text-xl font-bold text-emerald-200">{money(period.paidMinor, period.currency)}</p></div>
+                <div className="rounded-2xl bg-white/5 p-4"><p className="text-xs text-neutral-400">Reste dû</p><p className="mt-1 text-xl font-bold text-rose-200">{money(period.outstandingMinor, period.currency)}</p></div>
               </div>
 
               {period.charges.length > 0 && (

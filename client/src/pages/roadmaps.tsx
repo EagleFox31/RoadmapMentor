@@ -182,20 +182,20 @@ export default function RoadmapsPage() {
     <div className="min-h-screen w-full bg-background">
       <TopBar />
       <main className="mx-auto max-w-6xl px-4 pb-16 pt-28">
-        <Button variant="ghost" onClick={() => setLocation("/roadmap")} className="mb-4 text-slate-300">
+        <Button variant="ghost" onClick={() => setLocation("/roadmap")} className="mb-4 text-muted-foreground">
           <ArrowLeft className="mr-2 h-4 w-4" /> Retour à la roadmap
         </Button>
         <h1 className="mb-2 text-3xl font-bold text-foreground">
           {mentor ? "Roadmaps et apprenants" : "Mes roadmaps"}
         </h1>
-        <p className="mb-8 text-slate-400">
+        <p className="mb-8 text-muted-foreground">
           {mentor
             ? "Créez une roadmap, puis rattachez-y un apprenant déjà inscrit."
             : "Les roadmaps auxquelles votre mentor vous a rattaché."}
         </p>
 
         {loading && (
-          <div className="flex items-center gap-3 text-slate-300" role="status">
+          <div className="flex items-center gap-3 text-muted-foreground" role="status">
             <Loader2 className="h-5 w-5 animate-spin" /> Chargement…
           </div>
         )}
@@ -221,7 +221,7 @@ export default function RoadmapsPage() {
             <section className="space-y-4" aria-label="Roadmaps">
               {roadmapList.length === 0 && (
                 <div
-                  className="rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-400"
+                  className="rounded-2xl border border bg-muted/40 p-6 text-muted-foreground"
                   data-testid="roadmaps-empty"
                 >
                   {mentor
@@ -241,20 +241,20 @@ export default function RoadmapsPage() {
                   className={`w-full rounded-2xl border p-4 text-left transition ${
                     roadmap.id === selectedId
                       ? "border-primary/60 bg-primary/10"
-                      : "border-white/10 bg-white/5 hover:border-white/20"
+                      : "border bg-muted/40 hover:border-foreground/30"
                   }`}
                   data-testid={`roadmap-item-${roadmap.id}`}
                 >
                   <div className="font-semibold text-foreground">{roadmap.title}</div>
                   {roadmap.description && (
-                    <div className="mt-1 line-clamp-2 text-sm text-slate-400">{roadmap.description}</div>
+                    <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">{roadmap.description}</div>
                   )}
                 </button>
               ))}
 
               {mentor && (
                 <form
-                  className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4"
+                  className="space-y-3 rounded-2xl border border bg-muted/40 p-4"
                   onSubmit={(event) => {
                     event.preventDefault();
                     if (roadmapForm.title.trim()) createRoadmap.mutate();
@@ -290,7 +290,7 @@ export default function RoadmapsPage() {
 
             <section className="space-y-6" aria-label="Mentorats">
               {!selected ? (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-8 text-slate-400">
+                <div className="rounded-2xl border border bg-muted/40 p-8 text-muted-foreground">
                   Sélectionnez une roadmap.
                 </div>
               ) : (
@@ -305,7 +305,7 @@ export default function RoadmapsPage() {
                   <div className="space-y-3">
                     {selectedMentorships.length === 0 ? (
                       <div
-                        className="rounded-2xl border border-white/10 bg-white/5 p-6 text-slate-400"
+                        className="rounded-2xl border border bg-muted/40 p-6 text-muted-foreground"
                         data-testid="mentorships-empty"
                       >
                         {mentor
@@ -316,13 +316,13 @@ export default function RoadmapsPage() {
                       selectedMentorships.map((entry) => (
                         <div
                           key={entry.id}
-                          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border bg-muted/40 p-4"
                         >
                           <div>
                             <div className="font-medium text-foreground">
                               {entry.learner?.fullName ?? "Apprenant"}
                             </div>
-                            <div className="text-sm text-slate-400">
+                            <div className="text-sm text-muted-foreground">
                               {entry.learner?.email} · mentor : {entry.mentor?.fullName ?? "—"}
                             </div>
                           </div>
@@ -334,7 +334,7 @@ export default function RoadmapsPage() {
 
                   {mentor && (
                     <form
-                      className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4"
+                      className="space-y-3 rounded-2xl border border bg-muted/40 p-4"
                       onSubmit={(event) => {
                         event.preventDefault();
                         if (email.trim()) lookup.mutate();
@@ -392,12 +392,12 @@ export default function RoadmapsPage() {
                       )}
                       {found && (
                         <div
-                          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 p-3"
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border p-3"
                           data-testid="learner-found"
                         >
                           <div>
                             <div className="font-medium text-foreground">{found.fullName}</div>
-                            <div className="text-sm text-slate-400">{found.email}</div>
+                            <div className="text-sm text-muted-foreground">{found.email}</div>
                           </div>
                           {alreadyAttached ? (
                             <Badge variant="outline">Déjà rattaché à cette roadmap</Badge>
@@ -426,12 +426,12 @@ export default function RoadmapsPage() {
                       {(invitations.data ?? []).map((entry) => (
                         <div
                           key={entry.id}
-                          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 p-3"
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border p-3"
                           data-testid={`invitation-${entry.id}`}
                         >
                           <div>
                             <div className="font-medium text-foreground">{entry.email}</div>
-                            <div className="text-sm text-slate-400">
+                            <div className="text-sm text-muted-foreground">
                               {INVITATION_STATE_LABEL[entry.state]}
                               {entry.state === "PENDING" &&
                                 ` · expire le ${new Date(entry.expiresAt).toLocaleDateString("fr-FR")}`}

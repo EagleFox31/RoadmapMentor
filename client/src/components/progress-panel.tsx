@@ -25,7 +25,7 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
       {/* Global Progress */}
       <Card className="glass-card rounded-2xl p-7 gradient-border">
         <div className="flex items-center gap-4 mb-5">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-success to-cyan-500 flex items-center justify-center shadow-xl glow">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-success to-teal-500 flex items-center justify-center shadow-xl glow">
             <TrendingUp className="w-7 h-7 text-white" />
           </div>
           <div>
@@ -44,7 +44,7 @@ export function ProgressPanel({ stats }: ProgressPanelProps) {
 
           <div className="h-4 glass rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-success to-cyan-500 transition-all duration-700 rounded-full shadow-lg pulse-glow"
+              className="h-full bg-gradient-to-r from-success to-teal-500 transition-all duration-700 rounded-full shadow-lg pulse-glow"
               style={{ width: `${stats.globalPercentage}%` }}
             />
           </div>

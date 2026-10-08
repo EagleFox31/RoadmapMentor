@@ -87,7 +87,7 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
                           onToggleTask?.(task.id);
                         }
                       }}
-                      className="mt-0.5 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-success data-[state=checked]:to-cyan-500 data-[state=checked]:border-success shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="mt-0.5 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-success data-[state=checked]:to-teal-500 data-[state=checked]:border-success shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                       data-testid={`checkbox-task-${task.id}`}
                     />
                   </div>
@@ -101,7 +101,7 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
             ) : (
               <div className={`w-5 h-5 rounded-lg border-2 mt-0.5 flex-shrink-0 shadow-md ${
                 isCompleted 
-                  ? "bg-gradient-to-br from-success to-cyan-500 border-success" 
+                  ? "bg-gradient-to-br from-success to-teal-500 border-success" 
                   : "border-white/20 glass"
               }`} />
             )}

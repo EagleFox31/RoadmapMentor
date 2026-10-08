@@ -61,7 +61,7 @@ export function ResourceModal({ isOpen, onClose, onSubmit, weekId, resource, isL
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border-white/20 text-white shadow-2xl max-w-md">
+      <DialogContent className="bg-gradient-to-br from-neutral-900/95 to-neutral-800/95 backdrop-blur-xl border-white/20 text-white shadow-2xl max-w-md">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">
             {resource ? "Modifier la ressource" : "Nouvelle ressource"}
@@ -80,7 +80,7 @@ export function ResourceModal({ isOpen, onClose, onSubmit, weekId, resource, isL
               <SelectTrigger className="bg-white/10 border-white/20 text-white" data-testid="select-resource-type">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/20 text-white">
+              <SelectContent className="bg-neutral-900 border-white/20 text-white">
                 <SelectItem value="DOC">Documentation</SelectItem>
                 <SelectItem value="VIDEO">Vidéo</SelectItem>
                 <SelectItem value="COURSE">Cours</SelectItem>

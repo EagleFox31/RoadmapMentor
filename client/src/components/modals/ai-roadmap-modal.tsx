@@ -164,7 +164,7 @@ export function AIRoadmapModal({ open, onClose, onSave, existingWeeks = [] }: AI
 
   const getObjectiveTypeColor = (type: string) => {
     switch (type) {
-      case "CONCEPT": return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+      case "CONCEPT": return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
       case "ALGO": return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
       case "PROJECT": return "bg-green-500/20 text-green-400 border-green-500/30";
       default: return "bg-gray-500/20 text-gray-400 border-gray-500/30";
@@ -452,7 +452,7 @@ export function AIRoadmapModal({ open, onClose, onSave, existingWeeks = [] }: AI
               <Button
                 onClick={() => saveMutation.mutate()}
                 disabled={saveMutation.isPending || generatedWeeks.length === 0}
-                className="flex-1 bg-gradient-to-r from-success to-cyan-500 text-white shadow-lg"
+                className="flex-1 bg-gradient-to-r from-success to-teal-500 text-white shadow-lg"
                 data-testid="button-save-ai-roadmap"
               >
                 {saveMutation.isPending ? (
