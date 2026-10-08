@@ -2,7 +2,7 @@ import { type Express } from "express";
 import { storage } from "../storage";
 import { emailService } from "../services/emailService";
 import { authMiddleware, requireLearner, type AuthRequest } from "../auth";
-import { ObjectStorageService } from "../objectStorage";
+import { ObjectStorageService, ObjectOwnershipError } from "../objectStorage";
 import { handleError } from "../http/errors";
 import { getMentorsForWeek, getLearnerIdsForWeek, getTaskAccess } from "../access/weekAccess";
 
@@ -27,14 +27,21 @@ export function registerProgressRoutes(app: Express) {
 
       if (screenshotUrl) {
         const objectStorageService = new ObjectStorageService();
-        normalizedScreenshotUrl =
-          await objectStorageService.trySetObjectEntityAclPolicy(
-            screenshotUrl,
-            {
-              owner: authenticatedLearnerId.toString(),
-              visibility: "public",
-            },
-          );
+        try {
+          normalizedScreenshotUrl =
+            await objectStorageService.trySetObjectEntityAclPolicy(
+              screenshotUrl,
+              {
+                owner: authenticatedLearnerId.toString(),
+                visibility: "public",
+              },
+            );
+        } catch (error) {
+          if (error instanceof ObjectOwnershipError) {
+            return res.status(403).json({ error: "Access denied" });
+          }
+          throw error;
+        }
       }
 
       const progress = await storage.toggleTaskProgress(
