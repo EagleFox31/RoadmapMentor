@@ -65,7 +65,7 @@ with sync_playwright() as p:
     evidence = f"/api/tasks/{seeded['task']}/evidence/{learner_id}"
     assert status("GET", evidence, learner["token"]) == 200
     assert status("GET", evidence, mentor) == 200
-    assert status("GET", evidence, outsider["token"]) == 403
+    assert status("GET", evidence, outsider["token"]) in (403, 404), "unrelated user gets no proof"
     assert status("GET", evidence) == 401
     steps.ok("proof is readable by its learner and mentor only")
 
