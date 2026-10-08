@@ -60,11 +60,11 @@ export default function InvitePage() {
   };
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden bg-gradient-to-br from-[#667eea] via-[#764ba2] to-[#1e3a8a]">
+    <div className="min-h-screen w-full relative overflow-hidden bg-neutral-900">
       <div className="relative z-10 min-h-screen flex items-center justify-center p-6">
         <Card className="w-full max-w-md bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-2xl p-8">
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 mb-4 shadow-lg">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 mb-4 shadow-lg">
               <Rocket className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-white" data-testid="text-invite-title">

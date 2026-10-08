@@ -7,12 +7,11 @@ import { useToast } from "@/hooks/use-toast";
 import { setAuthToken, setCurrentUser } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
 
-const STEPS = [
-  { label: "Fondations Python", state: "done" },
-  { label: "API et persistance", state: "done" },
-  { label: "Tests et qualité", state: "current" },
-  { label: "Déploiement", state: "todo" },
-] as const;
+const POINTS = [
+  { title: "Une feuille de route par semaine", text: "Objectifs, tâches et ressources de votre mentor, au même endroit." },
+  { title: "Des livrables relus", text: "Chaque preuve déposée reçoit un retour écrit avant de passer à la suite." },
+  { title: "Des rappels automatiques", text: "Votre mentor programme les rappels, vous les recevez par email." },
+];
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
@@ -65,39 +64,21 @@ export default function AuthPage() {
       >
         <span className="text-sm font-medium tracking-wide">Roadmap Mentor</span>
 
-        <div>
-          <h2 className="text-5xl font-semibold leading-[1.05] tracking-tight max-w-md">
-            Un parcours, un mentor, des preuves.
+        <div className="max-w-md">
+          <h2 className="text-4xl font-semibold leading-tight tracking-tight">
+            Apprendre le backend Python avec quelqu'un qui relit votre travail.
           </h2>
-          <ol className="mt-12 space-y-5 max-w-sm">
-            {STEPS.map((step, i) => (
-              <li key={step.label} className="flex items-center gap-4">
-                <span
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs tabular-nums ${
-                    step.state === "done"
-                      ? "bg-background text-foreground border-background"
-                      : step.state === "current"
-                        ? "border-background"
-                        : "border-background/30 text-background/50"
-                  }`}
-                >
-                  {i + 1}
-                </span>
-                <span
-                  className={
-                    step.state === "todo" ? "text-background/50" : "text-background"
-                  }
-                >
-                  {step.label}
-                </span>
-              </li>
+          <dl className="mt-12 space-y-8">
+            {POINTS.map((point) => (
+              <div key={point.title}>
+                <dt className="font-medium">{point.title}</dt>
+                <dd className="mt-1 text-sm text-background/60">{point.text}</dd>
+              </div>
             ))}
-          </ol>
+          </dl>
         </div>
 
-        <p className="text-sm text-background/60">
-          Suivi de mentorat backend Python
-        </p>
+        <p className="text-sm text-background/50">Suivi de mentorat backend Python</p>
       </section>
 
       <section className="flex items-center justify-center px-6 py-12">
@@ -180,7 +161,7 @@ export default function AuthPage() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-emerald-700 text-white hover:bg-emerald-800 border-emerald-700"
+              className="w-full"
               data-testid="button-submit-auth"
             >
               {isLoading ? "Chargement…" : isLogin ? "Se connecter" : "S'inscrire"}

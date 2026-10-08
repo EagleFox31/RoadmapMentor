@@ -216,7 +216,7 @@ export function WeekModal({ isOpen, onClose, onSubmit, week, isLoading }: WeekMo
             <Button
               type="submit"
               disabled={isLoading}
-              className="bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white"
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
               data-testid="button-save-week"
             >
               {isLoading ? "Enregistrement..." : week ? "Mettre à jour" : "Créer"}

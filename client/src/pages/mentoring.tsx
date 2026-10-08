@@ -157,7 +157,7 @@ export default function MentoringPage() {
           <h2 className="mb-3 font-semibold">Accompagnements</h2>
           {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : mentorships.map((m) => (
             <button key={m.id} onClick={() => setSelectedId(m.id)}
-              className={"mb-2 w-full rounded-2xl border p-4 text-left " + (selectedId === m.id ? "border-sky-400/40 bg-sky-400/10" : "border-white/10 bg-black/10")}>
+              className={"mb-2 w-full rounded-2xl border p-4 text-left " + (selectedId === m.id ? "border-emerald-400/40 bg-emerald-400/10" : "border-white/10 bg-black/10")}>
               <p className="font-medium">{m.roadmap.title}</p>
               <p className="mt-1 text-xs text-slate-400">{isMentor() ? m.learner?.fullName : m.mentor?.fullName}</p>
             </button>
@@ -166,8 +166,8 @@ export default function MentoringPage() {
 
         <section className="space-y-6">
           {!selected ? <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-slate-400">Aucun mentorat sélectionné.</div> : <>
-            <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-sky-500/10 to-indigo-500/10 p-6">
-              <p className="text-xs uppercase tracking-[0.18em] text-sky-300">{selected.roadmap.title}</p>
+            <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-6">
+              <p className="text-xs uppercase tracking-[0.18em] text-emerald-300">{selected.roadmap.title}</p>
               <h2 className="mt-2 text-2xl font-bold">{isMentor() ? selected.learner?.fullName : selected.mentor?.fullName}</h2>
             </div>
 

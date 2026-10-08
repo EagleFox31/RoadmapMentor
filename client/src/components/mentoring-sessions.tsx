@@ -166,7 +166,7 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
     <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <CalendarClock className="h-5 w-5 text-sky-300" />
+          <CalendarClock className="h-5 w-5 text-emerald-300" />
           <div>
             <h2 className="font-semibold">Séances de mentorat</h2>
             <p className="text-xs text-slate-400">

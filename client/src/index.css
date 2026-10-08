@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 
 @tailwind base;
 @tailwind components;
@@ -7,13 +8,13 @@
 /* PREMIUM GLASSMORPHISM DESIGN SYSTEM */
 :root {
   /* Premium Purple Gradient */
-  --primary: 250 82% 70%;           /* #667eea */
+  --primary: 160 84% 26%;           /*  */
   --primary-foreground: 0 0% 100%;
   
   /* Gradient Colors */
-  --gradient-from: 250 82% 70%;     /* #667eea */
-  --gradient-to: 280 65% 60%;       /* #764ba2 */
-  --gradient-pink: 305 90% 76%;     /* #f093fb */
+  --gradient-from: 160 84% 26%;     /*  */
+  --gradient-to: 165 70% 30%;       /*  */
+  --gradient-pink: 170 60% 40%;     /* #f093fb */
   --gradient-blue: 200 100% 66%;    /* #4facfe */
   --gradient-cyan: 185 100% 50%;    /* #00f2fe */
   
@@ -23,25 +24,25 @@
   --glass-hover: rgba(255, 255, 255, 0.85);
   
   /* Base Colors */
-  --background: 240 25% 97%;        /* Very light purple-gray */
-  --foreground: 240 15% 15%;        /* Dark purple-gray */
+  --background: 150 7% 97%;        /* Very light purple-gray */
+  --foreground: 150 7% 15%;        /* Dark purple-gray */
   
   /* Card System */
   --card: rgba(255, 255, 255, 0.7);
-  --card-foreground: 240 15% 15%;
+  --card-foreground: 150 7% 15%;
   --card-border: rgba(255, 255, 255, 0.3);
   
   /* UI Colors */
-  --border: 250 35% 90%;
-  --input: 250 30% 92%;
-  --ring: 250 82% 70%;
+  --border: 150 7% 90%;
+  --input: 150 7% 92%;
+  --ring: 160 84% 26%;
   
   /* Semantic Colors */
-  --secondary: 250 30% 92%;
-  --secondary-foreground: 240 15% 15%;
-  --muted: 250 25% 94%;
-  --muted-foreground: 240 10% 50%;
-  --accent: 280 65% 60%;
+  --secondary: 150 7% 92%;
+  --secondary-foreground: 150 7% 15%;
+  --muted: 150 7% 94%;
+  --muted-foreground: 150 7% 50%;
+  --accent: 165 70% 30%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 85% 60%;
   --destructive-foreground: 0 0% 100%;
@@ -52,24 +53,24 @@
   
   /* Popover & Sidebar */
   --popover: rgba(255, 255, 255, 0.85);
-  --popover-foreground: 240 15% 15%;
+  --popover-foreground: 150 7% 15%;
   --popover-border: rgba(255, 255, 255, 0.4);
   --sidebar: rgba(255, 255, 255, 0.6);
-  --sidebar-foreground: 240 15% 15%;
+  --sidebar-foreground: 150 7% 15%;
   --sidebar-border: rgba(255, 255, 255, 0.25);
-  --sidebar-primary: 250 82% 70%;
+  --sidebar-primary: 160 84% 26%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: rgba(255, 255, 255, 0.5);
-  --sidebar-accent-foreground: 240 15% 15%;
-  --sidebar-ring: 250 82% 70%;
+  --sidebar-accent-foreground: 150 7% 15%;
+  --sidebar-ring: 160 84% 26%;
   
   /* Premium Shadow System */
-  --shadow-glow-sm: 0 0 20px rgba(102, 126, 234, 0.15);
-  --shadow-glow-md: 0 0 40px rgba(102, 126, 234, 0.25);
-  --shadow-glow-lg: 0 0 60px rgba(102, 126, 234, 0.35);
-  --shadow-depth-1: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 20px rgba(102, 126, 234, 0.06);
-  --shadow-depth-2: 0 4px 16px rgba(0, 0, 0, 0.10), 0 0 30px rgba(102, 126, 234, 0.10);
-  --shadow-depth-3: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 40px rgba(102, 126, 234, 0.15);
+  --shadow-glow-sm: 0 0 20px rgba(5, 120, 85, 0.15);
+  --shadow-glow-md: 0 0 40px rgba(5, 120, 85, 0.25);
+  --shadow-glow-lg: 0 0 60px rgba(5, 120, 85, 0.35);
+  --shadow-depth-1: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 20px rgba(5, 120, 85, 0.06);
+  --shadow-depth-2: 0 4px 16px rgba(0, 0, 0, 0.10), 0 0 30px rgba(5, 120, 85, 0.10);
+  --shadow-depth-3: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 40px rgba(5, 120, 85, 0.15);
   
   /* Animation Timings */
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
@@ -81,15 +82,15 @@
   --spacing: 0.5rem;
   
   /* Typography */
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Geist Variable', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono Variable', monospace;
   
   /* Elevation System */
   --button-outline: rgba(0,0,0, .08);
   --badge-outline: rgba(0,0,0, .04);
   --opaque-button-border-intensity: -6;
-  --elevate-1: rgba(102, 126, 234, .04);
-  --elevate-2: rgba(102, 126, 234, .08);
+  --elevate-1: rgba(5, 120, 85, .04);
+  --elevate-2: rgba(5, 120, 85, .08);
   
   /* Border helpers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
@@ -115,25 +116,25 @@
   --glass-hover: rgba(255, 255, 255, 0.12);
   
   /* Base Colors */
-  --background: 250 30% 8%;         /* Deep purple-black */
-  --foreground: 250 10% 95%;
+  --background: 150 7% 8%;         /* Deep purple-black */
+  --foreground: 150 7% 95%;
   
   /* Card System */
   --card: rgba(255, 255, 255, 0.08);
-  --card-foreground: 250 10% 95%;
+  --card-foreground: 150 7% 95%;
   --card-border: rgba(255, 255, 255, 0.18);
   
-  --border: 250 20% 18%;
-  --input: 250 20% 22%;
-  --ring: 250 82% 60%;
+  --border: 150 7% 18%;
+  --input: 150 7% 22%;
+  --ring: 158 64% 36%;
   
-  --primary: 250 82% 65%;
+  --primary: 158 64% 36%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 250 20% 18%;
-  --secondary-foreground: 250 10% 92%;
-  --muted: 250 15% 16%;
-  --muted-foreground: 250 8% 58%;
-  --accent: 280 65% 55%;
+  --secondary: 150 7% 18%;
+  --secondary-foreground: 150 7% 92%;
+  --muted: 150 7% 16%;
+  --muted-foreground: 150 7% 58%;
+  --accent: 165 70% 30%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 72% 55%;
   --destructive-foreground: 0 0% 100%;
@@ -143,24 +144,24 @@
   --warning-foreground: 0 0% 100%;
   
   --popover: rgba(255, 255, 255, 0.10);
-  --popover-foreground: 250 10% 95%;
+  --popover-foreground: 150 7% 95%;
   --popover-border: rgba(255, 255, 255, 0.20);
   --sidebar: rgba(255, 255, 255, 0.06);
-  --sidebar-foreground: 250 10% 92%;
+  --sidebar-foreground: 150 7% 92%;
   --sidebar-border: rgba(255, 255, 255, 0.15);
-  --sidebar-primary: 250 82% 60%;
+  --sidebar-primary: 158 64% 36%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: rgba(255, 255, 255, 0.08);
-  --sidebar-accent-foreground: 250 10% 92%;
-  --sidebar-ring: 250 82% 60%;
+  --sidebar-accent-foreground: 150 7% 92%;
+  --sidebar-ring: 158 64% 36%;
   
   /* Dark Mode Shadows */
-  --shadow-glow-sm: 0 0 20px rgba(102, 126, 234, 0.20);
-  --shadow-glow-md: 0 0 40px rgba(102, 126, 234, 0.30);
-  --shadow-glow-lg: 0 0 60px rgba(102, 126, 234, 0.40);
-  --shadow-depth-1: 0 2px 8px rgba(0, 0, 0, 0.30), 0 0 20px rgba(102, 126, 234, 0.10);
-  --shadow-depth-2: 0 4px 16px rgba(0, 0, 0, 0.40), 0 0 30px rgba(102, 126, 234, 0.15);
-  --shadow-depth-3: 0 8px 32px rgba(0, 0, 0, 0.50), 0 0 40px rgba(102, 126, 234, 0.20);
+  --shadow-glow-sm: 0 0 20px rgba(5, 120, 85, 0.20);
+  --shadow-glow-md: 0 0 40px rgba(5, 120, 85, 0.30);
+  --shadow-glow-lg: 0 0 60px rgba(5, 120, 85, 0.40);
+  --shadow-depth-1: 0 2px 8px rgba(0, 0, 0, 0.30), 0 0 20px rgba(5, 120, 85, 0.10);
+  --shadow-depth-2: 0 4px 16px rgba(0, 0, 0, 0.40), 0 0 30px rgba(5, 120, 85, 0.15);
+  --shadow-depth-3: 0 8px 32px rgba(0, 0, 0, 0.50), 0 0 40px rgba(5, 120, 85, 0.20);
   
   --elevate-1: rgba(255, 255, 255, .04);
   --elevate-2: rgba(255, 255, 255, .08);
@@ -408,7 +409,7 @@
   }
   
   .glow-primary {
-    box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 0 20px rgba(5, 120, 85, 0.3);
   }
   
   .glow-accent {

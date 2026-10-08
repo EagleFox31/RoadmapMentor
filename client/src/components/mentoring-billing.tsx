@@ -100,7 +100,7 @@ export function MentoringBilling({ mentorshipId, packages }: Props) {
     <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <WalletCards className="h-5 w-5 text-violet-300" />
+          <WalletCards className="h-5 w-5 text-emerald-300" />
           <div>
             <h2 className="font-semibold">Facturation & paiements</h2>
             <p className="text-xs text-slate-400">Forfait, suppléments acceptés, montant dû et paiements enregistrés.</p>
@@ -109,7 +109,7 @@ export function MentoringBilling({ mentorshipId, packages }: Props) {
       </div>
 
       {isMentor() && unbilledPackages.length > 0 && (
-        <div className="mt-5 grid gap-3 rounded-2xl border border-violet-300/15 bg-violet-300/5 p-5 md:grid-cols-[1fr_180px_auto]">
+        <div className="mt-5 grid gap-3 rounded-2xl border border-emerald-300/15 bg-emerald-300/5 p-5 md:grid-cols-[1fr_180px_auto]">
           <select value={createForm.packageId} onChange={(e) => setCreateForm({ ...createForm, packageId: e.target.value })} className="rounded-md border border-white/10 bg-slate-900 px-3 py-2 text-sm">
             <option value="">Forfait à facturer</option>
             {unbilledPackages.map((item) => <option key={item.id} value={item.id}>{item.title} · {money(item.basePriceMinor, item.currency)}</option>)}
@@ -134,7 +134,7 @@ export function MentoringBilling({ mentorshipId, packages }: Props) {
                   <h3 className="text-lg font-semibold">{period.title}</h3>
                   <p className="mt-1 text-sm text-slate-400">{period.periodStart} → {period.periodEnd} · échéance {period.dueDate}</p>
                 </div>
-                <Badge className="bg-violet-300/10 text-violet-100">{statusText[period.status]}</Badge>
+                <Badge className="bg-emerald-300/10 text-emerald-100">{statusText[period.status]}</Badge>
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

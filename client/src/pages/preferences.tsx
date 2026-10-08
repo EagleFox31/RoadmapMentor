@@ -139,7 +139,7 @@ export default function PreferencesPage() {
     {
       title: "IA & Système",
       icon: Sparkles,
-      gradient: "from-purple-500 to-pink-500",
+      gradient: "from-emerald-500 to-teal-500",
       items: [
         { key: "aiGenerationNotifications", label: "Génération IA", desc: "Succès ou échec de génération automatique" },
         { key: "weekValidationNotifications", label: "Validation de semaine", desc: "Notifications de validation mentor" },
@@ -177,18 +177,18 @@ export default function PreferencesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-blue-50">
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div
           className="absolute top-0 -left-4 w-96 h-96 bg-blue-200/30 rounded-full blur-3xl animate-pulse"
           style={{ animationDelay: "0s", animationDuration: "4s" }}
         />
         <div
-          className="absolute top-1/4 right-0 w-96 h-96 bg-purple-200/30 rounded-full blur-3xl animate-pulse"
+          className="absolute top-1/4 right-0 w-96 h-96 bg-emerald-200/30 rounded-full blur-3xl animate-pulse"
           style={{ animationDelay: "2s", animationDuration: "5s" }}
         />
         <div
-          className="absolute bottom-0 left-1/3 w-96 h-96 bg-pink-200/30 rounded-full blur-3xl animate-pulse"
+          className="absolute bottom-0 left-1/3 w-96 h-96 bg-teal-200/30 rounded-full blur-3xl animate-pulse"
           style={{ animationDelay: "1s", animationDuration: "6s" }}
         />
       </div>
@@ -206,7 +206,7 @@ export default function PreferencesPage() {
 
             <div className="flex items-center gap-3">
               <Mail className="w-8 h-8 text-blue-600" />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-emerald-600 bg-clip-text text-transparent">
                 Préférences de Notification
               </h1>
             </div>
@@ -346,7 +346,7 @@ export default function PreferencesPage() {
             </div>
 
             <div
-              className="mt-8 backdrop-blur-xl bg-gradient-to-br from-blue-50 to-purple-50 rounded-3xl border border-slate-200 shadow-lg p-8"
+              className="mt-8 backdrop-blur-xl bg-gradient-to-br from-blue-50 to-emerald-50 rounded-3xl border border-slate-200 shadow-lg p-8"
               style={{ animation: "fadeInUp 0.6s ease-out 0.5s both" }}
             >
               <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-slate-800">

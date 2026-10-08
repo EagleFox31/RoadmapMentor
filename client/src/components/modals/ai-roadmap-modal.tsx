@@ -165,7 +165,7 @@ export function AIRoadmapModal({ open, onClose, onSave, existingWeeks = [] }: AI
   const getObjectiveTypeColor = (type: string) => {
     switch (type) {
       case "CONCEPT": return "bg-blue-500/20 text-blue-400 border-blue-500/30";
-      case "ALGO": return "bg-purple-500/20 text-purple-400 border-purple-500/30";
+      case "ALGO": return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
       case "PROJECT": return "bg-green-500/20 text-green-400 border-green-500/30";
       default: return "bg-gray-500/20 text-gray-400 border-gray-500/30";
     }
