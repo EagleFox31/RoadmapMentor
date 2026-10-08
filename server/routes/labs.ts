@@ -1,5 +1,6 @@
 import { type Express } from "express";
 import { storage } from "../storage";
+import { asLabSubmissionView } from "../domain/labExecution";
 import { authMiddleware, requireMentor, requireLearner, type AuthRequest } from "../auth";
 import { createLabSchema, updateLabSchema, saveLabSubmissionSchema, reviewLabSubmissionSchema, type Week } from "@shared/schema";
 import { handleError } from "../http/errors";
@@ -65,13 +66,14 @@ export function registerLabRoutes(app: Express) {
       if (existingSubmission?.status === "APPROVED") {
         return res.status(409).json({ error: "An approved lab cannot be changed" });
       }
-      res.json(await storage.saveLabSubmission(
+      const saved = await storage.saveLabSubmission(
         labId,
         req.user!.id,
         submission.code,
         submission.output ?? null,
         submission.submit,
-      ));
+      );
+      res.json(asLabSubmissionView(saved));
     } catch (error) {
       handleError(res, error);
     }
@@ -95,11 +97,12 @@ export function registerLabRoutes(app: Express) {
 
       const review = reviewLabSubmissionSchema.parse(req.body);
       const status = review.decision === "APPROVE" ? "APPROVED" : "CHANGES_REQUESTED";
-      res.json(await storage.reviewLabSubmission(
+      const reviewed = await storage.reviewLabSubmission(
         submissionId,
         status,
         review.feedback ?? null,
-      ));
+      );
+      res.json(reviewed ? asLabSubmissionView(reviewed) : reviewed);
     } catch (error) {
       handleError(res, error);
     }

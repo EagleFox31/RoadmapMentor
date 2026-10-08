@@ -1,3 +1,14 @@
+# État courant — 2026-10-08 (labs + CI frontend)
+
+- PR #69 fusionnée sur `main` au commit `4264c2b` ; les six jobs CI de la PR sont passés.
+- Lot en cours : `fix/labs-execution-trust-frontend-ci`. Les résultats Python sont explicitement non vérifiés côté serveur (sans migration), le mentor en est averti, l'apprenant doit relancer après avoir modifié son code ; les changements frontend lancent désormais aussi le job d'intégration et les tests navigateur.
+- **Ne pas confondre revue humaine et vérification serveur** : même après approbation du mentor, la sortie soumise reste `CLIENT_UNVERIFIED`.
+- À valider sur une vraie instance : CDN/moteur Python en production, Resend avec domaine et clé API valides, preuve R2 de bout en bout. La CI seule ne prouve pas ces opérations.
+
+---
+
+## Archive
+
 # État courant — 2026-10-08 (correctifs de recette, PR en préparation)
 
 - Branche `fix/rm-production-r2-resend-alignment` : l'upload direct applicatif doit fonctionner avec les adaptateurs filesystem **et** S3/R2. Le contrôle de propriété ACL introduit par la PR #68 est conservé ; tests ajoutés pour le chemin S3 et les permissions.
