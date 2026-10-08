@@ -4,6 +4,9 @@
 Enchaîner `docs/backlog.md`. Fusionnés : RM-020 (#54), RM-015 (#55), RM-014 (#56). RM-017 partiel (logs structurés + `x-request-id`) dans la PR #57 (`feat/rm-017-request-logging`), **à fusionner par l'utilisateur**. Suite : RM-016 (Terraform, choix du fournisseur à trancher) puis reste de RM-017.
 
 ## Fait
+- RM-017 (procédures) : `docs/engineering/runbook.md` (sondes/alertes à configurer, incident, restauration Neon, rotation des secrets) sur `infra/render-deploy` (PR #60). Métriques agrégées et alertes automatisées non faites. PR #57 et #58 fusionnées ; #59 ouverte.
+- Arbre de travail : modifications labs non commitées (Codex) sur cette branche, volontairement exclues du commit : ne pas les mélanger.
+- RM-016 (voie gratuite) : `render.yaml` (Blueprint Docker, plan free, migrations au démarrage, R2 via l'adaptateur S3, secrets `sync: false`) + guide « Render + Neon + R2 » dans `docs/deployment.md`. **Non déployé** : aucun compte Render/Neon/R2 touché par Claude. Le projet Vercel existant (`roadmap-mentor`, dernier déploiement 11/2025) est périmé et inadapté (serveur Express + scheduler).
 - Test navigateur (dev et build prod) des messages d'erreur, pages lazy et fond WebP : `test/e2e/error-messages.e2e.py` (en CI). Il a révélé un bug de RM-014 (imports après les `lazy`, page blanche en dev), corrigé dans `App.tsx`. PR #59 = reprise de #58 (mal ciblée), à fusionner.
 - Messages d'erreur HTTP (branche `feat/http-error-messages`, empilée sur #57) : `server/http/errorCatalog.ts` (code + message FR), `errorEnvelope` (ajoute `code`/`message`/`requestId` à toute erreur `/api`, `error` inchangé), 404 JSON des routes `/api` inconnues, JSON mal formé/413, `ApiError` côté client, 500 sans fuite de `error.message`. Doc dans `docs/engineering/observability.md`. 102 unitaires, 126 intégration.
 - RM-014 (#56) : fond WebP 29 kB, pages en `React.lazy`, bundle initial 281 kB, `npm run check:bundle` (budgets JS 400/CSS 150/média 500 kB) + étape CI.
@@ -27,8 +30,9 @@ Enchaîner `docs/backlog.md`. Fusionnés : RM-020 (#54), RM-015 (#55), RM-014 (#
 - Stockage des preuves : Cloudflare R2 retenu (API S3, `OBJECT_STORAGE_S3_ENDPOINT`) ; fournisseur de calcul à trancher (conseillé : Fly.io/Render + Neon) pour RM-016.
 
 ## Reste à faire
-1. Fusionner la PR #57, recibler la PR des messages d'erreur sur `main`, la fusionner, puis `git checkout main && git pull`.
-2. RM-016 : choisir le fournisseur cloud (décision utilisateur), implémenter réseau/calcul/stockage/secrets, état distant, staging/prod. Puis finir RM-017 (métriques, alertes, procédures).
+0. Déploiement Render (action de l'utilisateur) : créer Neon + bucket R2 + Blueprint Render + pinger (voir `docs/deployment.md`), puis vérifier `/health/ready`, une connexion, un envoi de preuve vers R2 et un rappel planifié. **Faire tourner les secrets vus à l'écran** (clé IA, mot de passe SMTP, JWT_SECRET) et vérifier que `.env` reste hors Git.
+1. Fusionner la PR #60 (#57 et #58 déjà fusionnées ; #59 à vérifier), puis `git checkout main && git pull`.
+2. RM-016 : choix fait (Render gratuit + Neon + R2, pas de Terraform payant) ; `infra/terraform` (AWS) devient hors périmètre : à arbitrer/documenter. Puis finir RM-017 (métriques, alertes automatisées ; le runbook est fait).
 3. RM-012 (S3) non testé sur vrai bucket/MinIO. RM-010 : mesure des requêtes, pagination, N+1 du scheduler. RM-011 : reprise d'un lot interrompu.
 4. Non testé en navigateur : labs (Python), sélecteur de roadmap, redirection 401.
 5. Branches distantes fusionnées à supprimer sur origin si souhaité.
