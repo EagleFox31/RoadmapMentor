@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { canPreviewPdf, safeExternalResourceUrl, supportedVideoEmbed } from "../shared/resourceLinks";
+import { canPreviewPdf, internalDocumentRef, safeExternalResourceUrl, supportedVideoEmbed } from "../shared/resourceLinks";
 import { insertResourceSchema } from "../shared/schema";
 
 const videoId = "dQw4w9WgXcQ";
@@ -91,4 +91,15 @@ test("PDF previews require a direct HTTPS .pdf URL", () => {
   assert.equal(canPreviewPdf("https://docs.example.org/file.pdf.html"), false);
   assert.equal(canPreviewPdf("http://docs.example.org/file.pdf"), false);
   assert.equal(canPreviewPdf("https://docs.example.org/preview"), false);
+});
+
+test("uploaded documents are recognized by path, whatever the host", () => {
+  const id = "0f8b6c2e-3a4d-4e5f-8a9b-1c2d3e4f5a6b";
+  for (const base of ["http://localhost:5000", "https://roadmapmentor.onrender.com", "https://roadmapmentor.trigenys.com"]) {
+    assert.deepEqual(internalDocumentRef(`${base}/api/resources/documents/${id}/guide.pdf`), { objectId: id, filename: "guide.pdf" });
+    assert.equal(canPreviewPdf(`${base}/api/resources/documents/${id}/guide.pdf`), true);
+  }
+  assert.equal(internalDocumentRef(`https://docs.example.org/api/resources/documents/not-a-uuid/guide.pdf`), null);
+  assert.equal(internalDocumentRef("https://docs.example.org/guide.pdf"), null);
+  assert.equal(canPreviewPdf("http://localhost:5000/other/guide.pdf"), false);
 });

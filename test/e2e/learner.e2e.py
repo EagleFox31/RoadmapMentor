@@ -1,9 +1,28 @@
 """Learner journey: register, see validated weeks only, evidence, comment."""
 from playwright.sync_api import sync_playwright, expect
-import re
 from _support import *
 
 EMAIL = f"e2e.learner.{RUN}@it.test"
+
+def _one_page_pdf() -> bytes:
+    """Smallest valid one-page PDF (exact xref offsets) so pdf.js renders a canvas."""
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 100] >>",
+    ]
+    out, offsets = bytearray(b"%PDF-1.4\n"), []
+    for number, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n%s\nendobj\n" % (number, body)
+    xref = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objects) + 1)
+    out += b"".join(b"%010d 00000 n \n" % offset for offset in offsets)
+    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objects) + 1, xref)
+    return bytes(out)
+
+
+ONE_PAGE_PDF = _one_page_pdf()
 steps = Steps()
 
 with sync_playwright() as p:
@@ -50,11 +69,12 @@ with sync_playwright() as p:
         "label": "Documentation PDF", "url": "https://docs.example.org/manual.pdf",
         "resourceType": "DOC", "practicePrompt": "Lire puis appliquer au projet.",
     })
-    # This PDF is fetched by the browser only; the app never proxies remote URLs.
-    page.route("https://docs.example.org/manual.pdf", lambda route: route.fulfill(
+    # The browser reads the PDF through the same-origin proxy; the remote fetch
+    # itself is covered by test/pdf-proxy.test.ts, so the proxy answer is stubbed.
+    page.route(f"**/api/resources/{pdf_resource['id']}/pdf", lambda route: route.fulfill(
         status=200,
-        headers={"Content-Type": "application/pdf", "Access-Control-Allow-Origin": "*"},
-        body=b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\n%%EOF\n",
+        headers={"Content-Type": "application/pdf"},
+        body=ONE_PAGE_PDF,
     ))
 
     login_ui(page, EMAIL, PWD)
@@ -77,10 +97,10 @@ with sync_playwright() as p:
     steps.ok("consultation is explicitly declared and survives a reload")
 
     tid(page, f"button-preview-pdf-{pdf_resource['id']}").click()
-    expect(tid(page, "iframe-resource-pdf")).to_have_attribute("src", re.compile(r"^blob:"))
+    expect(tid(page, "pdf-preview-pages").locator("canvas")).to_have_count(1)
     expect(tid(page, "link-resource-pdf-original")).to_have_attribute("href", "https://docs.example.org/manual.pdf")
     tid(page, "button-close-pdf-preview").click()
-    expect(tid(page, "iframe-resource-pdf")).to_have_count(0)
+    expect(tid(page, "pdf-preview-pages")).to_have_count(0)
     steps.ok("previews a fetched PDF locally and keeps the source fallback")
 
     tid(page, f"button-play-resource-{video['id']}").click()

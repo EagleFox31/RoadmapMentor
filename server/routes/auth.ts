@@ -11,6 +11,7 @@ import {
 } from "@shared/schema";
 import { isDevelopmentEnvironment, isDirectRegistrationEnabled } from "../security";
 import { handleError } from "../http/errors";
+import { userError } from "../http/errorCatalog";
 import { otpService } from "../services/otpService";
 import type { RouteDeps } from "./deps";
 
@@ -89,7 +90,7 @@ export function registerAuthRoutes(app: Express, { limiters }: RouteDeps) {
       const data = sendRegistrationOtpSchema.parse(req.body);
       const existing = await storage.getUserByEmail(data.email);
       if (existing) {
-        return res.status(400).json({ error: "Cette adresse email est déjà associée à un compte." });
+        return res.status(400).json(userError("AUTH_USER_EXISTS", "Cette adresse e-mail est déjà associée à un compte. Connectez-vous."));
       }
 
       const hashedPassword = await hashPassword(data.password);
@@ -100,7 +101,7 @@ export function registerAuthRoutes(app: Express, { limiters }: RouteDeps) {
 
       const result = await otpService.sendOtp(data.email, "REGISTRATION", payload, data.fullName);
       if (!result.success) {
-        return res.status(result.failure === "DELIVERY_FAILED" ? 503 : 429).json({ error: result.message });
+        return res.status(result.failure === "DELIVERY_FAILED" ? 503 : 429).json(userError(result.failure === "DELIVERY_FAILED" ? "OTP_DELIVERY_FAILED" : "OTP_RATE_LIMITED", result.message ?? "Envoi du code impossible."));
       }
 
       res.json({ message: result.message });
@@ -115,11 +116,11 @@ export function registerAuthRoutes(app: Express, { limiters }: RouteDeps) {
       const data = verifyRegistrationOtpSchema.parse(req.body);
       const check = await otpService.verifyOtp(data.email, data.code, "REGISTRATION");
       if (!check.valid) {
-        return res.status(400).json({ error: check.error });
+        return res.status(400).json(userError("OTP_INVALID", check.error ?? "Code invalide."));
       }
 
       if (!check.payload) {
-        return res.status(400).json({ error: "Données d'inscription expirées. Veuillez recommencer." });
+        return res.status(400).json(userError("OTP_REGISTRATION_EXPIRED", "Données d'inscription expirées. Veuillez recommencer."));
       }
 
       const { fullName, passwordHash } = JSON.parse(check.payload);
@@ -127,7 +128,7 @@ export function registerAuthRoutes(app: Express, { limiters }: RouteDeps) {
       // Vérification finale d'unicité
       const existing = await storage.getUserByEmail(data.email);
       if (existing) {
-        return res.status(400).json({ error: "Cette adresse email est déjà associée à un compte." });
+        return res.status(400).json(userError("AUTH_USER_EXISTS", "Cette adresse e-mail est déjà associée à un compte. Connectez-vous."));
       }
 
       const user = await storage.createUser({
@@ -167,7 +168,7 @@ export function registerAuthRoutes(app: Express, { limiters }: RouteDeps) {
 
       const result = await otpService.sendOtp(data.email, "LOGIN", undefined, user.fullName);
       if (!result.success) {
-        return res.status(result.failure === "DELIVERY_FAILED" ? 503 : 429).json({ error: result.message });
+        return res.status(result.failure === "DELIVERY_FAILED" ? 503 : 429).json(userError(result.failure === "DELIVERY_FAILED" ? "OTP_DELIVERY_FAILED" : "OTP_RATE_LIMITED", result.message ?? "Envoi du code impossible."));
       }
 
       res.json({ message });
@@ -182,12 +183,12 @@ export function registerAuthRoutes(app: Express, { limiters }: RouteDeps) {
       const data = verifyLoginOtpSchema.parse(req.body);
       const check = await otpService.verifyOtp(data.email, data.code, "LOGIN");
       if (!check.valid) {
-        return res.status(400).json({ error: check.error });
+        return res.status(400).json(userError("OTP_INVALID", check.error ?? "Code invalide."));
       }
 
       const user = await storage.getUserByEmail(data.email);
       if (!user || user.disabledAt) {
-        return res.status(401).json({ error: "Compte introuvable ou désactivé." });
+        return res.status(401).json(userError("AUTH_ACCOUNT_UNAVAILABLE", "Compte introuvable ou désactivé."));
       }
 
       const token = generateToken(user);
@@ -221,7 +222,7 @@ export function registerAuthRoutes(app: Express, { limiters }: RouteDeps) {
 
       const user = await storage.getUser(userId);
       if (!user) {
-        return res.status(404).json({ error: "Utilisateur non trouvé" });
+        return res.status(404).json(userError("USER_NOT_FOUND", "Utilisateur non trouvé."));
       }
 
       const updates: Partial<{ fullName: string; password: string }> = {};
@@ -233,13 +234,13 @@ export function registerAuthRoutes(app: Express, { limiters }: RouteDeps) {
       if (newPassword) {
         const isValid = await comparePassword(currentPassword!, user.password);
         if (!isValid) {
-          return res.status(400).json({ error: "Mot de passe actuel incorrect." });
+          return res.status(400).json(userError("AUTH_WRONG_PASSWORD", "Mot de passe actuel incorrect."));
         }
         updates.password = await hashPassword(newPassword);
       }
 
       if (Object.keys(updates).length === 0) {
-        return res.status(400).json({ error: "Aucune modification fournie." });
+        return res.status(400).json(userError("PROFILE_NO_CHANGE", "Aucune modification fournie."));
       }
 
       const updated = await storage.updateUser(userId, updates);

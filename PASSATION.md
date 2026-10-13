@@ -45,7 +45,8 @@ Mise en service de l'app en prod pour un premier binôme : Jennifer Aka'a (mento
    - retirer le préfixe « 400: » des toasts.
 8. Vérifier en navigateur réel les modales et le lecteur YouTube (noir en headless). E2E Playwright du flux OTP.
 9. RM-021 tarification (`docs/mentor-pricing.md`). AWS #27/#28 différés (issue #25).
-10. Fichiers non commités d'un autre agent : `client/src/components/week-selector.tsx`, `attached_assets/week-bg-*.jpg`, `docs/walkthrough-gemini.md`, `server/auth.ts` (casse 7 tests authMiddleware), `server/routes/content.ts`, `shared/resourceLinks.ts`, `infra/keepalive-worker/`. À valider ou à jeter par l'utilisateur ; ne pas les inclure dans une PR sans accord.
+10. Travail de l'autre agent committé sur `feat/notifications-deadlines-keepalive` (keep-alive Cloudflare, notifications e-mail, refonte des ressources, documents téléversés). Branche partie de #95, avec #96 fusionnée dedans. Le jeton en `?token=` est abandonné : les documents passent par `/api/resources/:id/document` et `/pdf`. Pas encore poussée ; à fusionner après #95 et #96.
+11. **PR #96** (`feat/pdf-preview-proxy`) : aperçu PDF via proxy serveur anti-SSRF + pdf.js. À fusionner.
 
 ## Pièges / contexte
 - Le `.env` local pointe sur la **base Neon de prod**. Pour les scripts locaux, surcharger :

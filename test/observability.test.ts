@@ -111,3 +111,18 @@ test("envelope leaves successes, non-API routes and already-coded bodies untouch
   assert.deepEqual(envelope("/health/ready", 503, { status: "not_ready" }), { status: "not_ready" });
   assert.deepEqual(envelope("/api/x", 400, { error: "e", code: "CUSTOM" }), { error: "e", code: "CUSTOM" });
 });
+
+test("userError keeps a French business message through the envelope", async () => {
+  const { userError } = await import("../server/http/errorCatalog");
+  const body = envelope("/api/auth/otp/send-registration", 400, userError("AUTH_USER_EXISTS", "Compte déjà existant."));
+  assert.equal(body.code, "AUTH_USER_EXISTS");
+  assert.equal(body.message, "Compte déjà existant.");
+  assert.equal(body.error, "Compte déjà existant.");
+});
+
+test("auth routes never send a French error without an explicit code", async () => {
+  const { readFileSync } = await import("node:fs");
+  const source = readFileSync(new URL("../server/routes/auth.ts", import.meta.url), "utf8");
+  const uncoded = source.match(/\.json\(\{\s*error:\s*(["'`])[^"'`]*[éèàêçÉ][^"'`]*\1\s*\}\)/g) ?? [];
+  assert.deepEqual(uncoded, []);
+});

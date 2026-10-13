@@ -63,3 +63,19 @@ Generalised lesson: a developer convenience that weakens a security control must
 | After merging #86 to `main`, #87, #88 and #89 were merged while still targeting their parent branches; `main` only received #86 | Same as RM-011: the stacked children were not retargeted to `main` before merging, and nothing in the repository enforces it | Catch-up PR #90 (`feat/profile-notifications` → `main`), which already contains the whole stack | Repeated error, so a stronger control than a checklist: enable "Automatically delete head branches" on the repository, which makes GitHub retarget dependent PRs to `main` when their base merges; before merging a stacked PR, `gh pr view <n> --json baseRefName` must print `main` |
 
 Generalised lesson: a rule that relies on remembering an order fails twice; turn it into a platform setting.
+
+## 2026-10-13 — OTP error messages replaced by a generic 400 in production
+
+| Context | Root cause | Resolution | Prevention |
+| --- | --- | --- | --- |
+| Signing up with an email that already has an account showed "La requête est invalide" instead of the explicit message | `errorEnvelope` maps the English `error` through `describeError`; the OTP routes return French messages with no `code`, so they fell back to the generic status message (also hid OTP lockout, expiry and 503 delivery messages) | `userError(code, message)` in `server/http/errorCatalog.ts`; every French auth error now carries an explicit code | `test/observability.test.ts`: the envelope keeps `userError` messages, and a guard fails if `server/routes/auth.ts` sends a French `error` without a code |
+
+Generalised lesson: a response post-processor is part of the contract; a new route must be tested through it, not only at the handler.
+
+## 2026-10-13 — Session token accepted in the query string (near miss)
+
+| Context | Root cause | Resolution | Prevention |
+| --- | --- | --- | --- |
+| Opening a mentor-uploaded document from a link needed authentication, so `authMiddleware` was changed to read `?token=` and the client appended the JWT to the link (never merged) | A plain `<a href>` cannot send `Authorization`; the shortcut put a long-lived, full-account token in URLs (browser history, server logs, Referer). The stored-document route also served any object to any signed-in user | Documents are read through `/api/resources/:id/document` and `/api/resources/:id/pdf` (week access rules); the client fetches with `Authorization` and opens a blob (`client/src/lib/openAuthorizedFile.ts`); the stored link is readable by its uploader only | `test/auth.test.ts`: a query-string token is refused (401); `test/resource-links.test.ts`: uploaded documents are recognized by path on any host |
+
+Generalised lesson: protected files are opened by an authenticated fetch plus a blob URL, never by putting a credential in a link.

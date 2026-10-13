@@ -13,9 +13,10 @@ import {
   Clock, CheckCircle2, Eye, Target, Sparkles, Flag, Check, AlertTriangle
 } from "lucide-react";
 import type { Resource } from "@shared/schema";
-import { canPreviewPdf, safeExternalResourceUrl, supportedVideoEmbed } from "@shared/resourceLinks";
+import { canPreviewPdf, internalDocumentRef, safeExternalResourceUrl, supportedVideoEmbed } from "@shared/resourceLinks";
 import { PdfResourceViewer } from "./PdfResourceViewer";
-import { isMentor, getAuthToken } from "@/lib/auth";
+import { isMentor } from "@/lib/auth";
+import { openAuthorizedFile } from "@/lib/openAuthorizedFile";
 
 interface ResourcesListProps {
   resources: Resource[];
@@ -124,10 +125,9 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
             const theme = resourceThemes[type] || resourceThemes.OTHER;
             const typeLabel = resourceTypeLabels[type] || "Autre";
             const externalUrl = safeExternalResourceUrl(resource.url);
-            const isInternalDoc = resource.url.includes("/api/resources/documents/");
-            const openUrl = isInternalDoc && getAuthToken() && externalUrl
-              ? `${externalUrl}${externalUrl.includes("?") ? "&" : "?"}token=${getAuthToken()}`
-              : externalUrl;
+            const internalDoc = internalDocumentRef(resource.url);
+            const isInternalDoc = internalDoc !== null;
+            const openUrl = isInternalDoc ? null : externalUrl;
             const canPlay = type === "VIDEO" ? supportedVideoEmbed(resource.url) : null;
             const pdfPreview = canPreviewPdf(resource.url);
             const consulted = consultedIds.has(resource.id);
@@ -341,8 +341,26 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
                           aria-label={`Ouvrir ${resource.label} dans un nouvel onglet`}
                         >
                           <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span>Ouvrir {isInternalDoc ? "le document" : "la ressource"}</span>
+                          <span>Ouvrir la ressource</span>
                         </a>
+                      </Button>
+                    )}
+
+                    {internalDoc && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        type="button"
+                        className="border-border hover:bg-muted font-medium gap-2 h-9 px-3.5"
+                        data-testid={`button-open-resource-${resource.id}`}
+                        aria-label={`Ouvrir ${resource.label} dans un nouvel onglet`}
+                        onClick={() => {
+                          openAuthorizedFile(`/api/resources/${resource.id}/document`, internalDoc.filename)
+                            .catch(() => toast({ title: "Document indisponible", description: "Accès refusé ou document introuvable.", variant: "destructive" }));
+                        }}
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span>Ouvrir le document</span>
                       </Button>
                     )}
                   </div>
@@ -426,6 +444,7 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
       </Dialog>
       <PdfResourceViewer
         title={activePdf?.label ?? ""}
+        resourceId={activePdf?.id ?? null}
         url={activePdf?.url ?? null}
         onClose={() => setActivePdf(null)}
       />

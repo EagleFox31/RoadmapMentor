@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Response } from "express";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { storage } from "../storage";
@@ -10,8 +10,11 @@ import { canAccessWeek, getObjectiveAccess, getTaskAccess, getDeliverableAccess,
 import { emailService } from "../services/emailService";
 import { notifyWeekLearners } from "../services/notifyWeekLearners";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
+import { canPreviewPdf, internalDocumentRef } from "@shared/resourceLinks";
+import { fetchRemotePdf, PdfProxyError } from "../services/pdfProxy";
+import type { RouteDeps } from "./deps";
 
-export function registerWeekContentRoutes(app: Express) {
+export function registerWeekContentRoutes(app: Express, { limiters }: RouteDeps) {
   app.post("/api/weeks/:weekId/objectives", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
       const weekId = parseInt(req.params.weekId, 10);
@@ -407,7 +410,24 @@ export function registerWeekContentRoutes(app: Express) {
     },
   );
 
-  // Serve custom resource documents (Authenticated users: mentors & learners)
+  /** Streams a stored document. Callers have already checked who may read it. */
+  async function sendInternalDocument(res: Response, objectFile: string, filename: string) {
+    const safeFilename = sanitizeFilename(filename);
+    const isPdf = safeFilename.toLowerCase().endsWith(".pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${safeFilename}"`);
+    res.setHeader("Content-Type", isPdf ? "application/pdf" : "application/octet-stream");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "private, max-age=300");
+    await new ObjectStorageService().downloadObject(objectFile, res);
+  }
+
+  function findInternalDocument(objectId: string) {
+    return new ObjectStorageService().getObjectEntityFile(`/objects/uploads/${objectId}`);
+  }
+
+  // Stored link of an uploaded document: readable by its uploader only.
+  // Everyone else reads it through the resource (/api/resources/:id/document),
+  // which applies the week access rules. Tokens are never accepted in the URL.
   app.get(
     "/api/resources/documents/:objectId/:filename",
     authMiddleware,
@@ -417,19 +437,12 @@ export function registerWeekContentRoutes(app: Express) {
         if (!/^[0-9a-f-]{36}$/i.test(objectId)) {
           return res.status(400).json({ error: "Invalid document ID" });
         }
-
-        const safeFilename = sanitizeFilename(filename);
-        const objects = new ObjectStorageService();
-        const objectPath = `/objects/uploads/${objectId}`;
-        const objectFile = await objects.getObjectEntityFile(objectPath);
-
-        const isPdf = safeFilename.endsWith(".pdf");
-        res.setHeader("Content-Disposition", `inline; filename="${safeFilename}"`);
-        res.setHeader("Content-Type", isPdf ? "application/pdf" : "application/octet-stream");
-        res.setHeader("X-Content-Type-Options", "nosniff");
-        res.setHeader("Cache-Control", "private, max-age=3600");
-
-        await objects.downloadObject(objectFile, res);
+        const objectFile = await findInternalDocument(objectId);
+        const owner = await new ObjectStorageService().getObjectOwner(objectFile);
+        if (owner !== String(req.user!.id)) {
+          return res.status(404).json({ error: "Document introuvable" });
+        }
+        await sendInternalDocument(res, objectFile, filename);
       } catch (error) {
         if (error instanceof ObjectNotFoundError) {
           return res.status(404).json({ error: "Document introuvable" });
@@ -438,4 +451,53 @@ export function registerWeekContentRoutes(app: Express) {
       }
     },
   );
+
+  // Uploaded document of a resource, for anyone allowed to see that resource.
+  app.get("/api/resources/:id/document", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const resourceId = parseInt(req.params.id, 10);
+      const { resource, allowed } = await getResourceAccess(req, resourceId);
+      const ref = resource && allowed ? internalDocumentRef(resource.url) : null;
+      if (!ref) {
+        return res.status(404).json({ error: "Document introuvable" });
+      }
+      await sendInternalDocument(res, await findInternalDocument(ref.objectId), ref.filename);
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        return res.status(404).json({ error: "Document introuvable" });
+      }
+      handleError(res, error);
+    }
+  });
+
+  // In-app PDF preview: many document hosts send no CORS headers, so the
+  // server fetches the stored URL (SSRF-guarded, see services/pdfProxy).
+  // Uploaded documents are read from storage, never fetched over HTTP.
+  app.get("/api/resources/:id/pdf", authMiddleware, limiters.pdfPreview, async (req: AuthRequest, res) => {
+    try {
+      const resourceId = parseInt(req.params.id, 10);
+      const { resource, allowed } = await getResourceAccess(req, resourceId);
+      if (!resource || !allowed || !canPreviewPdf(resource.url)) {
+        return res.status(404).json({ error: "Resource not found" });
+      }
+
+      const ref = internalDocumentRef(resource.url);
+      if (ref) {
+        return await sendInternalDocument(res, await findInternalDocument(ref.objectId), ref.filename);
+      }
+      const pdf = await fetchRemotePdf(resource.url);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", 'inline; filename="document.pdf"');
+      res.setHeader("Cache-Control", "private, max-age=300");
+      res.send(pdf);
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) {
+        return res.status(404).json({ error: "Document introuvable" });
+      }
+      if (error instanceof PdfProxyError || (error as NodeJS.ErrnoException)?.code) {
+        return res.status(502).json({ error: "Aperçu PDF indisponible pour ce document." });
+      }
+      handleError(res, error);
+    }
+  });
 }

@@ -62,10 +62,24 @@ export function supportedVideoEmbed(input: unknown): SupportedVideoEmbed | null 
   return null;
 }
 
+const INTERNAL_DOCUMENT_PATH = /^\/api\/resources\/documents\/([0-9a-f-]{36})\/([^/]+)$/i;
+
+/**
+ * Document uploaded by a mentor and stored by the app. Recognized by its path,
+ * whatever the host or protocol it was saved with (localhost, Render, custom domain).
+ */
+export function internalDocumentRef(input: unknown): { objectId: string; filename: string } | null {
+  const safe = safeExternalResourceUrl(input);
+  if (!safe) return null;
+  const match = INTERNAL_DOCUMENT_PATH.exec(new URL(safe).pathname);
+  return match ? { objectId: match[1], filename: match[2] } : null;
+}
+
 /** Conservative first-pass PDF preview detection; the fetched bytes are verified later. */
 export function canPreviewPdf(input: unknown): boolean {
   const safe = safeExternalResourceUrl(input);
   if (!safe) return false;
   const url = new URL(safe);
-  return url.protocol === "https:" && /\.pdf$/i.test(url.pathname);
+  const fetchable = url.protocol === "https:" || internalDocumentRef(safe) !== null;
+  return fetchable && /\.pdf$/i.test(url.pathname);
 }

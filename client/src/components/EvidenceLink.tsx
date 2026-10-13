@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Image as ImageIcon } from "lucide-react";
 import { getAuthToken } from "@/lib/auth";
+import { openAuthorizedFile } from "@/lib/openAuthorizedFile";
 import { useToast } from "@/hooks/use-toast";
 
 interface EvidenceLinkProps {
@@ -16,36 +17,15 @@ export function EvidenceLink({ taskId, learnerId, testId }: EvidenceLinkProps) {
 
   const open = async () => {
     if (loading) return;
-    const token = getAuthToken();
-    if (!token) {
+    if (!getAuthToken()) {
       toast({ title: "Session expirée", description: "Reconnectez-vous pour consulter la preuve.", variant: "destructive" });
       return;
     }
 
-    // Opening synchronously prevents popup blocking after the authenticated fetch.
-    const tab = window.open("about:blank", "_blank");
-    if (tab) tab.opener = null;
     setLoading(true);
     try {
-      const response = await fetch(`/api/tasks/${taskId}/evidence/${learnerId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-      if (!response.ok) throw new Error("Evidence request failed");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      if (tab && !tab.closed) {
-        tab.location.replace(url);
-      } else {
-        // Fallback if the browser blocks new tabs: save the authorized image.
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `preuve-${taskId}.png`;
-        a.click();
-      }
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      await openAuthorizedFile(`/api/tasks/${taskId}/evidence/${learnerId}`, `preuve-${taskId}.png`);
     } catch {
-      tab?.close();
       toast({ title: "Capture indisponible", description: "Accès refusé ou image introuvable.", variant: "destructive" });
     } finally {
       setLoading(false);
