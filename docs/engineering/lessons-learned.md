@@ -47,3 +47,19 @@ Generalised lesson: a green build does not prove the UI renders. Run the browser
 | `mentor-learner.e2e.py` timed out waiting for `card-week-<id>` on a reused database | The page shows one active roadmap (first listed, or last stored); the test assumed the mentor's page listed the new roadmap. Repeated runs also exhausted the in-memory auth limiter (20 per 15 minutes), turning later runs into 429 failures | `open_roadmap` opens `/roadmap?roadmap=<id>` before each week lookup; run with `RATE_LIMIT_AUTH_MAX=1000` | A UI journey must select the entity under test explicitly; when a client change scopes a view, grep the e2e suites for the old assumption |
 
 Generalised lesson: a test that relies on "the first item in a list" breaks silently when data accumulates; address fixtures by id.
+
+## 2026-10-13 — OTP codes exposed outside development
+
+| Context | Root cause | Resolution | Prevention |
+| --- | --- | --- | --- |
+| Review of the email OTP flow: codes were written to the server logs in every environment, and a deployment without `RESEND_API_KEY` reported every code as delivered | The local fallback (log the code, simulate delivery) was not gated by environment; `/api/auth/register` also bypassed email verification; `send-login` answered differently for unknown accounts | `canLogOtpCodes` / `isDirectRegistrationEnabled` (`server/security.ts`) default to development only; delivery failure returns 503; uniform `send-login` answer | `test/otp-service.test.ts` asserts the production defaults, single use, purpose binding, 5-attempt lockout and send caps |
+
+Generalised lesson: a developer convenience that weakens a security control must be opt-in and off by default outside development, with a test on the default.
+
+## 2026-10-13 — Stacked PRs #87-#89 merged into their stacked bases (repeat of RM-011)
+
+| Context | Root cause | Resolution | Prevention |
+| --- | --- | --- | --- |
+| After merging #86 to `main`, #87, #88 and #89 were merged while still targeting their parent branches; `main` only received #86 | Same as RM-011: the stacked children were not retargeted to `main` before merging, and nothing in the repository enforces it | Catch-up PR #90 (`feat/profile-notifications` → `main`), which already contains the whole stack | Repeated error, so a stronger control than a checklist: enable "Automatically delete head branches" on the repository, which makes GitHub retarget dependent PRs to `main` when their base merges; before merging a stacked PR, `gh pr view <n> --json baseRefName` must print `main` |
+
+Generalised lesson: a rule that relies on remembering an order fails twice; turn it into a platform setting.

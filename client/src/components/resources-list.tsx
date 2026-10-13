@@ -100,8 +100,8 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
 
             return (
               <Card key={resource.id} className="bg-card rounded-xl p-4 shadow-md group hover:shadow-lg transition-shadow" data-testid={`card-resource-${resource.id}`}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center shadow-sm flex-shrink-0 ${colorClass}`}>
                       <Icon className="w-5 h-5 text-white" />
                     </div>
@@ -144,7 +144,7 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 ml-2">
+                  <div className="flex flex-wrap items-center gap-1 sm:ml-2">
                     {pdfPreview && (
                       <Button type="button" variant="outline" size="sm"
                         onClick={() => setActivePdf(resource)}
@@ -203,7 +203,7 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
                       </Button>
                     )}
                     {mentor && (
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                         <Button size="icon" variant="ghost" onClick={() => onEdit?.(resource)}
                           className="h-8 w-8" aria-label={`Modifier ${resource.label}`}
                           data-testid={`button-edit-resource-${resource.id}`}>

@@ -18,7 +18,7 @@ COPY --from=build --chown=node:node /app/dist ./dist
 COPY --chown=node:node migrations ./migrations
 COPY --chown=node:node scripts/start-with-migrations.sh ./start-with-migrations.sh
 
-RUN mkdir -p /app/data && chown -R node:node /app
+RUN mkdir -p /app/data && chown -R node:node /app/data
 USER node
 
 EXPOSE 5000

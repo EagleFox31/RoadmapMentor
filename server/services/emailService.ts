@@ -3,6 +3,7 @@ import { db } from "../db";
 import { emailNotifications, emailNotificationPreferences, users } from "@shared/schema";
 import type { InsertEmailNotification } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { canLogOtpCodes } from "../security";
 
 if (!process.env.RESEND_API_KEY) {
   console.warn("[EMAIL WARNING] Missing RESEND_API_KEY. Email sending will fail.");
@@ -247,12 +248,19 @@ export class EmailService {
       </html>
     `;
 
-    console.log(`[OTP] Sent ${purpose} code to ${to} (${userName ?? "anonyme"}): ${code}`);
+    const logCodes = canLogOtpCodes();
+    if (logCodes) {
+      console.log(`[OTP] Sent ${purpose} code to ${to} (${userName ?? "anonyme"}): ${code}`);
+    }
 
     try {
       if (!process.env.RESEND_API_KEY) {
-        console.warn(`[OTP DEV MODE] Missing RESEND_API_KEY. Simulating delivery for ${to} with code ${code}`);
-        return true;
+        if (logCodes) {
+          console.warn(`[OTP DEV MODE] Missing RESEND_API_KEY. Simulating delivery for ${to}.`);
+          return true;
+        }
+        console.error("[EMAIL ERROR] OTP email not sent: RESEND_API_KEY is not configured.");
+        return false;
       }
       const { error } = await getResend().emails.send({ from: FROM_EMAIL, to, subject, html });
       if (error) {
@@ -261,8 +269,8 @@ export class EmailService {
       return true;
     } catch (error: any) {
       console.error("[EMAIL ERROR] OTP email not sent:", error?.message ?? "unknown error");
-      if (process.env.NODE_ENV !== "production") {
-        console.warn(`[OTP FALLBACK] Non-production environment: continuing with code ${code}`);
+      if (logCodes) {
+        console.warn("[OTP FALLBACK] Code logging enabled: continuing without delivery.");
         return true;
       }
       return false;

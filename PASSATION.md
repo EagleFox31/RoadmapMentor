@@ -1,169 +1,66 @@
-# 2026-10-08 — RM-019 : clôture du parcours ressources (andragogie)
-
-- Base : PR #77 fusionnée, CI main verte.
-- Migration `0007` additive : table consultations unique par apprenant et ressource, validation explicite des liens importés par IA, signalement des liens indisponibles.
-- État « consultée » déclaré et révocable, isolé des tâches et compétences validées.
-- Les liens IA importés restent cachés aux apprenants avant approbation du mentor ; modifier une URL force sa réapprobation et réinitialise ses consultations.
-- Le signalement d'un lien mort est manuel ; pas de robot serveur qui visite une URL non fiable.
-- Aperçu navigateur pour les PDF HTTPS terminés par .pdf, avec CORS, limite de 16 Mio, contrôle de signature et lien externe de secours.
-- Choix CSP explicite : `connect-src https:` autorise les fetch HTTPS déclenchés par l'apprenant pour des PDF distants (CORS requis), au prix d'une directive connect-src plus large ; `frame-src` conserve les lecteurs approuvés et les blobs locaux, `object-src 'none'` reste actif. Réviser ce compromis si un proxy PDF sécurisé ou une liste stable de fournisseurs est introduite.
-- Pas d'analytique de visionnage. Test réel conseillé avec un PDF externe autorisant CORS, et navigateur de production.
-
----
-
-# 2026-10-08 — RM-019, lot 2 : ressources contextualisées par un problème réel
-
-- Base : PR #76 fusionnée sur `main` au commit `ab7abe5`.
-- Le mentor associe une ressource au problème concret qu'elle aide à résoudre et à l'expérimentation autonome attendue.
-- Durée indicative, ordre et priorité essentielle/complémentaire sont des métadonnées, pas une validation automatique des compétences.
-- Migration additive `0006` : anciennes ressources conservées, priorité complémentaire et ordre 0 par défaut.
-- Suite à vérifier en CI : saisie et édition mentor, lecture apprenant, tests API et migration.
-- Restent : consultation déclarative, lecteur PDF, validation des liens IA, suivi des liens morts.
-
----
-
-# 2026-10-08 — RM-019, lot 1 : vidéos intégrées au parcours andragogique
-
-- Base : PR #75 fusionnée sur `main` au commit `c0e0c76`.
-- Lecture des URL vidéo YouTube/Youtu.be et Vimeo sous forme de lecteurs officiels intégrés dans le détail de semaine, fermeture du lecteur = démontage de l'iframe ; lien de secours vers la source.
-- Normalisation stricte des domaines et identifiants sur la couche partagée, pas d'iframe arbitraire, aucun lien `javascript:`/`data:` cliquable, y compris sur les vieilles ressources.
-- Validation à la création et modification des ressources, y compris l'import via les schémas ; aucune migration.
-- CSP `frame-src` limitée à `www.youtube-nocookie.com` et `player.vimeo.com`.
-- Tests unitaires de parsing et CSP, intégration des permissions et URL serveur, parcours Playwright pour l'apprenant.
-- RM-019 non entièrement terminé : métadonnées, lecteur PDF, lecture complète/consultation, validation de liens IA et vérifications de liens morts.
-
----
-
-## Passation précédente
-
-# 2026-10-08 — Multi-upload des preuves et vérification de type réel
-
-- `main` après PR #74 : `2917d0d`.
-- Les multiples tâches de la même semaine partageaient `id="screenshot-upload"`. Le `label htmlFor` ciblait potentiellement le premier uploader pour les autres tâches. `ScreenshotUploader` utilise désormais `useId()` et un test ID contextualisé par tâche.
-- La route de stockage validait le MIME déclaré sans vérifier les octets. Une requête annonçant `image/png` pouvait transmettre du texte HTML/SVG et être persistée. Vérification de signature PNG/JPEG/WebP/GIF avant l'écriture (contrôle de premier niveau, ne garantit pas le décodage complet).
-- Test API : SVG présenté comme PNG renvoie 415 et ne crée aucun fichier.
-- Playwright : deux tâches, deux inputs distincts, correspondance des labels, upload d'une tâche sans validation de l'autre, puis deux preuves persistées.
-- Aucune configuration Render, R2 ou Resend modifiée. La recette du bucket R2 réel reste ouverte.
-
----
-
-## Passation précédente
-
-# 2026-10-08 — R2 / S3 : upload conditionnel et propriétaire défini à la création
-
-- Après fusion de la PR #73, `main` est au commit `d5e9c11`.
-- Les uploads directs exigent la politique de propriétaire privé dès le début.
-- **S3/R2 :** `PutObject` unique avec `IfNoneMatch: "*"` (création seulement si objet absent) et métadonnées `aclpolicy` dans la même opération. Plus de HEAD-then-PUT ni de CopyObject obligatoire après upload.
-- **Filesystem :** écriture exclusive (`wx`), sauvegarde immédiate des métadonnées privées, nettoyage du fichier en cas d'échec d'écriture des métadonnées.
-- Une seconde requête d'upload sur la même clé reçoit HTTP 409, sans remplacer les octets.
-- Anciennes preuves directes sans métadonnées de propriétaire : adoption refusée. Le provider legacy Replit conserve sa possibilité d'association initiale.
-- Tests S3 concurrents / ACL, filesystem et 409 via API ajoutés.
-- Vérifier la CI et effectuer un upload réel R2 depuis Render avant mise en production ouverte. Cette PR ne change pas les secrets.
-
----
-
-## Passation précédente
-
-# 2026-10-08 — Sécurisation des preuves liées aux tâches
-
-- PR #71 et #72 fusionnées dans `main`, dernier merge `2d6ed1f`.
-- Nouvelle PR : les preuves précédemment définies `visibility: public` dans `toggle-progress` deviennent privées. Les URLs de stockage ne sont plus accessibles anonymement ni via un autre compte.
-- Une nouvelle route `GET /api/tasks/:taskId/evidence/:learnerId` vérifie les permissions de l'apprenant ou du mentor du bon périmètre, avant de servir les octets.
-- La lecture frontend se fait via un `fetch` authentifié et ouverture d'un Blob URL, sans JWT dans la query string.
-- Validation stricte du chemin de capture (objet d'upload canonique uniquement). Cache `private, no-store`, y compris pour les captures héritées auparavant publiques. Tests d'intégration multi-comptes ajoutés.
-- **Recette réelle à faire** : authentification Render, screenshot upload vers R2, lecture apprenant et mentor, refus anonyme/hors périmètre. La CI n'utilise pas un vrai bucket R2.
-
----
-
-## Archive
-
-# 2026-10-08 — Vérification du moteur Python en navigateur
-
-- Base : PR #70 fusionnée, `main` au commit `d801e43`, CI verte.
-- Régression observée dans le code : `PythonProvider lazy` diffère le démarrage du worker, alors que le bouton « Exécuter » est bloqué sur `!isReady` ; aucune exécution n'est possible. Retrait du chargement différé.
-- CSP de production : autorisation limitée à `https://cdn.jsdelivr.net` pour les scripts importés par le worker et les téléchargements WASM/stdlib du Pyodide `0.26.2` utilisé par `react-py@1.11.7`.
-- Test Playwright de production (nouveau) : vraie exécution Python dans Chromium, assertions, re-test après modification, soumission et traçabilité `CLIENT_UNVERIFIED`. Cet essai télécharge réellement Pyodide et nécessite une connexion CDN dans la CI.
-- Validations ultérieures : test sur l'URL de production Render avec les véritables secrets configurés, et recette Cloudflare R2 réelle.
-
----
-
-## Passation précédente (archive)
-
-# État courant — 2026-10-08 (labs + CI frontend)
-
-- PR #69 fusionnée sur `main` au commit `4264c2b` ; les six jobs CI de la PR sont passés.
-- Lot en cours : `fix/labs-execution-trust-frontend-ci`. Les résultats Python sont explicitement non vérifiés côté serveur (sans migration), le mentor en est averti, l'apprenant doit relancer après avoir modifié son code ; les changements frontend lancent désormais aussi le job d'intégration et les tests navigateur.
-- **Ne pas confondre revue humaine et vérification serveur** : même après approbation du mentor, la sortie soumise reste `CLIENT_UNVERIFIED`.
-- À valider sur une vraie instance : CDN/moteur Python en production, Resend avec domaine et clé API valides, preuve R2 de bout en bout. La CI seule ne prouve pas ces opérations.
-
----
-
-## Archive
-
-# État courant — 2026-10-08 (correctifs de recette, PR en préparation)
-
-- Branche `fix/rm-production-r2-resend-alignment` : l'upload direct applicatif doit fonctionner avec les adaptateurs filesystem **et** S3/R2. Le contrôle de propriété ACL introduit par la PR #68 est conservé ; tests ajoutés pour le chemin S3 et les permissions.
-- `render.yaml`, `.env.*.example`, README et guide de déploiement harmonisés avec Resend HTTPS (`RESEND_API_KEY`, `MAIL_FROM` vérifié). Aucun secret intégré au dépôt.
-- **À valider sur le vrai service** : variable Resend et domaine vérifié ; invitation e-mail reçue ; upload + téléchargement R2 ; `/health/ready` ; alertes et sauvegardes. Ces vérifications ne sont pas couvertes par un simple pipeline CI.
-- CI à vérifier sur la PR, puis poursuivre les labs Python (validation de résultats non fiable côté client), l'intégration frontend, la protection `main` et l'assainissement du backlog Terraform historique.
-- PR #54, #57, #59, #60 et #68 sont fusionnées dans `main` au 8 octobre.
-
----
-
-## Archive de passation du 7 octobre (historique ; les statuts de PR ci-dessous peuvent être obsolètes)
-
-### Passation — 2026-10-07
+# Passation — 2026-10-13
 
 ## Objectif en cours
-Enchaîner `docs/backlog.md`. Fusionnés : RM-020 (#54), RM-015 (#55), RM-014 (#56). RM-017 partiel (logs structurés + `x-request-id`) dans la PR #57 (`feat/rm-017-request-logging`), **à fusionner par l'utilisateur**. Suite : RM-016 (Terraform, choix du fournisseur à trancher) puis reste de RM-017.
+Rendre l'app partageable : refonte UI responsive côté mentoré + auth OTP e-mail. Commités en 2 PR empilées : #86 `feat/auth-otp-brand` (OTP + login + logo) puis `feat/learner-responsive-ui` (base #86 : responsive, TopBar, /roadmaps, /mentoring, /preferences, docs). Fusionner #86 d'abord. Reste la recette prod.
 
 ## Fait
-- Neon : projet `roadmapmentor` (id `morning-cloud-36713070`, org `org-super-frog-29435491`, `aws-eu-central-1`), migrations appliquées (23 tables). R2 activé ; bucket `roadmapmentor-proofs` créé (compte Cloudflare `28007ba3301ed34cfeb04c2a19b68e9f`, endpoint `https://28007ba3301ed34cfeb04c2a19b68e9f.r2.cloudflarestorage.com`). Reste manuel : jeton API R2 limité au bucket (clé + secret), service Render (Blueprint) + secrets. `DATABASE_URL` : `neon connection-string --project-id morning-cloud-36713070 --org-id org-super-frog-29435491`. Outillage : `neonctl`/`wrangler` installés, `.mcp.json` (Neon + Cloudflare), skills dans `.claude/skills` (non commités).
-- RM-017 (procédures) : `docs/engineering/runbook.md` (sondes/alertes à configurer, incident, restauration Neon, rotation des secrets) sur `infra/render-deploy` (PR #60). Métriques agrégées et alertes automatisées non faites. PR #57 et #58 fusionnées ; #59 ouverte.
-- Arbre de travail : modifications labs non commitées (Codex) sur cette branche, volontairement exclues du commit : ne pas les mélanger.
-- RM-016 (voie gratuite) : `render.yaml` (Blueprint Docker, plan free, migrations au démarrage, R2 via l'adaptateur S3, secrets `sync: false`) + guide « Render + Neon + R2 » dans `docs/deployment.md`. **Non déployé** : aucun compte Render/Neon/R2 touché par Claude. Le projet Vercel existant (`roadmap-mentor`, dernier déploiement 11/2025) est périmé et inadapté (serveur Express + scheduler).
-- Test navigateur (dev et build prod) des messages d'erreur, pages lazy et fond WebP : `test/e2e/error-messages.e2e.py` (en CI). Il a révélé un bug de RM-014 (imports après les `lazy`, page blanche en dev), corrigé dans `App.tsx`. PR #59 = reprise de #58 (mal ciblée), à fusionner.
-- Messages d'erreur HTTP (branche `feat/http-error-messages`, empilée sur #57) : `server/http/errorCatalog.ts` (code + message FR), `errorEnvelope` (ajoute `code`/`message`/`requestId` à toute erreur `/api`, `error` inchangé), 404 JSON des routes `/api` inconnues, JSON mal formé/413, `ApiError` côté client, 500 sans fuite de `error.message`. Doc dans `docs/engineering/observability.md`. 102 unitaires, 126 intégration.
-- RM-014 (#56) : fond WebP 29 kB, pages en `React.lazy`, bundle initial 281 kB, `npm run check:bundle` (budgets JS 400/CSS 150/média 500 kB) + étape CI.
-- RM-017 partiel (#57) : `server/http/observability.ts` (`requestId`, `accessLog`, `logEvent`), 500 avec `requestId`, `docs/engineering/observability.md`, test `test/observability.test.ts`. Reste : métriques, alertes, procédures (dépend de RM-016).
-- RM-015 (#55) : dépendances inutiles retirées, `nanoid` déclaré.
-- RM-020 (PR #54, non fusionnée) : table `invitations` (migration `0005`, additive), `server/data/invitations.ts`, `server/services/{invitations,invitationTokens}.ts`, `server/routes/invitations.ts`, `GoneError` (410 + `reason`), limiteur `invitation` (`RATE_LIMIT_INVITATION_*`), `INVITATION_TTL_HOURS` (72 h), page `/invite/:token`, liste d'invitations et bouton « Inviter par e-mail » sur `/roadmaps`. Tests : 95 unitaires, 126 intégration (23 nouveaux), `test/e2e/invite.e2e.py` (ajouté à la CI). SMTP réel non testé ; `docs/backlog.md` déjà à jour.
-- RM-007 (PR #53 fusionnée) : `test/integration/support/api.ts` (helpers, `expectAccess`), suites weeks-crud/sessions/change-requests/billing, E2E `test/e2e/{learner,mentor}.e2e.py`, job CI `integration`, `scripts/access-mutation-check.ts`, `docs/engineering/testing.md`.
-- RM-013 (PR #52) : `server/routes.ts` délègue à `server/routes/<domaine>.ts` ; `server/storage.ts` (façade) délègue à `server/data/<agrégat>.ts` ; `server/services/billingPeriods.ts`, `server/http/errors.ts` + `server/domain/errors.ts`.
-- RM-002/003/004/005/006/008 : fusionnés (PR #38 à #46). RM-009 réintégré par la PR #51.
-- RM-010 (#47) : `getWeekContentsByWeekIds`, route `GET /api/weeks` groupée ; `toggleTaskProgress` = upsert atomique ; migration `0002`.
-- RM-011 (#48/#49) : `server/scheduler.ts`, `schedulerConfig.ts`, `jobRuns.ts` ; table `scheduled_job_runs` (migration `0003`) ; variables `SCHEDULER_*`.
-- RM-018 (labs, Codex) : fusionné, migration `0004_labs.sql`.
+- Refonte login split-screen + logo de marque + favicon. `client/src/pages/auth-page.tsx` (792 lignes), `client/src/components/roadmap-logo.tsx`, `client/public/favicon.svg|png`, `client/index.html`.
+- Auth OTP e-mail (inscription + connexion sans mot de passe), rate limiting 60s/3h/5j/5 essais. `server/services/otpService.ts:65-78`, `server/services/emailService.ts`, `server/data/emailOtps.ts`, `server/routes/auth.ts`, migration `migrations/0008_email_otps.sql`, schéma `shared/schema.ts:46,127`, test `test/otp-auth.test.ts`.
+- Responsive mentoré (360/390/768) : barre réduite `client/src/components/top-bar.tsx:46,49,51,74`, carte ressource en colonne + boutons tactiles toujours visibles `client/src/components/resources-list.tsx:102,147,206`, grilles 2 cols → 1 col sur mobile dans modales semaine/IA/ressource.
+- Modales adaptées (marge 12px, max-h écran, défilement interne, padding réduit) `client/src/components/ui/dialog.tsx:40`.
+- Upload capture flex-wrap `client/src/components/ScreenshotUploader.tsx:84`, viewer PDF en `dvh` `client/src/components/PdfResourceViewer.tsx:100`, marges page réduites `client/src/pages/roadmap-page.tsx:439,474,505`.
+- `client/public/favicon.png` passé de 19 Ko à 306 Ko : voulu.
+- Refonte TopBar aux normes mondiales UX/UI/CX : navigation sémantique claire, indicateur d'onglet actif, retrait de l'e-mail permanent, puce de statut animée, hover préventif sur déconnexion, sélecteurs E2E préservés.
+- Navbar plein écran (bord-à-bord) : suppression de la contrainte 1600px qui laissait des bandes vides sur les écrans larges/ultrawides (21:9), padding fluide `px-4 sm:px-6 lg:px-8`.
+- Hub d'accueil & Onboarding Andragogique (Empty State `/roadmap`) : métamorphose du message austère « Aucune roadmap disponible pour le moment » en un écran d'accueil engageant (`client/src/pages/roadmap-page.tsx:403-450`) avec boussole animée, halo lumineux, les 3 piliers andragogiques ShopFlow (Jalons, Pratique, Revues), sélecteur de roadmap et boutons de redirection, préservant strictement `data-testid="text-no-roadmap"`.
+- Harmonisation intégrale du Design System & Universalité de la TopBar :
+  - Restauration de la `<TopBar />` globale sur `/mentoring` et `/preferences` (elle avait disparu au profit d'en-têtes locaux disparates créant une rupture visuelle "wedibidi").
+  - Indicateur d'onglet actif dynamique : l'onglet "Mentorat" s'illumine sur `/mentoring`, et l'icône "Settings" sur `/preferences`.
+  - Refonte complète de `/mentoring` et ses sous-composants (`mentoring-sessions.tsx`, `mentoring-billing.tsx`) : passage du thème noir discordant (`bg-neutral-950`) au thème SaaS clair cohérent (`bg-gradient-to-b from-slate-50 via-emerald-50/20 to-slate-100`, cartes glassmorphism `bg-white/95 border-slate-200/80`).
+  - Refonte de `/preferences` : suppression des orbes pulsants agressifs et des bannières néon vert/orange criardes au profit de cartes d'alertes pastel avec switches fluides et cartouche récapitulatif.
+  - Préservation intégrale des identifiants Playwright (`button-back-roadmap`, `button-mentoring`, `button-settings`, etc.).
+- Menu Déroulant Utilisateur (`DropdownMenu`) & Architecture Complète en Cartes :
+  - Navbar (`top-bar.tsx`) : suppression de l'icône directe Préférences au profit d'un menu déroulant interactif sur l'identité de l'utilisateur (Mon profil, Notifications, Préférences avec `data-testid="button-settings"`, Déconnexion). Maintien du bouton direct `button-logout` pour la suite Playwright.
+  - Refonte complète de `/roadmaps` (`roadmaps.tsx`) : fin des blocs gris `bg-muted/40`, adoption de la charte visuelle émeraude/ardoise, structure complète en cartes `<Card />` (feuilles de route, formulaire mentor, en-tête active, apprenants rattachés, invitations avec jetons).
+  - Hub andragogique & structuration en cartes sur `/mentoring` (`mentoring.tsx`) : hub d'accueil en 3 piliers quand aucun mentorat n'est sélectionné, cartes structurées pour Scope inclus et Hors scope avec en-têtes et descriptions claires.
+- Élimination intégrale du texte dans le vide & Fonds opaques anti-fuite :
+  - Enveloppe complète des en-têtes de page (retour, badge, titre, sous-titre) dans des composants `<Card className="rounded-3xl border-slate-200/80 bg-white/95 ...">` sur `/mentoring`, `/roadmaps` et `/preferences`.
+  - Sidebar d'accompagnements transformée en composant `<Card />` standardisé.
+  - Arrière-plan 100% opaque `bg-slate-50 text-slate-900` sur `/mentoring`, `/roadmaps`, `/preferences` et `/roadmap-page` pour éliminer toute transparence accidentelle (`via-emerald-50/20`) qui laissait transparaître l'image de fond (`mentor-bg.webp`).
+- Création des pages manquantes Profile (`/profile`) et Notifications (`/notifications`) :
+  - `client/src/pages/profile.tsx` : gestion d'identité (nom, email, rôle), mise à jour sécurisée du mot de passe (`PUT /api/auth/profile`), statut d'adhésion et raccourcis.
+  - `client/src/pages/notifications.tsx` : historique des notifications et flux d'activité (`GET /api/notifications`), filtres thématiques et empty state engageant.
+  - Navigation synchronisée dans le dropdown `TopBar` : « Mon profil » $\rightarrow$ `/profile`, « Notifications » $\rightarrow$ `/notifications`.
+  - Endpoints backend dédiés et méthode `updateUser` ajoutée dans `UserRepository` (`server/data/users.ts`).
+  - Durcissement en revue : `PUT /api/auth/profile` validé par `updateProfileSchema` (strict, refuse `role`/`email`) et rate-limité (`limiters.auth`) ; `GET /api/notifications` passe par `storage.listEmailNotifications` (plus d'accès `db` dans la route) et n'expose pas `errorMessage`. Test `test/profile-update.test.ts`.
+  - Branche `feat/profile-notifications`, empilée sur #87.
 
 ## Décisions prises
-- Un seul worktree, branches classiques dans le dossier principal.
-- Pour des PR empilées, recibler sur `main` avant de fusionner la base.
-- Lot de rappels idempotent par créneau ; un lot en échec n'est pas rejoué.
-- RM-020 : un renvoi fait tourner le jeton ; invitation en attente relancée = idempotente ; e-mail d'un mentor refusé (409) ; envoi non journalisé dans `email_notifications` (suivi par `send_count`/`last_sent_at`). `attachLearner` du service n'est pas encore réutilisé par la route `POST /api/roadmaps/:id/mentorships` (duplication légère).
-
-## Décision
-- Stockage des preuves : Cloudflare R2 retenu (API S3, `OBJECT_STORAGE_S3_ENDPOINT`) ; fournisseur de calcul à trancher (conseillé : Fly.io/Render + Neon) pour RM-016.
+- Login OTP + password côté client (bouton « Se connecter sans mot de passe »), routes historiques `/api/auth/login` et `/api/auth/register` conservées : compat E2E et comptes existants.
+- Rate limit : cooldown 60s, plafond 3/h, 5/jour, 5 mauvais essais. Message FR exact : « Veuillez patienter 60s avant de demander un nouveau code. ». Blocage avant toute écriture.
+- Codes OTP SHA-256 avant persistance, aucun en clair. Génération via `crypto.randomInt`.
+- Mode dev sans `RESEND_API_KEY` : code loggé `[OTP] Sent REGISTRATION code to <email>: <6chiffres>`, pas d'erreur ; CI inchangée.
+- Édition/suppression de ressources côté mentor : toujours visibles sur mobile (le hover ne marche pas au tactile).
 
 ## Reste à faire
-0. Déploiement Render (action de l'utilisateur) : créer Neon + bucket R2 + Blueprint Render + pinger (voir `docs/deployment.md`), puis vérifier `/health/ready`, une connexion, un envoi de preuve vers R2 et un rappel planifié. **Faire tourner les secrets vus à l'écran** (clé IA, mot de passe SMTP, JWT_SECRET) et vérifier que `.env` reste hors Git.
-1. Fusionner la PR #60 (#57 et #58 déjà fusionnées ; #59 à vérifier), puis `git checkout main && git pull`.
-2. RM-016 : choix fait (Render gratuit + Neon + R2, pas de Terraform payant) ; `infra/terraform` (AWS) devient hors périmètre : à arbitrer/documenter. Puis finir RM-017 (métriques, alertes automatisées ; le runbook est fait).
-3. RM-012 (S3) non testé sur vrai bucket/MinIO. RM-010 : mesure des requêtes, pagination, N+1 du scheduler. RM-011 : reprise d'un lot interrompu.
-4. Non testé en navigateur : labs (Python), sélecteur de roadmap, redirection 401.
-5. Branches distantes fusionnées à supprimer sur origin si souhaité.
+1. Revue + fusion #86 puis PR UI. Suivis notés dans #86 : OTP d'inscription non imposé côté serveur (`/api/auth/register` ouvert, bypass `.test` client), `send-login` renvoie 404 sur e-mail inconnu (énumération de comptes).
+2. **RM-021 tarification** — plan prêt : [docs/mentor-pricing.md](docs/mentor-pricing.md), fiche [docs/backlog.md](docs/backlog.md). Branche `feat/rm-021-package-price-correction` **depuis `main` après** les commits OTP/UI. Tranche 1 seulement (PATCH forfait non facturé). Ne pas mélanger avec l'arbre local actuel.
+3. Vérifier en navigateur réel les modales et le lecteur vidéo YouTube (le headless le rend noir).
+4. Tester la limite de 5 mauvais essais sur un code OTP valide (non vérifiée : le cooldown de 60s a bloqué).
+5. Mettre à jour les E2E Playwright pour couvrir le flux OTP ; adapter `test/e2e/learner.e2e.py` si l'inscription publique passe désormais obligatoirement par OTP.
+6. Prod : poser `RESEND_API_KEY` sur Render, vérifier qu'un vrai mail arrive. Puis parcours authentifié prod (jamais fait).
+7. Nettoyer branches locales fusionnées. AWS #27/#28 **différés** (décision 8 oct., issue #25).
 
 ## Pièges / contexte
-- Test local : réseau Docker `n`, postgres (alias `postgres`, port 54329) + `ghcr.io/neondatabase/wsproxy` (port 54330) ; conteneurs `pg` et `wsp` (si Docker redémarre : `docker start pg wsp`). Sous Git Bash, `MSYS_NO_PATHCONV=1` pour `docker exec/cp` avec chemins `/x`.
-- Env : `DATABASE_URL=postgresql://roadmapmentor:roadmapmentor@postgres:5432/roadmapmentor DATABASE_WS_PROXY=localhost:54330/v1 DATABASE_WS_PROXY_INSECURE=true JWT_SECRET=x OBJECT_STORAGE_PROVIDER=filesystem`, puis `npm run db:migrate`, serveur `PORT=5055 NODE_ENV=development RATE_LIMIT_AUTH_MAX=1000 RATE_LIMIT_INVITATION_MAX=1000 npx tsx server/index-dev.ts`, tests `TEST_BASE_URL=http://localhost:5055 npx tsx --test test/integration/*.integration.ts` (126 attendus), unitaires `npm test` (102).
-- Parcours navigateur en local sans réseau : Google Fonts bloque l'événement `load` ; lancer Playwright avec `--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1:9, MAP fonts.gstatic.com 127.0.0.1:9`.
-- Nouvelle migration : `DATABASE_URL=postgresql://x:x@localhost/x npx drizzle-kit generate --name=...`.
-- Les écritures de gros fichiers par heredoc shell échouent parfois : préférer Edit/Write.
-- Codex peut retravailler en parallèle dans le même dossier : vérifier `git status` avant de commencer.
-- Pas de mention d'IA dans commits, PR ni code.
-- Architecture : routes dans `server/routes/<domaine>.ts`, accès dans `server/access/`, données dans `server/data/<agrégat>.ts` (façade `server/storage.ts`), erreurs métier dans `server/domain/errors.ts`.
-- Mentors de test : `ensureMentor` (script create-mentor, mot de passe 12+ caractères) ; `mentor@test.com` n'existe qu'en dev.
-- Windows : pas de `pkill` ; tuer le serveur de test via `netstat -ano | grep :5055` puis `taskkill //PID <pid> //F //T`.
-- **Mettre à jour PASSATION.md systématiquement à chaque PR/fin de tâche**, sans qu'on le demande.
-- **Tester dans le navigateur (Playwright, dev puis build prod) tout changement visible côté client avant de livrer** ; ne jamais lister cela comme « reste à faire ».
-- Une PR empilée dont la base est déjà fusionnée n'atteint pas `main` : toujours vérifier `git log main` / `ls` après la fusion.
-- Codex modifie `docs/backlog.md` et `test/http-hardening.test.ts` sans les commiter : ne pas les inclure (`git stash` avant de changer de branche).
+- Stack Docker tourne : app `:5000`, postgres, db-proxy `:5444`. Bundle courant servi : `assets/index-DZVVTYSx.js`.
+- Rebuild image : `docker compose build app --no-cache && docker compose up -d app`. Après 429 : `docker restart roadmapmentor-app-1`.
+- Comptes test en base locale : `mob.learner.1791841606@it.test` (LEARNER), `mob.mentor.1791841606@it.test` (MENTOR). PWD learner `Test123!`, mentor `Mentor-Test-123!`.
+- Promouvoir en mentor : `docker exec roadmapmentor-postgres-1 psql -U roadmapmentor -d roadmapmentor -c "update users set role='MENTOR' where email='…'"`. `scripts/create-mentor.ts` ne se connecte pas depuis l'hôte sans proxy exposé (le db-proxy compose n'expose aucun port).
+- E2E locaux qui créent un mentor : exposer un proxy temporaire `docker run -d --rm --name e2e-db-proxy --network <réseau compose> -p 5444:80 -e ALLOW_ADDR_REGEX='.*' ghcr.io/neondatabase/wsproxy:latest`, puis exporter `DATABASE_URL=postgresql://roadmapmentor:roadmapmentor@postgres:5432/roadmapmentor DATABASE_WS_PROXY=localhost:5444/v1 DATABASE_WS_PROXY_INSECURE=true NODE_ENV=development`. `mentor-learner` et `roadmaps-ui` utilisent une route dev-only (404 sur le build Docker, hors CI).
+- Lire un code OTP en dev : `docker logs --since=10s roadmapmentor-app-1 | grep -oE "code to <email>: [0-9]+"`.
+- E2E locaux : `TEST_BASE_URL=http://localhost:5000 python test/e2e/<nom>.e2e.py`. Supprimer `test/e2e/__pycache__` avant `git add`.
+- Windows : tuer un serveur de test via `netstat -ano | grep :5055` puis `taskkill //PID <pid> //F //T`.
+- `roadmapmentor.env` : n'était pas ignoré (seul `.env` l'était) ; `*.env` ajouté au `.gitignore` dans #86. Ne jamais l'ajouter.
+- CI drift Drizzle : tout changement de `shared/schema.ts` doit avoir sa migration + snapshot `migrations/meta/*` synchronisé, sinon `drizzle-kit generate --name ci_drift_check` échoue.
+- Architecture : routes `server/routes/<domaine>.ts`, accès `server/access/`, données `server/data/<agrégat>.ts` (façade `server/storage.ts`), erreurs `server/domain/errors.ts`.
+- Mettre à jour ce fichier à chaque PR ; tester dans le navigateur tout changement visible avant livraison.

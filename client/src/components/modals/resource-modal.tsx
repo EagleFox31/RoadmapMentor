@@ -165,7 +165,7 @@ export function ResourceModal({ isOpen, onClose, onSubmit, weekId, resource, isL
               className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
               data-testid="input-resource-practice" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="resource-duration" className="text-white text-sm">Temps indicatif (min)</Label>
               <Input id="resource-duration" type="number" min={1} max={480} step={1}

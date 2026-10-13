@@ -163,13 +163,15 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
   });
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+    <section className="rounded-3xl border border-slate-200/80 bg-white/95 backdrop-blur-xl p-6 shadow-xs">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <CalendarClock className="h-5 w-5 text-emerald-300" />
+          <div className="p-2 rounded-xl bg-emerald-100 text-emerald-800">
+            <CalendarClock className="h-4 w-4" />
+          </div>
           <div>
-            <h2 className="font-semibold">Séances de mentorat</h2>
-            <p className="text-xs text-neutral-400">
+            <h2 className="font-bold text-slate-900">Séances de mentorat</h2>
+            <p className="text-xs text-slate-500">
               Planning, présence et consommation du forfait.
             </p>
           </div>
@@ -178,7 +180,7 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
           type="month"
           value={month}
           onChange={(event) => setMonth(event.target.value)}
-          className="w-[180px] border-white/10 bg-black/20"
+          className="w-[180px] border-slate-200 bg-white rounded-xl text-slate-800"
         />
       </div>
 
@@ -187,13 +189,13 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
           {data.packageUsage.map((usage) => (
             <div
               key={usage.packageId}
-              className="rounded-2xl border border-emerald-400/15 bg-emerald-400/5 p-4"
+              className="rounded-2xl border border-emerald-200/80 bg-emerald-50/60 p-4"
             >
-              <p className="text-sm font-medium">{usage.title}</p>
-              <p className="mt-2 text-2xl font-bold text-emerald-300">
+              <p className="text-sm font-semibold text-slate-900">{usage.title}</p>
+              <p className="mt-2 text-2xl font-extrabold text-emerald-700">
                 {usage.usedSessionCount}/{usage.includedSessionCount}
               </p>
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-slate-600 font-medium">
                 {usage.remainingSessionCount} séance(s) incluse(s) restante(s)
               </p>
             </div>
@@ -202,40 +204,40 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
       )}
 
       {isMentor() && (
-        <div className="mt-6 rounded-2xl border border-white/10 bg-black/10 p-5">
-          <h3 className="font-medium">Planifier une séance</h3>
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-6 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-5 space-y-3">
+          <h3 className="font-bold text-slate-900">Planifier une séance</h3>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <Input
               placeholder="Titre"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="border-white/10 bg-black/20"
+              className="border-slate-200 bg-white rounded-xl"
             />
             <Input
               type="date"
               value={form.date}
               onChange={(e) => setForm({ ...form, date: e.target.value })}
-              className="border-white/10 bg-black/20"
+              className="border-slate-200 bg-white rounded-xl"
             />
             <Input
               type="time"
               value={form.startTime}
               onChange={(e) => setForm({ ...form, startTime: e.target.value })}
-              className="border-white/10 bg-black/20"
+              className="border-slate-200 bg-white rounded-xl"
             />
             <Input
               type="time"
               value={form.endTime}
               onChange={(e) => setForm({ ...form, endTime: e.target.value })}
-              className="border-white/10 bg-black/20"
+              className="border-slate-200 bg-white rounded-xl"
             />
           </div>
 
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             <select
               value={form.packageId}
               onChange={(e) => setForm({ ...form, packageId: e.target.value })}
-              className="rounded-md border border-white/10 bg-neutral-900 px-3 py-2 text-sm"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-2xs"
             >
               <option value="">Forfait lié</option>
               {packages.map((item) => (
@@ -247,7 +249,7 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
             <select
               value={form.weekId}
               onChange={(e) => setForm({ ...form, weekId: e.target.value })}
-              className="rounded-md border border-white/10 bg-neutral-900 px-3 py-2 text-sm"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-2xs"
             >
               <option value="">Semaine de roadmap (optionnel)</option>
               {weekOptions.map((week) => (
@@ -258,19 +260,20 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
             </select>
           </div>
 
-          <label className="mt-4 flex items-center gap-3 text-sm text-neutral-300">
+          <label className="flex items-center gap-3 text-sm text-slate-700 font-medium pt-1">
             <input
               type="checkbox"
               checked={form.isAdditional}
               onChange={(e) =>
                 setForm({ ...form, isAdditional: e.target.checked })
               }
+              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
             />
             Séance additionnelle — ne pas la décompter du forfait inclus
           </label>
 
           {form.isAdditional && (
-            <div className="mt-3 grid max-w-md grid-cols-[1fr_90px] gap-2">
+            <div className="grid max-w-md grid-cols-[1fr_90px] gap-2 pt-1">
               <Input
                 type="number"
                 min="1"
@@ -279,7 +282,7 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
                 onChange={(e) =>
                   setForm({ ...form, additionalPrice: e.target.value })
                 }
-                className="border-amber-300/20 bg-black/20"
+                className="border-amber-200 bg-white rounded-xl"
               />
               <Input
                 maxLength={3}
@@ -290,13 +293,13 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
                     additionalCurrency: e.target.value.toUpperCase(),
                   })
                 }
-                className="border-amber-300/20 bg-black/20"
+                className="border-amber-200 bg-white rounded-xl uppercase"
               />
             </div>
           )}
 
           <Button
-            className="mt-4"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold shadow-xs"
             onClick={() => createSession.mutate()}
             disabled={
               createSession.isPending ||
@@ -319,24 +322,24 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
         {isLoading ? (
           <Loader2 className="h-5 w-5 animate-spin" />
         ) : !data?.sessions.length ? (
-          <p className="rounded-2xl border border-dashed border-white/10 p-5 text-sm text-neutral-400">
+          <p className="rounded-2xl border border-dashed border-slate-300 p-5 text-sm text-slate-500 text-center">
             Aucune séance pour ce mois.
           </p>
         ) : (
           data.sessions.map((session) => (
             <article
               key={session.id}
-              className="rounded-2xl border border-white/10 bg-black/10 p-5"
+              className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-2xs space-y-3"
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-medium">{session.title}</h3>
+                    <h3 className="font-bold text-slate-900">{session.title}</h3>
                     <Badge
                       className={
                         session.isAdditional
-                          ? "bg-amber-300/10 text-amber-200"
-                          : "bg-emerald-300/10 text-emerald-200"
+                          ? "bg-amber-50 text-amber-800 border-amber-200 font-semibold"
+                          : "bg-emerald-50 text-emerald-800 border-emerald-200 font-semibold"
                       }
                     >
                       {session.isAdditional ? "Additionnelle" : "Incluse"}
@@ -344,7 +347,7 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
                     {session.isAdditional &&
                       session.additionalPriceMinor !== null &&
                       session.additionalPriceCurrency && (
-                        <Badge className="bg-amber-300/10 text-amber-100">
+                        <Badge className="bg-amber-50 text-amber-800 border-amber-200 font-semibold">
                           {new Intl.NumberFormat("fr-FR", {
                             style: "currency",
                             currency: session.additionalPriceCurrency,
@@ -354,25 +357,25 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
                         </Badge>
                       )}
                   </div>
-                  <p className="mt-2 flex items-center gap-2 text-sm text-neutral-400">
-                    <Clock3 className="h-4 w-4" />
-                    {formatSessionDate(session.startsAt)} →{" "}
-                    {formatSessionDate(session.endsAt)}
+                  <p className="mt-2 flex items-center gap-2 text-sm text-slate-500 font-medium">
+                    <Clock3 className="h-4 w-4 text-slate-400" />
+                    <span>{formatSessionDate(session.startsAt)} →{" "}
+                    {formatSessionDate(session.endsAt)}</span>
                   </p>
                 </div>
-                <Badge className="bg-white/10 text-neutral-200">
+                <Badge className="bg-slate-100 text-slate-700 border-slate-200 font-medium">
                   {session.status}
                 </Badge>
               </div>
 
               {session.mentorNotes && (
-                <p className="mt-3 rounded-xl bg-white/5 p-3 text-sm text-neutral-300">
+                <p className="rounded-xl bg-slate-50 border border-slate-100 p-3 text-sm text-slate-700 leading-relaxed">
                   {session.mentorNotes}
                 </p>
               )}
 
               {isMentor() && session.status === "SCHEDULED" && (
-                <div className="mt-4">
+                <div className="mt-4 pt-3 border-t border-slate-100 space-y-3">
                   <Textarea
                     placeholder="Notes de séance (optionnel)"
                     value={notes[session.id] || ""}
@@ -382,10 +385,11 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
                         [session.id]: event.target.value,
                       })
                     }
-                    className="border-white/10 bg-black/20"
+                    className="border-slate-200 bg-white rounded-xl text-slate-900"
                   />
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold shadow-xs"
                       onClick={() =>
                         completeSession.mutate({
                           id: session.id,
@@ -398,7 +402,7 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
                     </Button>
                     <Button
                       variant="outline"
-                      className="border-amber-300/20"
+                      className="border-amber-200 text-amber-800 hover:bg-amber-50 rounded-xl"
                       onClick={() =>
                         completeSession.mutate({
                           id: session.id,
@@ -411,7 +415,7 @@ export function MentoringSessions({ mentorshipId, packages, weeks }: Props) {
                     </Button>
                     <Button
                       variant="outline"
-                      className="border-red-300/20"
+                      className="border-rose-200 text-rose-800 hover:bg-rose-50 rounded-xl"
                       onClick={() => cancelSession.mutate(session.id)}
                     >
                       <XCircle className="mr-2 h-4 w-4" />
