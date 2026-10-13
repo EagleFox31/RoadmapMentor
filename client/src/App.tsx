@@ -15,6 +15,8 @@ const PreferencesPage = lazy(() => import("@/pages/preferences"));
 const MentoringPage = lazy(() => import("@/pages/mentoring"));
 const RoadmapsPage = lazy(() => import("@/pages/roadmaps"));
 const InvitePage = lazy(() => import("@/pages/invite-page"));
+const ProfilePage = lazy(() => import("@/pages/profile"));
+const NotificationsPage = lazy(() => import("@/pages/notifications"));
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   if (!isAuthenticated()) {
@@ -51,6 +53,12 @@ function Router() {
       </Route>
       <Route path="/mentoring">
         <ProtectedRoute component={MentoringPage} />
+      </Route>
+      <Route path="/profile">
+        <ProtectedRoute component={ProfilePage} />
+      </Route>
+      <Route path="/notifications">
+        <ProtectedRoute component={NotificationsPage} />
       </Route>
       <Route component={NotFound} />
     </Switch>

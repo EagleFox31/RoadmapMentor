@@ -27,6 +27,13 @@ Rendre l'app partageable : refonte UI responsive côté mentoré + auth OTP e-ma
   - Enveloppe complète des en-têtes de page (retour, badge, titre, sous-titre) dans des composants `<Card className="rounded-3xl border-slate-200/80 bg-white/95 ...">` sur `/mentoring`, `/roadmaps` et `/preferences`.
   - Sidebar d'accompagnements transformée en composant `<Card />` standardisé.
   - Arrière-plan 100% opaque `bg-slate-50 text-slate-900` sur `/mentoring`, `/roadmaps`, `/preferences` et `/roadmap-page` pour éliminer toute transparence accidentelle (`via-emerald-50/20`) qui laissait transparaître l'image de fond (`mentor-bg.webp`).
+- Création des pages manquantes Profile (`/profile`) et Notifications (`/notifications`) :
+  - `client/src/pages/profile.tsx` : gestion d'identité (nom, email, rôle), mise à jour sécurisée du mot de passe (`PUT /api/auth/profile`), statut d'adhésion et raccourcis.
+  - `client/src/pages/notifications.tsx` : historique des notifications et flux d'activité (`GET /api/notifications`), filtres thématiques et empty state engageant.
+  - Navigation synchronisée dans le dropdown `TopBar` : « Mon profil » $\rightarrow$ `/profile`, « Notifications » $\rightarrow$ `/notifications`.
+  - Endpoints backend dédiés et méthode `updateUser` ajoutée dans `UserRepository` (`server/data/users.ts`).
+  - Durcissement en revue : `PUT /api/auth/profile` validé par `updateProfileSchema` (strict, refuse `role`/`email`) et rate-limité (`limiters.auth`) ; `GET /api/notifications` passe par `storage.listEmailNotifications` (plus d'accès `db` dans la route) et n'expose pas `errorMessage`. Test `test/profile-update.test.ts`.
+  - Branche `feat/profile-notifications`, empilée sur #87.
 
 ## Décisions prises
 - Login OTP + password côté client (bouton « Se connecter sans mot de passe »), routes historiques `/api/auth/login` et `/api/auth/register` conservées : compat E2E et comptes existants.

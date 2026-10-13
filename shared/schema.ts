@@ -749,6 +749,19 @@ export const acceptInvitationSchema = z
   })
   .strict();
 
+// Self-service profile update: a password change always requires the current password.
+export const updateProfileSchema = z
+  .object({
+    fullName: z.string().trim().min(1).max(200).optional(),
+    currentPassword: z.string().min(1).optional(),
+    newPassword: z.string().min(8, "Le nouveau mot de passe doit contenir au moins 8 caractères.").optional(),
+  })
+  .strict()
+  .refine((data) => !data.newPassword || !!data.currentPassword, {
+    message: "Mot de passe actuel requis pour modifier votre mot de passe.",
+    path: ["currentPassword"],
+  });
+
 export const insertEmailOtpSchema = createInsertSchema(emailOtps).omit({
   createdAt: true,
 });
