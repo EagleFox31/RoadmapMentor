@@ -87,6 +87,12 @@ const BY_STATUS: Record<number, ErrorDescriptor> = {
   504: { code: "UPSTREAM_TIMEOUT", message: "Le service externe a mis trop de temps à répondre. Réessayez." },
 };
 
+// Erreur métier déjà rédigée en français : le code explicite empêche `errorEnvelope`
+// de remplacer le message par le libellé générique du statut.
+export function userError(code: string, message: string) {
+  return { error: message, code, message };
+}
+
 export function describeError(status: number, englishMessage?: unknown): ErrorDescriptor {
   if (typeof englishMessage === "string") {
     const exact = BY_MESSAGE[englishMessage];
