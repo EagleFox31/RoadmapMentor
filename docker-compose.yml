@@ -64,6 +64,9 @@ services:
       MAIL_PASS: ${MAIL_PASS:-}
       MAIL_FROM: ${MAIL_FROM:-Roadmap Mentor <roadmapmentor@trigenys.com>}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
+      # Local stack only: legacy direct sign-up for E2E and OTP codes in logs. Never set in production.
+      AUTH_DIRECT_REGISTRATION: ${AUTH_DIRECT_REGISTRATION:-true}
+      OTP_LOG_CODES: ${OTP_LOG_CODES:-true}
     ports:
       - "5000:5000"
     volumes:

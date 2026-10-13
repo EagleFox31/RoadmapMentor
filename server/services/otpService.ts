@@ -87,10 +87,10 @@ export class OtpService {
     purpose: "REGISTRATION" | "LOGIN",
     payload?: string,
     userName?: string,
-  ): Promise<{ success: boolean; message?: string }> {
+  ): Promise<{ success: boolean; message?: string; failure?: "RATE_LIMITED" | "DELIVERY_FAILED" }> {
     const check = await this.checkRateLimits(email);
     if (!check.allowed) {
-      return { success: false, message: check.reason };
+      return { success: false, message: check.reason, failure: "RATE_LIMITED" };
     }
 
     const code = this.generateCode();
@@ -112,6 +112,7 @@ export class OtpService {
       return {
         success: false,
         message: "Échec de l'envoi de l'e-mail. Veuillez vérifier votre adresse et réessayer.",
+        failure: "DELIVERY_FAILED",
       };
     }
 
@@ -150,7 +151,9 @@ export class OtpService {
       const remaining = 5 - attempts;
       return {
         valid: false,
-        error: `Code incorrect. Il vous reste ${remaining} tentative${remaining > 1 ? "s" : ""}.`,
+        error: remaining > 0
+          ? `Code incorrect. Il vous reste ${remaining} tentative${remaining > 1 ? "s" : ""}.`
+          : "Code incorrect. Ce code est désormais invalidé, demandez-en un nouveau.",
       };
     }
 

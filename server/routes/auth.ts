@@ -9,7 +9,7 @@ import {
   verifyLoginOtpSchema,
   updateProfileSchema,
 } from "@shared/schema";
-import { isDevelopmentEnvironment } from "../security";
+import { isDevelopmentEnvironment, isDirectRegistrationEnabled } from "../security";
 import { handleError } from "../http/errors";
 import { otpService } from "../services/otpService";
 import type { RouteDeps } from "./deps";
@@ -17,6 +17,13 @@ import type { RouteDeps } from "./deps";
 export function registerAuthRoutes(app: Express, { limiters }: RouteDeps) {
   app.post("/api/auth/register", limiters.auth, async (req, res) => {
     try {
+      if (!isDirectRegistrationEnabled()) {
+        return res.status(403).json({
+          error: "L'inscription requiert la vérification de votre adresse e-mail par code.",
+          code: "DIRECT_REGISTRATION_DISABLED",
+        });
+      }
+
       const userData = publicRegistrationSchema.parse(req.body);
       const { fullName, email, password } = userData;
       
@@ -93,7 +100,7 @@ export function registerAuthRoutes(app: Express, { limiters }: RouteDeps) {
 
       const result = await otpService.sendOtp(data.email, "REGISTRATION", payload, data.fullName);
       if (!result.success) {
-        return res.status(429).json({ error: result.message });
+        return res.status(result.failure === "DELIVERY_FAILED" ? 503 : 429).json({ error: result.message });
       }
 
       res.json({ message: result.message });
@@ -151,17 +158,19 @@ export function registerAuthRoutes(app: Express, { limiters }: RouteDeps) {
   app.post("/api/auth/otp/send-login", limiters.auth, async (req, res) => {
     try {
       const data = sendLoginOtpSchema.parse(req.body);
+      // Same answer whether or not an active account exists: this route must not reveal registered emails.
+      const message = "Si un compte actif correspond à cette adresse, un code à 6 chiffres vient de vous être envoyé.";
       const user = await storage.getUserByEmail(data.email);
       if (!user || user.disabledAt) {
-        return res.status(404).json({ error: "Aucun compte actif trouvé avec cette adresse email." });
+        return res.json({ message });
       }
 
       const result = await otpService.sendOtp(data.email, "LOGIN", undefined, user.fullName);
       if (!result.success) {
-        return res.status(429).json({ error: result.message });
+        return res.status(result.failure === "DELIVERY_FAILED" ? 503 : 429).json({ error: result.message });
       }
 
-      res.json({ message: result.message });
+      res.json({ message });
     } catch (error) {
       handleError(res, error);
     }
