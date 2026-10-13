@@ -97,7 +97,7 @@ export function PdfResourceViewer({ title, url, onClose }: {
           <iframe
             src={pdfBlobUrl}
             title={`Aperçu PDF : ${title}`}
-            className="h-[65vh] w-full rounded-md border"
+            className="h-[65dvh] w-full rounded-md border"
             sandbox="allow-downloads allow-scripts"
             data-testid="iframe-resource-pdf"
           />

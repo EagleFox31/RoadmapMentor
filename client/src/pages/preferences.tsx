@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, Loader2, Sparkles, Bell, Zap, Users, Trophy, Mail, ArrowLeft, AlertCircle } from "lucide-react";
 import { useLocation } from "wouter";
+import { TopBar } from "@/components/top-bar";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { EmailNotificationPreferences } from "@shared/schema";
 
@@ -122,13 +125,13 @@ export default function PreferencesPage() {
   const categories: Array<{
     title: string;
     icon: typeof Bell;
-    gradient: string;
+    badgeStyle: string;
     items: Array<{ key: PreferenceKey; label: string; desc: string }>;
   }> = [
     {
       title: "Notifications de base",
       icon: Bell,
-      gradient: "from-emerald-500 to-teal-500",
+      badgeStyle: "bg-emerald-50 text-emerald-700 border-emerald-200/60",
       items: [
         { key: "taskReminders", label: "Rappels de tâches", desc: "Recevez des rappels pour les tâches en attente" },
         { key: "weekPreparation", label: "Préparation de semaine", desc: "Rappels pour préparer les semaines à venir" },
@@ -139,7 +142,7 @@ export default function PreferencesPage() {
     {
       title: "IA & Système",
       icon: Sparkles,
-      gradient: "from-emerald-500 to-teal-500",
+      badgeStyle: "bg-teal-50 text-teal-700 border-teal-200/60",
       items: [
         { key: "aiGenerationNotifications", label: "Génération IA", desc: "Succès ou échec de génération automatique" },
         { key: "weekValidationNotifications", label: "Validation de semaine", desc: "Notifications de validation mentor" },
@@ -148,7 +151,7 @@ export default function PreferencesPage() {
     {
       title: "Collaboration",
       icon: Users,
-      gradient: "from-green-500 to-emerald-500",
+      badgeStyle: "bg-indigo-50 text-indigo-700 border-indigo-200/60",
       items: [
         { key: "newTaskNotifications", label: "Nouvelles tâches", desc: "Alertes pour les tâches assignées" },
         { key: "screenshotNotifications", label: "Screenshots", desc: "Notifications d'upload de captures" },
@@ -158,7 +161,7 @@ export default function PreferencesPage() {
     {
       title: "Rappels Intelligents",
       icon: Zap,
-      gradient: "from-orange-500 to-red-500",
+      badgeStyle: "bg-amber-50 text-amber-700 border-amber-200/60",
       items: [
         { key: "deadlineReminders", label: "Deadlines proches", desc: "Rappels 2 jours avant échéance" },
         { key: "streakWarnings", label: "Streak en danger", desc: "Maintenez votre rythme quotidien" },
@@ -167,7 +170,7 @@ export default function PreferencesPage() {
     {
       title: "Gamification",
       icon: Trophy,
-      gradient: "from-yellow-500 to-amber-500",
+      badgeStyle: "bg-purple-50 text-purple-700 border-purple-200/60",
       items: [
         { key: "milestoneNotifications", label: "Milestones", desc: "Célébrez vos jalons à 25%, 50%, 75%, 100%" },
         { key: "badgeNotifications", label: "Badges", desc: "Nouveaux badges débloqués" },
@@ -177,217 +180,175 @@ export default function PreferencesPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-emerald-50">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div
-          className="absolute top-0 -left-4 w-96 h-96 bg-emerald-200/30 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "0s", animationDuration: "4s" }}
-        />
-        <div
-          className="absolute top-1/4 right-0 w-96 h-96 bg-emerald-200/30 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "2s", animationDuration: "5s" }}
-        />
-        <div
-          className="absolute bottom-0 left-1/3 w-96 h-96 bg-teal-200/30 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "1s", animationDuration: "6s" }}
-        />
-      </div>
+    <div className="min-h-screen w-full bg-slate-50 text-slate-900 flex flex-col relative overflow-hidden">
+      <TopBar />
 
-      <div className="sticky top-0 z-50 backdrop-blur-xl bg-white/80 border-b border-neutral-200 shadow-sm">
-        <div className="container max-w-[1400px] mx-auto px-8 py-6 flex items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setLocation("/roadmap")}
-              data-testid="button-back-roadmap"
-              className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-neutral-100 to-neutral-200 hover:from-neutral-200 hover:to-neutral-300 transition-all duration-200 shadow-sm hover:shadow-md group"
-            >
-              <ArrowLeft className="w-5 h-5 text-neutral-700 group-hover:text-neutral-900 group-hover:-translate-x-0.5 transition-transform" />
-            </button>
+      <main className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pb-16 pt-24 sm:pt-28 relative z-10 flex-1">
+        {/* Carte En-tête Unifiée */}
+        <Card className="mb-6 rounded-3xl border-slate-200/80 bg-white/95 backdrop-blur-xl p-6 sm:p-8 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocation("/roadmap")}
+                  className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl text-xs font-semibold px-3 py-1.5 h-auto transition-colors"
+                  data-testid="button-back-roadmap"
+                >
+                  <ArrowLeft className="mr-1.5 h-3.5 w-3.5" /> Retour à la feuille de route
+                </Button>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+                  <Mail className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Paramètres de notification & alertes</span>
+                </div>
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+                  Préférences de notification
+                </h1>
+                <p className="text-sm text-slate-600 mt-1 max-w-2xl">
+                  Personnalisez votre expérience de notification pour rester informé de votre progression sans être submergé.
+                </p>
+              </div>
+            </div>
 
-            <div className="flex items-center gap-3">
-              <Mail className="w-8 h-8 text-emerald-600" />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-emerald-600 bg-clip-text text-transparent">
-                Préférences de Notification
-              </h1>
+            <div className="min-h-6 text-sm font-medium self-start sm:self-center">
+              {saveSuccess && (
+                <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-3.5 py-1.5 rounded-full text-xs font-semibold animate-in fade-in duration-200">
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Modifications enregistrées</span>
+                </div>
+              )}
+              {saveError && (
+                <div className="flex items-center gap-1.5 text-rose-700 bg-rose-50 border border-rose-200/80 px-3.5 py-1.5 rounded-full text-xs font-semibold">
+                  <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                  <span>{saveError}</span>
+                </div>
+              )}
             </div>
           </div>
-
-          <div className="min-h-6 text-sm font-medium">
-            {saveSuccess && (
-              <div className="flex items-center gap-2 text-green-600 animate-in fade-in slide-in-from-right-5 duration-300">
-                <Check className="w-5 h-5" />
-                <span>Sauvegardé</span>
-              </div>
-            )}
-            {saveError && (
-              <div className="flex items-center gap-2 text-red-600">
-                <AlertCircle className="w-5 h-5" />
-                <span>{saveError}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <main className="container max-w-[1400px] mx-auto px-8 py-12 relative">
-        <div
-          className="mb-12 text-center"
-          style={{ transform: `translateY(${scrollY * 0.1}px)` }}
-        >
-          <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
-            Personnalisez votre expérience de notification pour rester informé sans être submergé
-          </p>
-        </div>
+        </Card>
 
         {isLoading && (
-          <div className="flex items-center justify-center gap-3 py-20 text-neutral-600">
-            <Loader2 className="w-6 h-6 animate-spin" />
+          <div className="flex items-center justify-center gap-3 py-20 text-slate-500 text-sm">
+            <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
             <span>Chargement de vos préférences…</span>
           </div>
         )}
 
         {isError && (
-          <div className="max-w-xl mx-auto rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
-            <AlertCircle className="w-7 h-7 text-red-600 mx-auto mb-3" />
-            <p className="text-red-800 mb-4">
+          <div className="max-w-xl mx-auto rounded-3xl border border-rose-200 bg-rose-50/70 p-6 text-center backdrop-blur-xl">
+            <AlertCircle className="w-7 h-7 text-rose-600 mx-auto mb-3" />
+            <p className="text-sm text-rose-800 mb-4 font-medium">
               Impossible de charger vos préférences de notification.
             </p>
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => refetch()}
-              className="px-4 py-2 rounded-lg bg-white border border-red-200 text-red-700 font-medium hover:bg-red-100 transition-colors"
+              className="border-rose-200 text-rose-700 hover:bg-rose-100"
             >
               Réessayer
-            </button>
+            </Button>
           </div>
         )}
 
         {!isLoading && !isError && preferences && (
           <>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {categories.map((category, idx) => {
+              {categories.map((category) => {
                 const Icon = category.icon;
                 return (
                   <div
                     key={category.title}
-                    className="group relative"
-                    style={{
-                      animation: `fadeInUp 0.6s ease-out ${idx * 0.1}s both`,
-                    }}
+                    className="rounded-3xl border border-slate-200/80 bg-white/90 backdrop-blur-xl shadow-xs overflow-hidden flex flex-col"
                   >
-                    <div
-                      className={`absolute inset-0 bg-gradient-to-br ${category.gradient} opacity-0 group-hover:opacity-20 blur-2xl transition-all duration-500 rounded-3xl`}
-                    />
+                    <div className="px-6 py-4 border-b border-slate-200/70 bg-slate-50/50 flex items-center gap-3">
+                      <div className={`p-2 rounded-xl border ${category.badgeStyle}`}>
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <h2 className="text-base font-bold text-slate-900">
+                        {category.title}
+                      </h2>
+                    </div>
 
-                    <div className="relative backdrop-blur-xl bg-white/80 rounded-3xl border border-neutral-200 shadow-lg overflow-hidden transition-all duration-300 hover:border-emerald-300 hover:shadow-2xl hover:shadow-emerald-500/20">
-                      <div
-                        className={`px-6 py-5 bg-gradient-to-br ${category.gradient} bg-opacity-10 border-b border-neutral-200 flex items-center gap-3`}
-                      >
+                    <div className="p-4 space-y-2.5 flex-1">
+                      {category.items.map((item) => (
                         <div
-                          className={`p-2.5 rounded-xl bg-gradient-to-br ${category.gradient} shadow-lg`}
+                          key={item.key}
+                          className="group rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-emerald-50/30 hover:border-emerald-200/60 p-4 transition-all flex items-center justify-between gap-4 cursor-pointer"
+                          onClick={() => handleToggle(item.key)}
                         >
-                          <Icon className="w-5 h-5 text-white drop-shadow-md" />
-                        </div>
-                        <h2 className="text-xl font-bold text-neutral-800">
-                          {category.title}
-                        </h2>
-                      </div>
-
-                      <div className="p-4 space-y-3">
-                        {category.items.map((item) => (
-                          <div
-                            key={item.key}
-                            className="group/item backdrop-blur-xl bg-white/90 rounded-2xl border border-neutral-200 p-5 transition-all duration-300 hover:bg-emerald-50 hover:border-emerald-300 hover:scale-[1.02] hover:shadow-lg cursor-pointer"
-                            onClick={() => handleToggle(item.key)}
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-neutral-800 mb-1 group-hover/item:text-emerald-700 transition-colors">
-                                  {item.label}
-                                </h3>
-                                <p className="text-sm text-neutral-600 leading-relaxed">
-                                  {item.desc}
-                                </p>
-                              </div>
-
-                              <button
-                                type="button"
-                                aria-pressed={preferences[item.key]}
-                                aria-label={`${item.label} : ${preferences[item.key] ? "activé" : "désactivé"}`}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  handleToggle(item.key);
-                                }}
-                                className={`relative flex-shrink-0 w-12 h-6 rounded-full transition-all duration-300 ${
-                                  preferences[item.key]
-                                    ? `bg-gradient-to-r ${category.gradient} shadow-lg`
-                                    : "bg-neutral-300"
-                                }`}
-                                disabled={updatePreference.isPending}
-                              >
-                                {updating === item.key ? (
-                                  <Loader2 className="w-4 h-4 text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin" />
-                                ) : (
-                                  <div
-                                    className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-lg ${
-                                      preferences[item.key] ? "left-7" : "left-1"
-                                    }`}
-                                  />
-                                )}
-                              </button>
-                            </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-semibold text-slate-800 group-hover:text-emerald-800 transition-colors">
+                              {item.label}
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                              {item.desc}
+                            </p>
                           </div>
-                        ))}
-                      </div>
+
+                          <button
+                            type="button"
+                            aria-pressed={preferences[item.key]}
+                            aria-label={`${item.label} : ${preferences[item.key] ? "activé" : "désactivé"}`}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleToggle(item.key);
+                            }}
+                            className={`relative shrink-0 w-12 h-6 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 ${
+                              preferences[item.key]
+                                ? "bg-emerald-600 shadow-xs"
+                                : "bg-slate-300"
+                            }`}
+                            disabled={updatePreference.isPending}
+                          >
+                            {updating === item.key ? (
+                              <Loader2 className="w-3.5 h-3.5 text-white absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-spin" />
+                            ) : (
+                              <div
+                                className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-xs transition-transform duration-200 ${
+                                  preferences[item.key] ? "translate-x-7" : "translate-x-1"
+                                }`}
+                              />
+                            )}
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            <div
-              className="mt-8 backdrop-blur-xl bg-gradient-to-br from-emerald-50 to-emerald-50 rounded-3xl border border-neutral-200 shadow-lg p-8"
-              style={{ animation: "fadeInUp 0.6s ease-out 0.5s both" }}
-            >
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-neutral-800">
-                <Sparkles className="w-5 h-5 text-emerald-600" />
-                À propos de vos notifications
+            <div className="mt-8 rounded-3xl border border-slate-200/80 bg-white/90 backdrop-blur-xl p-6 shadow-xs">
+              <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+                <span>À propos de vos notifications</span>
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-neutral-700">
-                <div className="flex items-start gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Modifications enregistrées sur votre compte</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-slate-600">
+                <div className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>Enregistrement instantané sur votre compte</span>
                 </div>
-                <div className="flex items-start gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                   <span>Notifications adaptées à votre rôle</span>
                 </div>
-                <div className="flex items-start gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Envoyées à votre email principal</span>
+                <div className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>Envoyées à votre adresse email vérifiée</span>
                 </div>
-                <div className="flex items-start gap-3">
-                  <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <span>Une erreur restaure automatiquement la valeur précédente</span>
+                <div className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>Restauration automatique en cas d'erreur</span>
                 </div>
               </div>
             </div>
           </>
         )}
       </main>
-
-      <style>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 }
