@@ -5,6 +5,10 @@ import { authMiddleware, requireLearner, type AuthRequest } from "../auth";
 import { ObjectStorageService, ObjectOwnershipError } from "../objectStorage";
 import { handleError } from "../http/errors";
 import { getMentorsForWeek, getLearnerIdsForWeek, getTaskAccess } from "../access/weekAccess";
+import {
+  completionPercentage,
+  crossedMilestones,
+} from "../services/milestones";
 
 export function registerProgressRoutes(app: Express) {
   app.post("/api/tasks/:taskId/toggle-progress", authMiddleware, requireLearner, async (req: AuthRequest, res) => {
@@ -101,10 +105,10 @@ export function registerProgressRoutes(app: Express) {
               }
             }
 
-            const completionPercentage =
-              totalTasks > 0
-                ? Math.round((completedTasks / totalTasks) * 100)
-                : 0;
+            const weekPercentage = completionPercentage(
+              completedTasks,
+              totalTasks,
+            );
 
             for (const mentor of mentors) {
               await emailService
@@ -114,10 +118,37 @@ export function registerProgressRoutes(app: Express) {
                   mentor.fullName,
                   learner.fullName,
                   taskAccess.week.number,
-                  completionPercentage,
+                  weekPercentage,
                 )
                 .catch((err) =>
                   console.error("Failed to send progress update:", err),
+                );
+            }
+
+            const roadmapCounts = await countLearnerRoadmapTasks(
+              authenticatedLearnerId,
+            );
+            const currentRoadmap = completionPercentage(
+              roadmapCounts.completed,
+              roadmapCounts.total,
+            );
+            const previousRoadmap = completionPercentage(
+              Math.max(0, roadmapCounts.completed - 1),
+              roadmapCounts.total,
+            );
+            for (const milestone of crossedMilestones(
+              previousRoadmap,
+              currentRoadmap,
+            )) {
+              await emailService
+                .sendMilestoneReached(
+                  learner.id,
+                  learner.email,
+                  learner.fullName,
+                  milestone,
+                )
+                .catch((err) =>
+                  console.error("Failed to send milestone notification:", err),
                 );
             }
           }
@@ -210,4 +241,30 @@ export function registerProgressRoutes(app: Express) {
       handleError(res, error);
     }
   });
+}
+
+async function countLearnerRoadmapTasks(learnerId: number): Promise<{
+  total: number;
+  completed: number;
+}> {
+  const weeks = (
+    await storage.getAccessibleWeeks(learnerId, "LEARNER")
+  ).filter((week) => week.isValidatedByMentor);
+
+  let total = 0;
+  let completed = 0;
+  for (const week of weeks) {
+    const objectives = await storage.getObjectivesByWeek(week.id);
+    for (const objective of objectives) {
+      const tasks = await storage.getTasksByObjective(objective.id);
+      total += tasks.length;
+      for (const task of tasks) {
+        const progress = await storage.getTaskProgress(task.id, learnerId);
+        if (progress?.isDone) {
+          completed++;
+        }
+      }
+    }
+  }
+  return { total, completed };
 }

@@ -1,5 +1,9 @@
 import { storage } from "../storage";
 import { emailService } from "../services/emailService";
+import {
+  DEADLINE_REMINDER_DAYS,
+  daysUntilEndDate,
+} from "../services/weekDeadlines";
 
 /**
  * Envoi de rappels pour les tâches non complétées
@@ -56,7 +60,7 @@ export async function sendTaskReminders() {
  * Envoi de rappels aux mentors pour préparer la semaine suivante
  * À exécuter chaque vendredi à 17h
  */
-export async function sendWeekPreparationReminders() {
+export async function sendWeekPreparationReminders(): Promise<string> {
   console.log("[EmailJob] Envoi des rappels de préparation de semaine...");
   
   try {
@@ -81,9 +85,69 @@ export async function sendWeekPreparationReminders() {
     }
     
     console.log("[EmailJob] Rappels de préparation envoyés avec succès");
+    return `Rappels préparation: ${mentors.length} mentor(s)`;
   } catch (error) {
     console.error("[EmailJob] Erreur lors de l'envoi des rappels de préparation:", error);
+    throw error;
   }
+}
+
+/**
+ * Rappel J-2 avant la date de fin de semaine, si des tâches restent ouvertes.
+ */
+export async function sendDeadlineReminders(
+  timeZone = "Europe/Paris",
+): Promise<string> {
+  console.log("[EmailJob] Envoi des rappels de deadline...");
+  const learners = await emailService.getAllLearners();
+  let sentCount = 0;
+  let skippedCount = 0;
+
+  for (const learner of learners) {
+    const weeks = (
+      await storage.getAccessibleWeeks(learner.id, "LEARNER")
+    ).filter((week) => week.isValidatedByMentor);
+
+    for (const week of weeks) {
+      if (daysUntilEndDate(week.endDate, new Date(), timeZone) !== DEADLINE_REMINDER_DAYS) {
+        continue;
+      }
+
+      let pendingTasksCount = 0;
+      const objectives = await storage.getObjectivesByWeek(week.id);
+      for (const objective of objectives) {
+        const tasks = await storage.getTasksByObjective(objective.id);
+        for (const task of tasks) {
+          const progress = await storage.getTaskProgress(task.id, learner.id);
+          if (!progress || !progress.isDone) {
+            pendingTasksCount++;
+          }
+        }
+      }
+
+      if (pendingTasksCount === 0) {
+        continue;
+      }
+
+      const sent = await emailService.sendDeadlineApproaching(
+        learner.id,
+        learner.email,
+        learner.fullName,
+        week.number,
+        DEADLINE_REMINDER_DAYS,
+        pendingTasksCount,
+      );
+      if (sent) {
+        sentCount++;
+      } else {
+        skippedCount++;
+      }
+    }
+  }
+
+  const summary = `Deadlines envoyées: ${sentCount}, Ignorées: ${skippedCount}`;
+  console.log(`[EmailJob] ${summary}`);
+  return summary;
 }
 
 /**
@@ -93,11 +157,9 @@ export async function sendWeekPreparationReminders() {
 export async function testEmailNotifications() {
   console.log("[EmailJob] Test des notifications email...");
   
-  // Tester les rappels de tâches
   await sendTaskReminders();
-  
-  // Tester les rappels de préparation
   await sendWeekPreparationReminders();
-  
+  await sendDeadlineReminders();
+
   console.log("[EmailJob] Test des notifications terminé");
 }
