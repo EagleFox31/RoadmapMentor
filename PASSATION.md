@@ -52,6 +52,7 @@ Fusionner la pile de 4 PR (auth OTP, UI responsive, profil/notifications, durcis
 9. Apprenant : il ne voit que les semaines validées par le mentor (`server/routes/weeks.ts:42`). En prod, Jennifer doit cliquer « Valider » au moins sur la semaine 1 pour que Pavel voie quelque chose. En local, la semaine 1 de la roadmap n°31 a été validée pour tester avec Darren.
 10. **PR #93** (`feat/auto-consult-resource`) : ouvrir une ressource la marque « consultée » (lien externe, « Lire ici », aperçu PDF). Le bouton manuel permet d'annuler. À fusionner.
 11. `docs/walkthrough-gemini.md` contient une modification non commitée d'un autre agent (provisioning d'un mentor, avec un e-mail personnel). À valider ou à jeter par l'utilisateur.
+12. **PR `feat/pdf-preview-proxy`** : l'aperçu PDF passe par `GET /api/resources/:id/pdf` (proxy serveur anti-SSRF, `server/services/pdfProxy.ts`) et est dessiné avec pdf.js. Corrige le blocage CORS et le cadre gris/🚫 de la modale. Les modifications non commitées d'un autre agent sur `PdfResourceViewer.tsx`, `server/routes/content.ts` et `server/auth.ts` (jeton accepté en `?token=`) entrent en conflit et deviennent inutiles : à jeter après fusion.
 
 ## Pièges / contexte
 - Le `.env` local contient une vraie `RESEND_API_KEY`. Pour ne pas envoyer de vrais mails : `RESEND_API_KEY= docker compose up -d app`.

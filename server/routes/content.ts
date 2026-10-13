@@ -5,8 +5,11 @@ import { insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, inser
 import { handleError } from "../http/errors";
 import { z } from "zod";
 import { canAccessWeek, getObjectiveAccess, getTaskAccess, getDeliverableAccess, getResourceAccess } from "../access/weekAccess";
+import { canPreviewPdf } from "@shared/resourceLinks";
+import { fetchRemotePdf, PdfProxyError } from "../services/pdfProxy";
+import type { RouteDeps } from "./deps";
 
-export function registerWeekContentRoutes(app: Express) {
+export function registerWeekContentRoutes(app: Express, { limiters }: RouteDeps) {
   app.post("/api/weeks/:weekId/objectives", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
       const weekId = parseInt(req.params.weekId, 10);
@@ -317,6 +320,29 @@ export function registerWeekContentRoutes(app: Express) {
       await storage.deleteResource(resourceId);
       res.status(204).send();
     } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // In-app PDF preview: many document hosts send no CORS headers, so the
+  // server fetches the stored URL (SSRF-guarded, see services/pdfProxy).
+  app.get("/api/resources/:id/pdf", authMiddleware, limiters.pdfPreview, async (req: AuthRequest, res) => {
+    try {
+      const resourceId = parseInt(req.params.id, 10);
+      const { resource, allowed } = await getResourceAccess(req, resourceId);
+      if (!resource || !allowed || !canPreviewPdf(resource.url)) {
+        return res.status(404).json({ error: "Resource not found" });
+      }
+
+      const pdf = await fetchRemotePdf(resource.url);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", 'inline; filename="document.pdf"');
+      res.setHeader("Cache-Control", "private, max-age=300");
+      res.send(pdf);
+    } catch (error) {
+      if (error instanceof PdfProxyError || (error as NodeJS.ErrnoException)?.code) {
+        return res.status(502).json({ error: "Aperçu PDF indisponible pour ce document." });
+      }
       handleError(res, error);
     }
   });

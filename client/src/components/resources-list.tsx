@@ -262,6 +262,7 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
       </Dialog>
       <PdfResourceViewer
         title={activePdf?.label ?? ""}
+        resourceId={activePdf?.id ?? null}
         url={activePdf?.url ?? null}
         onClose={() => setActivePdf(null)}
       />

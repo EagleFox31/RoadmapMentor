@@ -28,7 +28,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerMentoringSessionRoutes(app);
   registerBillingRoutes(app);
   registerWeekRoutes(app);
-  registerWeekContentRoutes(app);
+  registerWeekContentRoutes(app, deps);
   registerLabRoutes(app);
   registerProgressRoutes(app);
   registerCommentRoutes(app);
