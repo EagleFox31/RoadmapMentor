@@ -7,11 +7,11 @@ Cible : l'hébergement gratuit décrit dans `docs/deployment.md`. Les journaux e
 |---|---|---|
 | Liveness | `GET /health/live` | pas de 200 sous 10 s |
 | Readiness | `GET /health/ready` | 503 (base ou stockage injoignable) |
-| Pinger externe (UptimeRobot, 5 min) | `/health/ready` | 2 échecs consécutifs ; garde aussi l'instance gratuite éveillée |
+| Worker Cloudflare `roadmapmentor-keepalive` (10 min) | `/health/live` | pas de ping ~15 min → écran Render « waking up » ; filet GitHub Actions trop irrégulier |
 | Journaux Render | filtre `"level":"error"` | tout `unhandled_error` ; `api_error` répétés |
 | Jobs | événements du scheduler (`scheduled_job_runs`) | créneau sans ligne `succeeded` après l'heure prévue |
 
-Les alertes sont à configurer dans les consoles UptimeRobot/Render : rien n'est appliqué par le dépôt.
+Le ping keep-alive est le Worker `roadmapmentor-keepalive` (compte Cloudflare R2). Les alertes Render restent à configurer dans la console Render.
 
 ## Incident : l'application ne répond pas
 1. `/health/live` : KO → déploiement ou instance (Render > Events, redéployer le dernier déploiement sain). OK → étape 2.
