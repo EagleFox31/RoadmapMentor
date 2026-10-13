@@ -1,70 +1,47 @@
 # Passation — 2026-10-13
 
 ## Objectif en cours
-Mise en service de l'app en prod pour un premier binôme : Jennifer Aka'a (mentore) et Pavel (apprenant), sur le domaine `roadmapmentor.trigenys.com`.
+Mise en service de l'app en prod pour le premier binôme : Jennifer (mentore) et Pavel (apprenant), sur `roadmapmentor.trigenys.com`. Il reste à fusionner la PR de `feat/notifications-deadlines-keepalive`.
 
 ## Fait
 - Prod (Render + Neon) :
-  - OTP e-mail réel via Resend, recette OK ;
-  - mentor Jennifer créé (userId=2, `npm run mentor:create`).
-- Roadmap de Pavel préchargée en prod : roadmapId=1, 9 étapes, 33 ressources, vérifiée dans le navigateur.
-  - Commande `npm run roadmap:import` : `scripts/import-roadmap.ts`, `server/domain/roadmapImport.ts`, `test/roadmap-import.test.ts`, doc `docs/deployment.md` « Roadmap import ».
-  - Fichier source hors dépôt : `C:\Users\lawry\Documents\Mentoring\roadmap-shopflow-complete.json`.
-- PR fusionnées dans main (merge commit) :
-  - **#91** `fix/otp-error-messages` : messages OTP français conservés par `errorEnvelope` (helper `userError`, `server/http/errorCatalog.ts`) ;
-  - **#92** `feat/roadmap-import` : commande d'import, walkthrough `docs/walkthrough-roadmap-import.md`, PASSATION ;
-  - **#93** `feat/auto-consult-resource` : ouvrir une ressource la marque « consultée » (`client/src/components/resources-list.tsx`, helper `markOpened`) ;
-  - **#94** `fix/invite-mentor-email-message` : message explicite quand on invite l'e-mail d'un compte mentor (`server/http/errorCatalog.ts:39`).
-- E-mail d'invitation à l'identité du mail OTP (gabarit commun `server/services/emailLayout.ts`, templates `server/services/emailTemplates.ts`) : #95, fusionnée.
-- Aperçu PDF par proxy serveur anti-SSRF (`server/services/pdfProxy.ts`) et rendu pdf.js (`client/src/components/PdfResourceViewer.tsx`) : PR #96 `feat/pdf-preview-proxy`. CI rouge sur le budget de bundle (chunk pdf.js 472 kB > 400 kB) : exception déclarée pour `pdf-*.js` (520 kB) dans `scripts/check-bundle-budget.mjs`.
-- Domaine personnalisé `roadmapmentor.trigenys.com` ajouté sur Render : vérifié, certificat en cours d'émission.
-- Mail OTP relu (rendu sans envoi) : liens basés sur `APP_URL`, expéditeur `roadmapmentor@trigenys.com`.
+  - OTP Resend OK ;
+  - mentor Jennifer (userId=2) ;
+  - roadmap de Pavel préchargée (roadmapId=1, `npm run roadmap:import`) ;
+  - domaine personnalisé ajouté.
+- #91 à #96 fusionnées dans `main` (OTP, import, consultation auto, invitation mentor, e-mail d'invitation, aperçu PDF).
+- Branche `feat/notifications-deadlines-keepalive`, `main` fusionnée dedans :
+  - keep-alive par Worker Cloudflare (`infra/keepalive-worker/`) ;
+  - notifications e-mail semaine, étapes et échéances (`server/services/milestones.ts`, `weekDeadlines.ts`, `notifyWeekLearners.ts`) ;
+  - refonte des ressources et téléversement de documents par le mentor ;
+  - documents servis par `/api/resources/:id/document` et `/pdf` selon l'accès à la semaine ; ouverture par fetch authentifié puis blob (`client/src/lib/openAuthorizedFile.ts`) ;
+  - refonte UI de la roadmap par Gemini (lignes de tâche compactes, anneau de progression, dates lisibles), `data-testid` conservés ;
+  - tous les e-mails de notification sur le gabarit OTP (`server/services/emailTemplates.ts`) ;
+  - fusion : marquage auto « consultée » (#93) reporté dans la nouvelle liste de ressources ; fonds de semaine convertis en WebP 1024 px (743 kB → 38-98 kB) pour tenir le budget média.
 
 ## Décisions prises
-- Import idempotent par titre, parmi les roadmaps du mentor :
-  - absente → création ;
-  - vide → remplissage ;
-  - avec semaines → aucune écriture, pour ne jamais écraser les modifications du mentor.
-- La roadmap prod fusionne deux sources :
-  - semaines 1 à 4 tirées de `Pavel_Mois1_Final` (28 ressources) ;
-  - mois 2 à 6 tirés de la roadmap locale n°31 (autre agent) ;
-  - titre identique à la n°31.
-- Les dates de la roadmap commencent le 2026-10-12 ; elles se modifient dans l'interface.
-- « Consultée » signifie « ouverte depuis l'app ». La lecture sur le site externe n'est pas mesurable. Le bouton manuel est gardé pour annuler.
-- Un compte MENTOR ne peut jamais être rattaché comme apprenant (`server/services/invitations.ts:52`).
+- Jamais de jeton de session dans une URL : fichiers protégés = fetch avec `Authorization` puis blob. Test : `test/auth.test.ts`.
+- Le lien enregistré d'un document téléversé n'est lisible que par son auteur. Les autres passent par la ressource.
+- Aperçu PDF via pdf.js sur canvas ; chunk pdf.js sous exception de budget bornée (520 kB, `scripts/check-bundle-budget.mjs`).
+- Proxy PDF : HTTPS 443 seulement, IP contrôlée à la connexion, 16 Mo, 30 s.
+- Import de roadmap idempotent : aucune écriture si la roadmap a déjà des semaines.
+- « Consultée » = ouverte depuis l'app ; le bouton manuel sert à annuler.
 
 ## Reste à faire
-1. Render → Environment : `APP_URL=https://roadmapmentor.trigenys.com`. Sinon les liens d'invitation et d'e-mail pointent vers onrender.
-2. ✅ #91 à #95 fusionnées. Fusionner #96 (`feat/pdf-preview-proxy`).
-3. Jennifer doit cliquer « Valider » au moins sur la semaine 1 en prod : un apprenant ne voit que les semaines validées (`server/routes/weeks.ts:42`).
-4. Inviter Pavel avec **sa** propre adresse. `justsmilewithme242@gmail.com` est déjà le compte mentor n°1 en prod.
-5. Vérifier que `support@trigenys.com` existe : le pied du mail OTP pointe dessus.
-6. Proposée, en attente d'accord : adopter Release Please (`reusable-release.yml` d'appfactory-project-automation).
-7. Options :
-   - `--publish=1-4` sur `roadmap:import` pour valider des semaines dès l'import ;
-   - `--dry-run` ;
-   - retirer le préfixe « 400: » des toasts.
-8. Vérifier en navigateur réel les modales et le lecteur YouTube (noir en headless). E2E Playwright du flux OTP.
-9. RM-021 tarification (`docs/mentor-pricing.md`). AWS #27/#28 différés (issue #25).
-10. Travail de l'autre agent committé sur `feat/notifications-deadlines-keepalive` (keep-alive Cloudflare, notifications e-mail, refonte des ressources, documents téléversés). Branche partie de #95, avec #96 fusionnée dedans. Le jeton en `?token=` est abandonné : les documents passent par `/api/resources/:id/document` et `/pdf`. Pas encore poussée ; à fusionner après #95 et #96.
-11. **PR #96** (`feat/pdf-preview-proxy`) : aperçu PDF via proxy serveur anti-SSRF + pdf.js. À fusionner.
+1. Fusionner la PR de `feat/notifications-deadlines-keepalive` une fois la CI au vert.
+2. Render : `APP_URL=https://roadmapmentor.trigenys.com`. Pour les documents téléversés en prod, vérifier `OBJECT_STORAGE_PROVIDER` (`replit`, `filesystem` ou `s3`).
+3. Jennifer valide au moins la semaine 1 (un apprenant ne voit que les semaines validées : `server/routes/weeks.ts:42`).
+4. Inviter Pavel avec **sa** propre adresse : l'adresse personnelle utilisée jusqu'ici est déjà le compte mentor n°1 en prod.
+5. Vérifier que `support@trigenys.com` existe.
+6. En option : Release Please ; `--publish` et `--dry-run` sur l'import.
 
 ## Pièges / contexte
-- Le `.env` local pointe sur la **base Neon de prod**. Pour les scripts locaux, surcharger :
-  - `DATABASE_URL=postgresql://roadmapmentor:roadmapmentor@postgres:5432/roadmapmentor`
-  - `DATABASE_WS_PROXY=localhost:5480/v1`
-  - `DATABASE_WS_PROXY_INSECURE=true`
-  - avec le proxy : `docker run -d --rm --name rm-wsproxy-tmp --network <réseau compose> -p 5480:80 -e ALLOW_ADDR_REGEX='.*' ghcr.io/neondatabase/wsproxy:latest`.
-- Scripts en prod : exporter `DATABASE_URL` et `JWT_SECRET` depuis `roadmapmentor.env` (ignoré, ne jamais committer), avec `NODE_ENV=production`. Masquer l'URL dans les sorties.
-- En local, la semaine 1 de la roadmap n°31 a été validée pour tester avec l'apprenant Darren (userId=29).
-- Le `.env` local contient une vraie `RESEND_API_KEY`. Pour ne pas envoyer de vrais mails : `RESEND_API_KEY= docker compose up -d app`.
-- Le client saute l'OTP pour les e-mails en `.test`. Code OTP local : `docker logs --since=60s roadmapmentor-app-1 | grep -oE "code to <email> \([^)]*\): [0-9]{6}"`.
-- Avant de pousser un changement front : `npm run build && npm run check:bundle`.
-- `test/e2e/__pycache__/*.pyc` est suivi par git : `git checkout -- test/e2e/__pycache__` après les E2E.
-- Dérive Drizzle : `DATABASE_URL=postgresql://x:x@localhost:5432/x npx drizzle-kit generate --name ci_drift_check` doit répondre « No schema changes ».
-- Architecture :
-  - routes dans `server/routes/<domaine>.ts` ;
-  - données dans `server/data/` derrière la façade `storage` ;
-  - messages d'erreur dans `server/http/errorCatalog.ts`.
-- `gh pr merge` est refusé côté outil : c'est l'utilisateur qui fusionne. « Auto delete head branches » est activé.
-- Mettre à jour ce fichier à chaque PR. Tester dans le navigateur tout changement visible. Vocabulaire : « andragogie », jamais « pédagogie ».
+- Dépôt **public** : aucune adresse personnelle ni aucun secret dans les fichiers committés.
+- Le `.env` local pointe sur la **base de prod**. En local, surcharger `DATABASE_URL=postgresql://roadmapmentor:roadmapmentor@postgres:5432/roadmapmentor DATABASE_WS_PROXY=localhost:5480/v1 DATABASE_WS_PROXY_INSECURE=true`, avec le proxy `docker run -d --rm --name rm-wsproxy-tmp --network roadmapmentor_default -p 5480:80 -e ALLOW_ADDR_REGEX='.*' ghcr.io/neondatabase/wsproxy:latest`.
+- Serveur de prod local : `npm run build`, puis `NODE_ENV=production PORT=5001 OBJECT_STORAGE_PROVIDER=filesystem OBJECT_STORAGE_LOCAL_DIR=<dossier> RESEND_API_KEY= node dist/index.js`.
+- Scripts en prod : variables depuis `roadmapmentor.env` (jamais committé), URL masquée dans les sorties.
+- Avant de pousser un changement front : `npm run build && npm run check:bundle` (images en WebP).
+- Réseau local très lent : utiliser `timeout 120 git push`.
+- `test/e2e/__pycache__/*.pyc` est suivi : `git checkout -- test/e2e/__pycache__` après les E2E.
+- Dérive Drizzle : `DATABASE_URL=postgresql://x:x@localhost:5432/x npx drizzle-kit generate --name ci_drift_check` → « No schema changes ».
+- `gh pr merge` refusé côté outil : c'est l'utilisateur qui fusionne. PASSATION à mettre à jour à chaque PR. Vocabulaire : « andragogie », jamais « pédagogie ».
