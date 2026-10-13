@@ -71,3 +71,11 @@ Generalised lesson: a rule that relies on remembering an order fails twice; turn
 | Signing up with an email that already has an account showed "La requête est invalide" instead of the explicit message | `errorEnvelope` maps the English `error` through `describeError`; the OTP routes return French messages with no `code`, so they fell back to the generic status message (also hid OTP lockout, expiry and 503 delivery messages) | `userError(code, message)` in `server/http/errorCatalog.ts`; every French auth error now carries an explicit code | `test/observability.test.ts`: the envelope keeps `userError` messages, and a guard fails if `server/routes/auth.ts` sends a French `error` without a code |
 
 Generalised lesson: a response post-processor is part of the contract; a new route must be tested through it, not only at the handler.
+
+## 2026-10-13 — PR #96 red in CI on the bundle budget
+
+| Context | Root cause | Resolution | Prevention |
+| --- | --- | --- | --- |
+| The `integration` job of #96 (pdf.js preview) failed at `npm run check:bundle`: `pdf-*.js` 472 kB > 400 kB | pdf.js is a single vendor module that cannot be split further; it is already loaded through a dynamic import, but the budget applied the initial-chunk limit to every chunk. `check:bundle` was not run before pushing | Declared, justified exception in `scripts/check-bundle-budget.mjs` (`exceptions`: `pdf-*.js`, own 520 kB ceiling, `BUDGET_PDFJS_KB`); every other chunk keeps 400 kB | Run `npm run build && npm run check:bundle` before pushing any change that adds a front-end dependency; a lazy vendor chunk gets an explicit exception entry, never a global budget increase |
+
+Generalised lesson: a budget is a contract; exceed it through a named, bounded exception, not by loosening the global limit.

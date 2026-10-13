@@ -43,7 +43,7 @@ export function hasRasterImageSignature(contentType: string | undefined, data: B
 }
 
 export type LimiterConfig = { windowMs: number; max: number };
-export type RateLimitConfig = Record<"auth" | "ai" | "upload" | "jobs" | "invitation", LimiterConfig>;
+export type RateLimitConfig = Record<"auth" | "ai" | "upload" | "jobs" | "invitation" | "pdfPreview", LimiterConfig>;
 
 const MINUTE = 60 * 1000;
 
@@ -53,6 +53,7 @@ export const DEFAULT_RATE_LIMITS: RateLimitConfig = {
   upload: { windowMs: 15 * MINUTE, max: 60 },
   jobs: { windowMs: 60 * MINUTE, max: 6 },
   invitation: { windowMs: 60 * MINUTE, max: 30 },
+  pdfPreview: { windowMs: 15 * MINUTE, max: 60 },
 };
 
 /** Overrides via RATE_LIMIT_<NAME>_MAX / RATE_LIMIT_<NAME>_WINDOW_MS (positive integers only). */
@@ -97,6 +98,7 @@ export function createLimiters(config: RateLimitConfig = resolveRateLimits()) {
     upload: createLimiter(config.upload, true),
     jobs: createLimiter(config.jobs, true),
     invitation: createLimiter(config.invitation, true),
+    pdfPreview: createLimiter(config.pdfPreview, true),
   };
 }
 
