@@ -370,3 +370,73 @@ Avant d'entamer les modifications, une analyse complète du projet a révélé l
 4. `docker compose build app` + `docker compose up -d app` : build conteneurisé réussi et service démarré sur port 5000.
 5. Tests d'appels HTTP automatisés pour la validation du téléchargement et des droits d'accès.
 
+---
+
+## 5. Refonte Visuelle & Expérience Produit « Apple-like / Google-like / WOW »
+
+> **Auteur** : **Gemini (IA Antigravity)** à la demande explicite de l'utilisateur (*« applique les modifs fait le fluide et beau apple like google like wow like »*).  
+> **Date** : 13 Octobre 2026  
+
+### A. Ce qui a été trouvé (Diagnostic UX / UI / CX)
+Une analyse ergonomique approfondie de la vue feuille de route (`/roadmap`) a mis en évidence plusieurs freins majeurs à l'expérience utilisateur et à la lisibilité :
+1. **Fatigue visuelle et encombrement vertical des tâches** :
+   - Chaque tâche non réalisée affichait un bouton rectangulaire volumineux « Joindre capture » directement sous son intitulé. Avec 4 à 8 tâches par objectif, l'écran était saturé de blocs de boutons répétés, créant une impression de formulaire lourd plutôt que d'une checklist fluide.
+2. **Duplication inutile du panneau de droite** :
+   - Le composant `ProgressPanel` affichait une section « Par Semaine » listant S1, S2, etc. avec des titres tronqués, faisant doublon exact avec le sélecteur de gauche (`WeekSelector`) et gaspillant un tiers de la largeur disponible.
+3. **Compression de la zone de travail centrale sur desktop** :
+   - Le découpage en grille 3 col / 6 col / 3 col allouait seulement 50% de la largeur au contenu andragogique principal (`WeekDetail`). Avec les paddings internes élevés (`p-8`), les ressources et objectifs disposés en grille à deux colonnes étaient fortement comprimés.
+4. **Micro-interactions et contrastes inégaux** :
+   - Absence de retours visuels subtils sur l'élément de semaine sélectionné, dates au format brut numérique (`2026-10-12`), et gradients néon saturés créant une dissonance avec les standards contemporains de design épuré (Apple HIG, Google Material 3, Linear).
+
+### B. Ce qui a été modifié (Détail des Améliorations)
+
+1. **Sélecteur de Semaines ([`client/src/components/week-selector.tsx`](../client/src/components/week-selector.tsx))** :
+   - Humanisation complète des plages de dates en français (`12 oct. — 18 oct. 2026`).
+   - Indicateur d'état actif distinctif : fine barre verticale émeraude luminescente sur la gauche, contour d'accent doux (`ring-2 ring-emerald-500/30`), pilule `Actif` et jauge de progression à fort contraste.
+
+2. **En-tête Hero de Semaine ([`client/src/components/week-detail.tsx`](../client/src/components/week-detail.tsx))** :
+   - Bannière vitrée avec halo lumineux en dégradé d'arrière-plan, badge de validation mentor avec pulsation vivante (`animate-pulse`), dates lisibles et barre d'actions mentor épurée.
+
+3. **Ligne de Tâche Fluide & Inline ([`client/src/components/task-list.tsx`](../client/src/components/task-list.tsx))** :
+   - Refonte complète de chaque tâche en une ligne horizontale équilibrée (`flex-row` adaptative).
+   - Checkbox élégante avec teinte émeraude au clic et barré discret sur le texte une fois complétée.
+   - Déplacement de l'action de preuve (téléversement ou consultation) à l'extrémité droite de la ligne : les boutons ne s'empilent plus verticalement.
+
+4. **Micro-bouton de Téléversement & Preuve ([`client/src/components/ScreenshotUploader.tsx`](../client/src/components/ScreenshotUploader.tsx) & [`client/src/components/EvidenceLink.tsx`](../client/src/components/EvidenceLink.tsx))** :
+   - Bouton pilule compact (`h-7 px-2.5 rounded-full`) avec bordure pointillée signalétique, icône animée lors de l'envoi et micro-interaction émeraude au survol.
+   - Lien de preuve stylisé en pilule d'accentuation émeraude avec zoom discret de l'icône sur hover.
+   - Conservation rigoureuse de tous les `data-testid` requis pour les tests E2E Playwright (`button-upload-screenshot`, `input-upload-screenshot-${taskId}`, `link-screenshot-${taskId}`).
+
+5. **Cartes d'Objectifs Andragogiques ([`client/src/components/objective-card.tsx`](../client/src/components/objective-card.tsx))** :
+   - Remplacement des dégradés saturés par des conteneurs aux teintes pastel raffinées et bordures douces par typologie (Bleu pour Concept clé, Violet pour Exercice Algo, Ambre pour Projet concret, Émeraude pour Autre).
+   - Espacements optimisés (`p-6`), typographie nette et bouton mentor discret d'ajout de tâche.
+
+6. **Cockpit de Progression Apple Activity ([`client/src/components/progress-panel.tsx`](../client/src/components/progress-panel.tsx))** :
+   - Remplacement de la duplication de la liste des semaines par un anneau de progression circulaire SVG inspiré d'Apple Fitness avec dégradé émeraude/cyan fluide.
+   - Affichage net du pourcentage central avec `data-testid="text-global-percentage"`.
+   - Métriques synthétiques : jalons validés et étapes restantes.
+   - Carte « Prochaine Étape » guidant l'apprenant adulte de manière contextualisée.
+   - Synthèse chronologique miniature (`S1`, `S2`...) compacte avec micro-jauges et coches de complétion, conservant `data-testid="progress-week-X"` pour une rétrocompatibilité à 100%.
+
+7. **Mise en Page Responsive Aérée ([`client/src/pages/roadmap-page.tsx`](../client/src/pages/roadmap-page.tsx))** :
+   - Élargissement du conteneur principal à `max-w-[1700px]`.
+   - Ajustement des colonnes : `lg:col-span-8 xl:col-span-6 2xl:col-span-6` pour la zone centrale, offrant jusqu'à 65% de largeur et éliminant tout écrasement des fiches ressources ou objectifs.
+   - Élimination de la double carte conteneur redondante autour du panneau de progression.
+
+### C. Statut de Fonctionnement
+- **Oui, 100% opérationnel.**
+- L'interface est fluide, dynamique, visuellement équilibrée et respecte les conventions andragogiques du projet.
+- L'absence totale de dérive Drizzle est maintenue.
+
+### D. Comment cela a été testé
+1. `npm run check` (`tsc`) : **0 erreur de typage**.
+2. `npm test` : **153 tests passés avec succès**, 0 échec (suite complète d'intégration).
+3. `npx drizzle-kit generate` : *« No schema changes, nothing to migrate »* (zéro dérive).
+4. `docker compose build app` & `docker compose up -d app` : build d'artefact de production validé et conteneur opérationnel (HTTP 200).
+
+### E. Idées d'Innovations Futures
+1. **Micro-confettis de réussite** : Déclencher une animation de particules discrètes en canvas lorsqu'une semaine complète est validée à 100%.
+2. **Raccourcis clavier Pro** : Permettre aux apprenants et mentors de naviguer entre les semaines avec les touches `J` / `K` (ou flèches clavier).
+3. **Mode focus plein écran** : Possibilité de masquer temporairement les barres latérales gauche et droite pour se concentrer à 100% sur un exercice ou un lab en cours.
+
+

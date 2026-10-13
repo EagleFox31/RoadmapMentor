@@ -82,51 +82,78 @@ export function WeekDetail({
     OTHER: week.objectives.filter(obj => obj.type === "OTHER"),
   };
 
+  const formatHumanDates = (start?: string, end?: string) => {
+    if (!start || !end) return "";
+    try {
+      const s = new Date(start);
+      const e = new Date(end);
+      if (isNaN(s.getTime()) || isNaN(e.getTime())) return `${start} — ${end}`;
+      const sFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long" });
+      const eFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+      return `Du ${sFmt.format(s)} au ${eFmt.format(e)}`;
+    } catch {
+      return `${start} — ${end}`;
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      {/* Week Header */}
-      <Card className="bg-card rounded-xl p-6 shadow-md">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <Badge className="bg-primary text-white border-0">
+    <div className="space-y-6">
+      {/* Week Hero Header */}
+      <Card className="glass-card rounded-3xl p-6 sm:p-8 border border-border/70 shadow-sm relative overflow-hidden group">
+        {/* Subtle decorative glowing background */}
+        <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-bl from-emerald-500/10 via-teal-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2.5 flex-wrap mb-2.5">
+              <span className="inline-flex items-center text-xs font-bold px-3 py-1 rounded-full bg-primary text-primary-foreground shadow-sm">
                 Semaine {week.number}
-              </Badge>
+              </span>
               {week.isValidatedByMentor && (
-                <Badge className="bg-success/10 text-success border-0">
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                  Validée
-                </Badge>
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Validée par le mentor
+                </span>
+              )}
+              {week.startDate && week.endDate && (
+                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-medium bg-muted/60 px-2.5 py-1 rounded-full">
+                  <Calendar className="w-3.5 h-3.5 text-muted-foreground/70" />
+                  {formatHumanDates(week.startDate, week.endDate)}
+                </span>
               )}
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">{week.title}</h2>
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Calendar className="w-4 h-4" />
-              <span>{week.startDate} - {week.endDate}</span>
-            </div>
+
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight leading-tight mb-2.5">
+              {week.title}
+            </h2>
+
             {week.description && (
-              <p className="mt-3 text-foreground text-sm leading-relaxed">{week.description}</p>
+              <p className="text-foreground/80 text-sm sm:text-base leading-relaxed max-w-3xl">
+                {week.description}
+              </p>
             )}
           </div>
 
           {isMentor() && (
-            <div className="flex gap-2 ml-4">
+            <div className="flex items-center gap-2 flex-wrap flex-shrink-0 self-start pt-1">
               <Button
                 onClick={onCloneWeek}
                 size="sm"
                 variant="outline"
+                className="rounded-xl border-border/70 hover:bg-muted font-medium text-xs h-9 px-3 gap-1.5"
                 data-testid="button-clone-week"
               >
-                <Plus className="w-4 h-4 mr-1" />
+                <Plus className="w-3.5 h-3.5" />
                 Dupliquer
               </Button>
               {!week.isValidatedByMentor && (
                 <Button
                   onClick={onValidateWeek}
-                  className="bg-success text-success-foreground"
+                  size="sm"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl text-xs h-9 px-3 gap-1.5 shadow-sm"
                   data-testid="button-validate-week"
                 >
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  <CheckCircle2 className="w-3.5 h-3.5" />
                   Valider
                 </Button>
               )}
@@ -134,18 +161,21 @@ export function WeekDetail({
                 size="icon"
                 variant="outline"
                 onClick={onEditWeek}
+                className="rounded-xl border-border/70 text-muted-foreground hover:text-foreground h-9 w-9"
                 data-testid="button-edit-week"
+                aria-label="Modifier la semaine"
               >
-                <Pencil className="w-4 h-4" />
+                <Pencil className="w-3.5 h-3.5" />
               </Button>
               <Button
                 size="icon"
                 variant="outline"
                 onClick={onDeleteWeek}
-                className="bg-destructive/10 border-destructive/30 text-destructive"
+                className="rounded-xl bg-destructive/10 border-destructive/20 text-destructive hover:bg-destructive/20 h-9 w-9"
                 data-testid="button-delete-week"
+                aria-label="Supprimer la semaine"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3.5 h-3.5" />
               </Button>
             </div>
           )}

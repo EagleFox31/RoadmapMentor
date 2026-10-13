@@ -37,11 +37,11 @@ export function EvidenceLink({ taskId, learnerId, testId }: EvidenceLinkProps) {
       type="button"
       disabled={loading}
       onClick={open}
-      className="flex items-center gap-1 text-xs text-primary hover:underline disabled:opacity-50"
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all disabled:opacity-50 shadow-2xs group"
       data-testid={testId}
     >
-      <ImageIcon className="w-3 h-3" />
-      {loading ? "Ouverture..." : "Voir la capture"}
+      <ImageIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform" />
+      <span>{loading ? "Ouverture..." : "Voir la preuve"}</span>
     </button>
   );
 }

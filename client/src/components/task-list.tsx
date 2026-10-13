@@ -3,7 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, Trash2, Users } from "lucide-react";
+import { Pencil, Trash2, Users, CheckCircle2 } from "lucide-react";
 import type { Task, TaskProgressWithLearner } from "@shared/schema";
 import { isMentor, isLearner, getCurrentUser } from "@/lib/auth";
 import { ScreenshotUploader } from "./ScreenshotUploader";
@@ -62,69 +62,82 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
   }
 
   return (
-    <ul className="space-y-0">
-      {tasks.map((task, index) => {
+    <ul className="space-y-2">
+      {tasks.map((task) => {
         const isCompleted = isTaskCompleted(task);
 
         return (
           <li
             key={task.id}
             className={`
-              flex items-start gap-4 py-4 group glass rounded-xl px-3 my-2
-              hover:shadow-md transition-all duration-300
+              flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-2xl
+              border transition-all duration-200 group/task
+              ${isCompleted 
+                ? "bg-muted/20 border-border/40 text-muted-foreground" 
+                : "bg-background/60 hover:bg-card border-border/60 hover:border-border hover:shadow-xs"
+              }
             `}
             data-testid={`task-item-${task.id}`}
           >
-            {isLearner() ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div>
-                    <Checkbox
-                      checked={isCompleted}
-                      disabled={!isCompleted}
-                      onCheckedChange={() => {
-                        if (isCompleted) {
-                          // Allow unchecking a completed task
-                          onToggleTask?.(task.id);
-                        }
-                      }}
-                      className="mt-0.5 data-[state=checked]:bg-gradient-to-br data-[state=checked]:from-success data-[state=checked]:to-teal-500 data-[state=checked]:border-success shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                      data-testid={`checkbox-task-${task.id}`}
-                    />
-                  </div>
-                </TooltipTrigger>
-                {!isCompleted && (
-                  <TooltipContent>
-                    <p>Joignez la capture d'écran de réussite de l'exercice</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            ) : (
-              <div className={`w-5 h-5 rounded-lg border-2 mt-0.5 flex-shrink-0 shadow-md ${
-                isCompleted 
-                  ? "bg-gradient-to-br from-success to-teal-500 border-success" 
-                  : "border-white/20 glass"
-              }`} />
-            )}
+            <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+              {isLearner() ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="pt-0.5 sm:pt-0">
+                      <Checkbox
+                        checked={isCompleted}
+                        disabled={!isCompleted}
+                        onCheckedChange={() => {
+                          if (isCompleted) {
+                            // Allow unchecking a completed task
+                            onToggleTask?.(task.id);
+                          }
+                        }}
+                        className="h-5 w-5 rounded-md border-border/80 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500 shadow-2xs transition-colors"
+                        data-testid={`checkbox-task-${task.id}`}
+                      />
+                    </div>
+                  </TooltipTrigger>
+                  {!isCompleted && (
+                    <TooltipContent>
+                      <p>Joignez la preuve d'exercice pour valider</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              ) : (
+                <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${
+                  isCompleted 
+                    ? "bg-emerald-500 border-emerald-500 text-white" 
+                    : "border-border/80 bg-muted/40"
+                }`}>
+                  {isCompleted && <CheckCircle2 className="w-3.5 h-3.5" />}
+                </div>
+              )}
 
-            <div className="flex-1 flex flex-col gap-2">
-              <span
-                className={`
-                  text-sm leading-relaxed transition-all font-medium
-                  ${isCompleted 
-                    ? "text-muted-foreground line-through opacity-60" 
-                    : "text-foreground"
-                  }
-                `}
-              >
-                {task.label}
+              <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
+                <span
+                  className={`
+                    text-sm font-medium leading-relaxed transition-all
+                    ${isCompleted 
+                      ? "line-through text-muted-foreground/60" 
+                      : "text-foreground"
+                    }
+                  `}
+                >
+                  {task.label}
+                </span>
                 {task.isOptional && (
-                  <span className="ml-2 text-xs text-muted-foreground italic font-semibold">(optionnel)</span>
+                  <span className="text-[11px] font-medium text-muted-foreground/70 bg-muted/60 px-2 py-0.5 rounded-full">
+                    Optionnel
+                  </span>
                 )}
-              </span>
+              </div>
+            </div>
 
+            {/* Evidence action or Mentor actions */}
+            <div className="flex items-center gap-2 self-end sm:self-center shrink-0 pl-8 sm:pl-0">
               {isLearner() && (
-                <div className="flex items-center gap-2 flex-wrap">
+                <>
                   {isCompleted && getTaskProgress(task)?.screenshotUrl && (
                     <EvidenceLink taskId={task.id} learnerId={currentUser!.id} testId={`link-screenshot-${task.id}`} />
                   )}
@@ -135,55 +148,52 @@ export function TaskList({ tasks, onToggleTask, onEditTask, onDeleteTask }: Task
                       currentUrl={pendingScreenshots[task.id] || getTaskProgress(task)?.screenshotUrl}
                     />
                   )}
-                </div>
+                </>
               )}
 
               {isMentor() && (
-                <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
                   {getCompletedLearners(task).length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">
-                        <Users className="w-3 h-3 mr-1" />
-                        {getCompletedLearners(task).length} complété{getCompletedLearners(task).length > 1 ? 's' : ''}
-                      </Badge>
-                    </div>
+                    <Badge variant="secondary" className="text-xs h-6 px-2 rounded-full font-medium">
+                      <Users className="w-3 h-3 mr-1" />
+                      {getCompletedLearners(task).length}
+                    </Badge>
                   )}
                   {getCompletedLearners(task).map((progress) => (
-                    <div key={progress.id} className="flex items-center gap-2 text-xs">
-                      <span className="text-muted-foreground font-medium">
-                        {progress.learner?.fullName || `Apprenant #${progress.learnerId}`}:
-                      </span>
-                      {progress.screenshotUrl && (
-                        <EvidenceLink taskId={task.id} learnerId={progress.learnerId} testId={`link-screenshot-${task.id}-${progress.learnerId}`} />
-                      )}
-                    </div>
+                    progress.screenshotUrl && (
+                      <EvidenceLink
+                        key={progress.id}
+                        taskId={task.id}
+                        learnerId={progress.learnerId}
+                        testId={`link-screenshot-${task.id}-${progress.learnerId}`}
+                      />
+                    )
                   ))}
+                  <div className="flex gap-1 opacity-0 group-hover/task:opacity-100 transition-opacity">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => onEditTask?.(task.id)}
+                      className="h-7 w-7 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
+                      data-testid={`button-edit-task-${task.id}`}
+                      aria-label="Modifier la tâche"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => onDeleteTask?.(task.id)}
+                      className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10"
+                      data-testid={`button-delete-task-${task.id}`}
+                      aria-label="Supprimer la tâche"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
-
-            {isMentor() && (
-              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => onEditTask?.(task.id)}
-                  className="glass border-white/20 hover:border-white/30 shadow-lg"
-                  data-testid={`button-edit-task-${task.id}`}
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => onDeleteTask?.(task.id)}
-                  className="glass border-destructive/30 text-destructive hover:border-destructive/50 shadow-lg"
-                  data-testid={`button-delete-task-${task.id}`}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            )}
           </li>
         );
       })}
