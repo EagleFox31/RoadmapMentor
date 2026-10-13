@@ -57,6 +57,13 @@
       "when": 1791464400000,
       "tag": "0007_resource_consultations_approval_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791850000000,
+      "tag": "0008_email_otps",
+      "breakpoints": true
     }
   ]
 }
