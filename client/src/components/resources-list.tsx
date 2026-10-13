@@ -61,6 +61,12 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
     onSuccess: () => queryClient.invalidateQueries({ queryKey: consultationsKey }),
     onError: () => toast({ title: "Impossible de mettre à jour la consultation", variant: "destructive" }),
   });
+  // Opening a resource from the app counts as a consultation; the manual toggle can still undo it.
+  const markOpened = (resource: Resource) => {
+    if (!mentor && !consultedIds.has(resource.id) && !consultationMutation.isPending) {
+      consultationMutation.mutate({ id: resource.id, consulted: true });
+    }
+  };
   const reportMutation = useMutation({
     mutationFn: (id: number) => apiRequest("POST", `/api/resources/${id}/report-unavailable`, {}),
     onSuccess: () => {
@@ -147,14 +153,14 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
                   <div className="flex flex-wrap items-center gap-1 sm:ml-2">
                     {pdfPreview && (
                       <Button type="button" variant="outline" size="sm"
-                        onClick={() => setActivePdf(resource)}
+                        onClick={() => { setActivePdf(resource); markOpened(resource); }}
                         data-testid={`button-preview-pdf-${resource.id}`}>
                         Aperçu PDF
                       </Button>
                     )}
                     {canPlay && (
                       <Button type="button" variant="outline" size="sm"
-                        onClick={() => setActiveVideo(resource)}
+                        onClick={() => { setActiveVideo(resource); markOpened(resource); }}
                         data-testid={`button-play-resource-${resource.id}`}>
                         <Play className="w-4 h-4 mr-1" />
                         Lire ici
@@ -163,7 +169,10 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
                     {externalUrl && (
                       <Button size="icon" variant="ghost" asChild className="h-8 w-8"
                         data-testid={`button-open-resource-${resource.id}`}>
-                        <a href={externalUrl} target="_blank" rel="noopener noreferrer" aria-label={`Ouvrir ${resource.label} dans un nouvel onglet`}>
+                        <a href={externalUrl} target="_blank" rel="noopener noreferrer"
+                          onClick={() => markOpened(resource)}
+                          onAuxClick={(event) => { if (event.button === 1) markOpened(resource); }}
+                          aria-label={`Ouvrir ${resource.label} dans un nouvel onglet`}>
                           <ExternalLink className="w-4 h-4" />
                         </a>
                       </Button>
