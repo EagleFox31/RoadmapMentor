@@ -36,7 +36,7 @@ const BY_MESSAGE: Record<string, ErrorDescriptor> = {
   "An approved lab cannot be changed": { code: "LAB_ALREADY_APPROVED", message: "Un lab approuvé ne peut plus être modifié." },
   "Invitation already accepted": { code: "INVITATION_ACCEPTED", message: "Cette invitation a déjà été acceptée." },
   "Invitation is no longer pending": { code: "INVITATION_NOT_PENDING", message: "Cette invitation n'est plus en attente." },
-  "This email cannot be invited": { code: "INVITATION_EMAIL_REFUSED", message: "Cette adresse e-mail ne peut pas être invitée." },
+  "This email cannot be invited": { code: "INVITATION_EMAIL_REFUSED", message: "Cette adresse appartient à un compte mentor : elle ne peut pas être rattachée comme apprenant. Utilisez une autre adresse." },
   "Invitation already used": { code: "INVITATION_USED", message: "Cette invitation a déjà été utilisée. Connectez-vous avec votre compte." },
   "Invitation expired": { code: "INVITATION_EXPIRED", message: "Cette invitation a expiré. Demandez un nouveau lien à votre mentor." },
   "Invitation revoked": { code: "INVITATION_REVOKED", message: "Cette invitation a été annulée par votre mentor." },
@@ -86,6 +86,12 @@ const BY_STATUS: Record<number, ErrorDescriptor> = {
   503: { code: "UNAVAILABLE", message: "Le service est momentanément indisponible. Réessayez dans un instant." },
   504: { code: "UPSTREAM_TIMEOUT", message: "Le service externe a mis trop de temps à répondre. Réessayez." },
 };
+
+// Erreur métier déjà rédigée en français : le code explicite empêche `errorEnvelope`
+// de remplacer le message par le libellé générique du statut.
+export function userError(code: string, message: string) {
+  return { error: message, code, message };
+}
 
 export function describeError(status: number, englishMessage?: unknown): ErrorDescriptor {
   if (typeof englishMessage === "string") {

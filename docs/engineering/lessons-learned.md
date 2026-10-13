@@ -63,3 +63,11 @@ Generalised lesson: a developer convenience that weakens a security control must
 | After merging #86 to `main`, #87, #88 and #89 were merged while still targeting their parent branches; `main` only received #86 | Same as RM-011: the stacked children were not retargeted to `main` before merging, and nothing in the repository enforces it | Catch-up PR #90 (`feat/profile-notifications` → `main`), which already contains the whole stack | Repeated error, so a stronger control than a checklist: enable "Automatically delete head branches" on the repository, which makes GitHub retarget dependent PRs to `main` when their base merges; before merging a stacked PR, `gh pr view <n> --json baseRefName` must print `main` |
 
 Generalised lesson: a rule that relies on remembering an order fails twice; turn it into a platform setting.
+
+## 2026-10-13 — OTP error messages replaced by a generic 400 in production
+
+| Context | Root cause | Resolution | Prevention |
+| --- | --- | --- | --- |
+| Signing up with an email that already has an account showed "La requête est invalide" instead of the explicit message | `errorEnvelope` maps the English `error` through `describeError`; the OTP routes return French messages with no `code`, so they fell back to the generic status message (also hid OTP lockout, expiry and 503 delivery messages) | `userError(code, message)` in `server/http/errorCatalog.ts`; every French auth error now carries an explicit code | `test/observability.test.ts`: the envelope keeps `userError` messages, and a guard fails if `server/routes/auth.ts` sends a French `error` without a code |
+
+Generalised lesson: a response post-processor is part of the contract; a new route must be tested through it, not only at the handler.
