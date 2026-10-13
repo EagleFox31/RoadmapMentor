@@ -49,7 +49,9 @@ Fusionner la pile de 4 PR (auth OTP, UI responsive, profil/notifications, durcis
    - Fichier source hors dépôt : `C:\Users\lawry\Documents\Mentoring\roadmap-shopflow-complete.json`. Les semaines 1-4 viennent de `Pavel_Mois1_Final` (28 ressources) et les mois 2-6 de la roadmap locale n°31 créée par Gemini, même titre.
    - Les dates commencent le lundi 2026-10-12 ; elles se modifient dans l'interface.
    - Ré-exécuter la commande est sans effet si la roadmap a déjà des semaines.
-9. `docs/walkthrough-gemini.md` contient une modification non commitée d'un autre agent (provisioning d'un mentor, avec un e-mail personnel). À valider ou à jeter par l'utilisateur.
+9. Apprenant : il ne voit que les semaines validées par le mentor (`server/routes/weeks.ts:42`). En prod, Jennifer doit cliquer « Valider » au moins sur la semaine 1 pour que Pavel voie quelque chose. En local, la semaine 1 de la roadmap n°31 a été validée pour tester avec Darren.
+10. **PR #93** (`feat/auto-consult-resource`) : ouvrir une ressource la marque « consultée » (lien externe, « Lire ici », aperçu PDF). Le bouton manuel permet d'annuler. À fusionner.
+11. `docs/walkthrough-gemini.md` contient une modification non commitée d'un autre agent (provisioning d'un mentor, avec un e-mail personnel). À valider ou à jeter par l'utilisateur.
 
 ## Pièges / contexte
 - Le `.env` local contient une vraie `RESEND_API_KEY`. Pour ne pas envoyer de vrais mails : `RESEND_API_KEY= docker compose up -d app`.
