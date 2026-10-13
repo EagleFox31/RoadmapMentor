@@ -139,6 +139,137 @@ export class EmailService {
   }
 
   /**
+   * Envoi d'un code OTP à 6 chiffres pour inscription ou connexion sans mot de passe.
+   */
+  async sendOtp(
+    to: string,
+    code: string,
+    purpose: "REGISTRATION" | "LOGIN",
+    userName?: string,
+  ): Promise<boolean> {
+    const isReg = purpose === "REGISTRATION";
+    const subject = isReg
+      ? `${APP_NAME} — Votre code de confirmation : ${code}`
+      : `${APP_NAME} — Votre code de connexion : ${code}`;
+
+    const title = isReg ? "Bienvenue sur Roadmap Mentor !" : "Connexion sécurisée";
+    const preheader = isReg
+      ? `Votre code de confirmation est ${code}. Validez votre inscription pour accéder à votre roadmap.`
+      : `Votre code de connexion est ${code}. Accédez directement à votre espace Roadmap Mentor.`;
+
+    const greeting = userName ? `Bonjour <strong>${userName}</strong> 👋,` : "Bonjour 👋,";
+    const message = isReg
+      ? "Merci de rejoindre <strong>Roadmap Mentor</strong> ! Pour finaliser la création de votre compte apprenant et vérifier votre adresse e-mail, voici votre code de confirmation :"
+      : "Vous avez demandé à vous connecter à votre compte <strong>Roadmap Mentor</strong> sans mot de passe. Voici votre code d'accès temporaire :";
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>${subject}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 32px 16px; color: #1e293b; }
+          .container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; padding: 36px 32px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01); }
+          .badge { display: inline-block; padding: 6px 14px; background: #0f172a; border-radius: 12px; color: #ffffff; font-weight: 700; font-size: 14px; letter-spacing: -0.3px; }
+          .badge-accent { color: #34d399; }
+          .title { margin: 20px 0 6px 0; font-size: 22px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; }
+          .subtitle { margin: 0 0 24px 0; font-size: 14px; color: #64748b; }
+          .greeting { font-size: 15px; line-height: 1.6; color: #334155; margin: 0 0 12px 0; }
+          .message { font-size: 15px; line-height: 1.6; color: #334155; margin: 0 0 24px 0; }
+          .code-card { background: linear-gradient(180deg, #f0fdf4 0%, #ecfdf5 100%); border: 1.5px solid #a7f3d0; border-radius: 16px; padding: 24px 16px; text-align: center; margin: 28px 0; }
+          .code-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #059669; margin-bottom: 10px; }
+          .code-digits { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 40px; font-weight: 800; letter-spacing: 12px; color: #047857; line-height: 1.2; padding-left: 12px; }
+          .code-validity { margin-top: 12px; font-size: 12px; font-weight: 600; color: #065f46; display: inline-block; padding: 4px 10px; background: rgba(5,150,105,0.1); border-radius: 8px; }
+          .security-box { background-color: #f8fafc; border-left: 3px solid #059669; padding: 12px 16px; border-radius: 0 10px 10px 0; margin: 24px 0; font-size: 13px; color: #475569; line-height: 1.5; }
+          .signature { margin: 28px 0 0 0; font-size: 14px; color: #334155; line-height: 1.6; }
+          .signature-team { font-weight: 700; color: #0f172a; margin-top: 4px; }
+          .footer-divider { border: none; border-top: 1px solid #e2e8f0; margin: 32px 0 20px 0; }
+          .footer-links { text-align: center; font-size: 12px; margin-bottom: 12px; }
+          .footer-links a { color: #059669; text-decoration: none; font-weight: 600; margin: 0 8px; }
+          .footer-links a:hover { text-decoration: underline; }
+          .footer-text { text-align: center; font-size: 12px; color: #94a3b8; line-height: 1.5; margin: 0 0 10px 0; }
+          .footer-copy { text-align: center; font-size: 11px; color: #cbd5e1; margin: 0; }
+        </style>
+      </head>
+      <body>
+        <!-- Pré-en-tête masqué pour l'aperçu boîte de réception -->
+        <div style="display:none;font-size:1px;color:#ffffff;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;">
+          ${preheader}
+        </div>
+
+        <div class="container">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div class="badge">
+              Roadmap <span class="badge-accent">Mentor</span>
+            </div>
+            <h1 class="title">${title}</h1>
+            <p class="subtitle">${isReg ? "Validation de votre compte apprenant" : "Code d'accès temporaire sécurisé"}</p>
+          </div>
+
+          <p class="greeting">${greeting}</p>
+          <p class="message">${message}</p>
+
+          <div class="code-card">
+            <div class="code-label">Votre code de sécurité</div>
+            <div class="code-digits">${code}</div>
+            <div class="code-validity">⏱️ Valable 10 minutes • À usage unique</div>
+          </div>
+
+          <div class="security-box">
+            🔒 <strong>Conseil de sécurité :</strong> Ne transmettez jamais ce code à un tiers. L'équipe Roadmap Mentor ne vous le demandera jamais par message ou par téléphone.
+          </div>
+
+          <div class="signature">
+            À très vite sur votre feuille de route,
+            <div class="signature-team">L'équipe Roadmap Mentor</div>
+          </div>
+
+          <hr class="footer-divider" />
+
+          <div class="footer-links">
+            <a href="${APP_URL}">Accéder à la plateforme</a> • 
+            <a href="${APP_URL}/roadmap">Feuilles de route</a> • 
+            <a href="mailto:support@trigenys.com">Support & Aide</a>
+          </div>
+
+          <p class="footer-text">
+            Cet e-mail a été envoyé automatiquement à <span style="color: #64748b; font-weight: 500;">${to}</span>.<br />
+            Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail en toute sécurité.
+          </p>
+
+          <p class="footer-copy">
+            © 2026 Roadmap Mentor by Trigenys. Tous droits réservés.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    console.log(`[OTP] Sent ${purpose} code to ${to} (${userName ?? "anonyme"}): ${code}`);
+
+    try {
+      if (!process.env.RESEND_API_KEY) {
+        console.warn(`[OTP DEV MODE] Missing RESEND_API_KEY. Simulating delivery for ${to} with code ${code}`);
+        return true;
+      }
+      const { error } = await getResend().emails.send({ from: FROM_EMAIL, to, subject, html });
+      if (error) {
+        throw new Error(error.message);
+      }
+      return true;
+    } catch (error: any) {
+      console.error("[EMAIL ERROR] OTP email not sent:", error?.message ?? "unknown error");
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`[OTP FALLBACK] Non-production environment: continuing with code ${code}`);
+        return true;
+      }
+      return false;
+    }
+  }
+
+  /**
    * Template: Rappel de travailler sur les tâches
    */
   async sendTaskReminder(userId: number, userEmail: string, userName: string, weekNumber: number, pendingTasksCount: number): Promise<boolean> {

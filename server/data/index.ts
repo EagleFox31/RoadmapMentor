@@ -15,6 +15,7 @@ import { LabRepository, type LabStore } from "./labs";
 import { ProgressRepository, type ProgressStore } from "./progress";
 import { CommentRepository, type CommentStore } from "./comments";
 import { EmailPreferencesRepository, type EmailPreferencesStore } from "./emailPreferences";
+import { EmailOtpRepository, type EmailOtpStore } from "./emailOtps";
 export type { WeekContents } from "./weekContents";
 
 export type IStorage =
@@ -34,7 +35,8 @@ export type IStorage =
   & LabStore
   & ProgressStore
   & CommentStore
-  & EmailPreferencesStore;
+  & EmailPreferencesStore
+  & EmailOtpStore;
 
 /** Composes the per-aggregate repositories into the single storage facade. */
 export function createStorage(): IStorage {
@@ -58,6 +60,7 @@ export function createStorage(): IStorage {
     new ProgressRepository(),
     new CommentRepository(),
     new EmailPreferencesRepository(),
+    new EmailOtpRepository(),
   ];
   for (const repository of repositories) {
     const proto = Object.getPrototypeOf(repository);

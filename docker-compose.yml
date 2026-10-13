@@ -62,7 +62,8 @@ services:
       MAIL_PORT: ${MAIL_PORT:-465}
       MAIL_USER: ${MAIL_USER:-}
       MAIL_PASS: ${MAIL_PASS:-}
-      MAIL_FROM: ${MAIL_FROM:-Roadmap Mentor <support@example.com>}
+      MAIL_FROM: ${MAIL_FROM:-Roadmap Mentor <roadmapmentor@trigenys.com>}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
     ports:
       - "5000:5000"
     volumes:

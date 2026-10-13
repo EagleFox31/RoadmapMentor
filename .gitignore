@@ -31,3 +31,6 @@ vite.config.ts.*
 !*.tfvars.example
 .terraformrc
 terraform.rc
+
+# Local env files (secrets) — never commit
+*.env

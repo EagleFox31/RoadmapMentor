@@ -43,6 +43,10 @@ export const billingChargeTypeEnum = pgEnum("billing_charge_type", [
 export const paymentProviderEnum = pgEnum("payment_provider", [
   "MANUAL",
 ]);
+export const otpPurposeEnum = pgEnum("otp_purpose", [
+  "REGISTRATION",
+  "LOGIN",
+]);
 
 // Users table
 export const users = pgTable("users", {
@@ -115,6 +119,27 @@ export const invitations = pgTable(
       .on(table.roadmapId, table.mentorId, table.email)
       .where(sql`status = 'PENDING'`),
     roadmapIdx: index("invitations_roadmap_idx").on(table.roadmapId),
+  }),
+);
+
+// Email OTP codes for registration verification and passwordless login.
+// Stored only as sha256 hash.
+export const emailOtps = pgTable(
+  "email_otps",
+  {
+    id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+    email: text("email").notNull(),
+    codeHash: text("code_hash").notNull(),
+    purpose: otpPurposeEnum("purpose").notNull(),
+    payload: text("payload"),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    emailIdx: index("email_otps_email_idx").on(table.email),
+    createdIdx: index("email_otps_created_idx").on(table.createdAt),
   }),
 );
 
@@ -724,6 +749,38 @@ export const acceptInvitationSchema = z
   })
   .strict();
 
+export const insertEmailOtpSchema = createInsertSchema(emailOtps).omit({
+  createdAt: true,
+});
+
+export const sendRegistrationOtpSchema = z
+  .object({
+    fullName: z.string().trim().min(2, "Le nom doit comporter au moins 2 caractères"),
+    email: z.string().trim().toLowerCase().email("Adresse email invalide"),
+    password: z.string().min(8, "Le mot de passe doit comporter au moins 8 caractères"),
+  })
+  .strict();
+
+export const verifyRegistrationOtpSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().email("Adresse email invalide"),
+    code: z.string().trim().regex(/^\d{6}$/, "Le code doit comporter 6 chiffres"),
+  })
+  .strict();
+
+export const sendLoginOtpSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().email("Adresse email invalide"),
+  })
+  .strict();
+
+export const verifyLoginOtpSchema = z
+  .object({
+    email: z.string().trim().toLowerCase().email("Adresse email invalide"),
+    code: z.string().trim().regex(/^\d{6}$/, "Le code doit comporter 6 chiffres"),
+  })
+  .strict();
+
 export const insertRoadmapSchema = createInsertSchema(roadmaps).omit({
   createdAt: true,
   updatedAt: true,
@@ -987,6 +1044,8 @@ export type InsertRoadmap = z.infer<typeof insertRoadmapSchema>;
 
 export type Mentorship = typeof mentorships.$inferSelect;
 export type Invitation = typeof invitations.$inferSelect;
+export type EmailOtp = typeof emailOtps.$inferSelect;
+export type InsertEmailOtp = z.infer<typeof insertEmailOtpSchema>;
 export type InsertMentorship = z.infer<typeof insertMentorshipSchema>;
 
 export type MentoringPackage = typeof mentoringPackages.$inferSelect;
