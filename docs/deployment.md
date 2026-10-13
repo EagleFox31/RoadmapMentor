@@ -131,6 +131,18 @@ npm run mentor:create -- --email=mentor@example.com "--name=Ada Lovelace"
 - Each creation writes an `[audit] ... mentor_created userId=... operator=...` line to the command output (never the password). Keep release/operator logs to retain the trail.
 - In containers, run it from the build image with the same `DATABASE_URL` / `DATABASE_WS_PROXY*` settings as the app, e.g. `docker compose run --rm migrate npm run mentor:create -- --email=... "--name=..."`.
 
+## Roadmap import
+
+Preload a mentor's roadmap from a JSON file (the mentor account must exist):
+
+```bash
+npm run roadmap:import -- --file=roadmap.json --mentor=mentor@example.com
+```
+
+- File format: `{ "title", "description"?, "weeks": [...] }`, each week following the bulk week contract (`bulkWeekSchema` in `shared/schema.ts`, without `roadmapId`). The file is validated before any write; keep it outside the repository when it holds learner-specific content.
+- Idempotent, matched by title among the mentor's own roadmaps: missing roadmap → created with its weeks; existing roadmap without weeks → filled; existing roadmap with weeks → no-op, mentor edits are never overwritten. To re-import, rename or delete the roadmap in the UI first.
+- Imported resources are approved (the file is mentor-authored). Each import writes an `[audit] ... roadmap_imported roadmapId=... mentorId=...` line.
+
 ## Backup and restore
 
 Example PostgreSQL backup:

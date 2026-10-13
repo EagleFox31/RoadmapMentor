@@ -11,6 +11,7 @@
     "check:bundle": "node scripts/check-bundle-budget.mjs",
     "db:push": "drizzle-kit push",
     "mentor:create": "tsx scripts/create-mentor.ts",
+    "roadmap:import": "tsx scripts/import-roadmap.ts",
     "user:set-status": "tsx scripts/set-user-status.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/db-migrate.ts",

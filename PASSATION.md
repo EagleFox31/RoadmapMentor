@@ -1,66 +1,71 @@
 # Passation — 2026-10-13
 
 ## Objectif en cours
-Rendre l'app partageable : refonte UI responsive côté mentoré + auth OTP e-mail. Commités en 2 PR empilées : #86 `feat/auth-otp-brand` (OTP + login + logo) puis `feat/learner-responsive-ui` (base #86 : responsive, TopBar, /roadmaps, /mentoring, /preferences, docs). Fusionner #86 d'abord. Reste la recette prod.
+Fusionner la pile de 4 PR (auth OTP, UI responsive, profil/notifications, durcissement OTP) puis faire la recette en production avec un vrai envoi d'e-mail.
 
 ## Fait
-- Refonte login split-screen + logo de marque + favicon. `client/src/pages/auth-page.tsx` (792 lignes), `client/src/components/roadmap-logo.tsx`, `client/public/favicon.svg|png`, `client/index.html`.
-- Auth OTP e-mail (inscription + connexion sans mot de passe), rate limiting 60s/3h/5j/5 essais. `server/services/otpService.ts:65-78`, `server/services/emailService.ts`, `server/data/emailOtps.ts`, `server/routes/auth.ts`, migration `migrations/0008_email_otps.sql`, schéma `shared/schema.ts:46,127`, test `test/otp-auth.test.ts`.
-- Responsive mentoré (360/390/768) : barre réduite `client/src/components/top-bar.tsx:46,49,51,74`, carte ressource en colonne + boutons tactiles toujours visibles `client/src/components/resources-list.tsx:102,147,206`, grilles 2 cols → 1 col sur mobile dans modales semaine/IA/ressource.
-- Modales adaptées (marge 12px, max-h écran, défilement interne, padding réduit) `client/src/components/ui/dialog.tsx:40`.
-- Upload capture flex-wrap `client/src/components/ScreenshotUploader.tsx:84`, viewer PDF en `dvh` `client/src/components/PdfResourceViewer.tsx:100`, marges page réduites `client/src/pages/roadmap-page.tsx:439,474,505`.
-- `client/public/favicon.png` passé de 19 Ko à 306 Ko : voulu.
-- Refonte TopBar aux normes mondiales UX/UI/CX : navigation sémantique claire, indicateur d'onglet actif, retrait de l'e-mail permanent, puce de statut animée, hover préventif sur déconnexion, sélecteurs E2E préservés.
-- Navbar plein écran (bord-à-bord) : suppression de la contrainte 1600px qui laissait des bandes vides sur les écrans larges/ultrawides (21:9), padding fluide `px-4 sm:px-6 lg:px-8`.
-- Hub d'accueil & Onboarding Andragogique (Empty State `/roadmap`) : métamorphose du message austère « Aucune roadmap disponible pour le moment » en un écran d'accueil engageant (`client/src/pages/roadmap-page.tsx:403-450`) avec boussole animée, halo lumineux, les 3 piliers andragogiques ShopFlow (Jalons, Pratique, Revues), sélecteur de roadmap et boutons de redirection, préservant strictement `data-testid="text-no-roadmap"`.
-- Harmonisation intégrale du Design System & Universalité de la TopBar :
-  - Restauration de la `<TopBar />` globale sur `/mentoring` et `/preferences` (elle avait disparu au profit d'en-têtes locaux disparates créant une rupture visuelle "wedibidi").
-  - Indicateur d'onglet actif dynamique : l'onglet "Mentorat" s'illumine sur `/mentoring`, et l'icône "Settings" sur `/preferences`.
-  - Refonte complète de `/mentoring` et ses sous-composants (`mentoring-sessions.tsx`, `mentoring-billing.tsx`) : passage du thème noir discordant (`bg-neutral-950`) au thème SaaS clair cohérent (`bg-gradient-to-b from-slate-50 via-emerald-50/20 to-slate-100`, cartes glassmorphism `bg-white/95 border-slate-200/80`).
-  - Refonte de `/preferences` : suppression des orbes pulsants agressifs et des bannières néon vert/orange criardes au profit de cartes d'alertes pastel avec switches fluides et cartouche récapitulatif.
-  - Préservation intégrale des identifiants Playwright (`button-back-roadmap`, `button-mentoring`, `button-settings`, etc.).
-- Menu Déroulant Utilisateur (`DropdownMenu`) & Architecture Complète en Cartes :
-  - Navbar (`top-bar.tsx`) : suppression de l'icône directe Préférences au profit d'un menu déroulant interactif sur l'identité de l'utilisateur (Mon profil, Notifications, Préférences avec `data-testid="button-settings"`, Déconnexion). Maintien du bouton direct `button-logout` pour la suite Playwright.
-  - Refonte complète de `/roadmaps` (`roadmaps.tsx`) : fin des blocs gris `bg-muted/40`, adoption de la charte visuelle émeraude/ardoise, structure complète en cartes `<Card />` (feuilles de route, formulaire mentor, en-tête active, apprenants rattachés, invitations avec jetons).
-  - Hub andragogique & structuration en cartes sur `/mentoring` (`mentoring.tsx`) : hub d'accueil en 3 piliers quand aucun mentorat n'est sélectionné, cartes structurées pour Scope inclus et Hors scope avec en-têtes et descriptions claires.
-- Élimination intégrale du texte dans le vide & Fonds opaques anti-fuite :
-  - Enveloppe complète des en-têtes de page (retour, badge, titre, sous-titre) dans des composants `<Card className="rounded-3xl border-slate-200/80 bg-white/95 ...">` sur `/mentoring`, `/roadmaps` et `/preferences`.
-  - Sidebar d'accompagnements transformée en composant `<Card />` standardisé.
-  - Arrière-plan 100% opaque `bg-slate-50 text-slate-900` sur `/mentoring`, `/roadmaps`, `/preferences` et `/roadmap-page` pour éliminer toute transparence accidentelle (`via-emerald-50/20`) qui laissait transparaître l'image de fond (`mentor-bg.webp`).
-- Création des pages manquantes Profile (`/profile`) et Notifications (`/notifications`) :
-  - `client/src/pages/profile.tsx` : gestion d'identité (nom, email, rôle), mise à jour sécurisée du mot de passe (`PUT /api/auth/profile`), statut d'adhésion et raccourcis.
-  - `client/src/pages/notifications.tsx` : historique des notifications et flux d'activité (`GET /api/notifications`), filtres thématiques et empty state engageant.
-  - Navigation synchronisée dans le dropdown `TopBar` : « Mon profil » $\rightarrow$ `/profile`, « Notifications » $\rightarrow$ `/notifications`.
-  - Endpoints backend dédiés et méthode `updateUser` ajoutée dans `UserRepository` (`server/data/users.ts`).
-  - Durcissement en revue : `PUT /api/auth/profile` validé par `updateProfileSchema` (strict, refuse `role`/`email`) et rate-limité (`limiters.auth`) ; `GET /api/notifications` passe par `storage.listEmailNotifications` (plus d'accès `db` dans la route) et n'expose pas `errorMessage`. Test `test/profile-update.test.ts`.
-  - Branche `feat/profile-notifications`, empilée sur #87.
+- 4 PR empilées, à fusionner dans l'ordre :
+  - #86 `feat/auth-otp-brand` : OTP e-mail, login, logo ;
+  - #87 `feat/learner-responsive-ui` : responsive, TopBar, design system ;
+  - #88 `feat/profile-notifications` : `/profile`, `/notifications`, chown Docker restreint ;
+  - #89 `feat/auth-otp-hardening`.
+- CI : #86, #87 et #88 au vert ; checks de #89 lancés.
+- Durcissement OTP (#89) :
+  - drapeaux `canLogOtpCodes` / `isDirectRegistrationEnabled` dans `server/security.ts`, actifs par défaut en développement seulement ;
+  - `server/services/emailService.ts` : code loggé et envoi simulé uniquement si `OTP_LOG_CODES` est actif ;
+  - `server/routes/auth.ts:20` : `/api/auth/register` renvoie 403 `DIRECT_REGISTRATION_DISABLED` hors drapeau ;
+  - `server/routes/auth.ts:103,170` : 503 si l'envoi échoue, 429 si rate limit ;
+  - `server/routes/auth.ts:162` : `send-login` donne une réponse uniforme (pas d'énumération de comptes) ;
+  - `server/services/otpService.ts:154` : message explicite au 5e mauvais essai.
+- Profil : `updateProfileSchema` strict + `limiters.auth` sur `PUT /api/auth/profile`. Notifications via `storage.listEmailNotifications`, sans `errorMessage`.
+- Tests :
+  - `test/otp-service.test.ts` : usage unique, finalité, verrou à 5 essais, cooldown, plafonds 3/h et 5/j, échec d'envoi, défauts des drapeaux ;
+  - `test/profile-update.test.ts`.
+- Vérifié :
+  - `npm test` 134 pass / 0 fail ; tsc OK ; aucune dérive Drizzle ;
+  - les 7 suites E2E CI passent sur le build Docker ;
+  - parcours navigateur OTP (inscription puis connexion sans mot de passe) OK ;
+  - verrou à 5 essais OK en réel ;
+  - build prod avec drapeaux off : 403, 200 uniforme, aucun code dans les logs.
+- Docs : `docs/engineering/lessons-learned.md` (entrée du 2026-10-13) et `docs/deployment.md:221`.
+- 12 branches locales déjà fusionnées dans main supprimées.
 
 ## Décisions prises
-- Login OTP + password côté client (bouton « Se connecter sans mot de passe »), routes historiques `/api/auth/login` et `/api/auth/register` conservées : compat E2E et comptes existants.
-- Rate limit : cooldown 60s, plafond 3/h, 5/jour, 5 mauvais essais. Message FR exact : « Veuillez patienter 60s avant de demander un nouveau code. ». Blocage avant toute écriture.
-- Codes OTP SHA-256 avant persistance, aucun en clair. Génération via `crypto.randomInt`.
-- Mode dev sans `RESEND_API_KEY` : code loggé `[OTP] Sent REGISTRATION code to <email>: <6chiffres>`, pas d'erreur ; CI inchangée.
-- Édition/suppression de ressources côté mentor : toujours visibles sur mobile (le hover ne marche pas au tactile).
+- En prod, l'inscription passe obligatoirement par OTP. La CI E2E et le compose local posent `AUTH_DIRECT_REGISTRATION=true` pour garder les parcours existants.
+- Sans `RESEND_API_KEY` en prod, la réponse est 503 : un succès simulé est interdit.
+- Codes OTP hachés en SHA-256 et générés par `crypto.randomInt`. Rate limit : 60 s, 3/h, 5/j, 5 essais ; refus sans écriture.
+- Édition/suppression de ressources toujours visibles sur mobile (pas de hover au tactile).
 
 ## Reste à faire
-1. Revue + fusion #86 puis PR UI. Suivis notés dans #86 : OTP d'inscription non imposé côté serveur (`/api/auth/register` ouvert, bypass `.test` client), `send-login` renvoie 404 sur e-mail inconnu (énumération de comptes).
-2. **RM-021 tarification** — plan prêt : [docs/mentor-pricing.md](docs/mentor-pricing.md), fiche [docs/backlog.md](docs/backlog.md). Branche `feat/rm-021-package-price-correction` **depuis `main` après** les commits OTP/UI. Tranche 1 seulement (PATCH forfait non facturé). Ne pas mélanger avec l'arbre local actuel.
-3. Vérifier en navigateur réel les modales et le lecteur vidéo YouTube (le headless le rend noir).
-4. Tester la limite de 5 mauvais essais sur un code OTP valide (non vérifiée : le cooldown de 60s a bloqué).
-5. Mettre à jour les E2E Playwright pour couvrir le flux OTP ; adapter `test/e2e/learner.e2e.py` si l'inscription publique passe désormais obligatoirement par OTP.
-6. Prod : poser `RESEND_API_KEY` sur Render, vérifier qu'un vrai mail arrive. Puis parcours authentifié prod (jamais fait).
-7. Nettoyer branches locales fusionnées. AWS #27/#28 **différés** (décision 8 oct., issue #25).
+1. ✅ `RESEND_API_KEY` et `MAIL_FROM` posés sur Render.
+2. ✅ #90 fusionnée. **PR #91** (`fix/otp-error-messages`) : les erreurs OTP françaises étaient remplacées par « 400 : requête invalide » par `errorEnvelope` → helper `userError`. À fusionner. (Historique : #86 est sur main. #87 à #89 ont été fusionnées dans leurs bases empilées (même erreur que RM-011). **Fusionner #90** (`feat/profile-notifications` → main, qui contient toute la pile, plus l'entrée lessons-learned), puis supprimer les 4 branches `feat/*`. Garde-fou : activer « Automatically delete head branches » sur le dépôt — fait.)
+3. Recette prod : vrai e-mail OTP reçu, parcours authentifié complet (jamais fait en prod). Mentor Jennifer Aka'a créé en prod le 2026-10-13 (userId=2, `npm run mentor:create` avec `DATABASE_URL` et `JWT_SECRET` de `roadmapmentor.env`, `NODE_ENV=production`).
+4. Vérifier en navigateur réel les modales et le lecteur YouTube (noir en headless).
+5. Option : ajouter un E2E Playwright du flux OTP (lecture du code dans les logs, e-mail hors `.test`).
+6. **RM-021 tarification** : plan dans [docs/mentor-pricing.md](docs/mentor-pricing.md). Branche depuis `main` après les fusions, tranche 1 seulement.
+7. AWS #27/#28 différés (issue #25).
+8. ✅ Roadmap de Pavel préchargée en prod pour Jennifer le 2026-10-13 : roadmapId=1, 9 étapes, 33 ressources, vérifiée dans le navigateur.
+   - Commande générique `npm run roadmap:import` (PR `feat/roadmap-import`, à fusionner) ; voir `docs/deployment.md` « Roadmap import ».
+   - Fichier source hors dépôt : `C:\Users\lawry\Documents\Mentoring\roadmap-shopflow-complete.json`. Les semaines 1-4 viennent de `Pavel_Mois1_Final` (28 ressources) et les mois 2-6 de la roadmap locale n°31 créée par Gemini, même titre.
+   - Les dates commencent le lundi 2026-10-12 ; elles se modifient dans l'interface.
+   - Ré-exécuter la commande est sans effet si la roadmap a déjà des semaines.
+9. Apprenant : il ne voit que les semaines validées par le mentor (`server/routes/weeks.ts:42`). En prod, Jennifer doit cliquer « Valider » au moins sur la semaine 1 pour que Pavel voie quelque chose. En local, la semaine 1 de la roadmap n°31 a été validée pour tester avec Darren.
+10. **PR #93** (`feat/auto-consult-resource`) : ouvrir une ressource la marque « consultée » (lien externe, « Lire ici », aperçu PDF). Le bouton manuel permet d'annuler. À fusionner.
+11. `docs/walkthrough-gemini.md` contient une modification non commitée d'un autre agent (provisioning d'un mentor, avec un e-mail personnel). À valider ou à jeter par l'utilisateur.
 
 ## Pièges / contexte
-- Stack Docker tourne : app `:5000`, postgres, db-proxy `:5444`. Bundle courant servi : `assets/index-DZVVTYSx.js`.
-- Rebuild image : `docker compose build app --no-cache && docker compose up -d app`. Après 429 : `docker restart roadmapmentor-app-1`.
-- Comptes test en base locale : `mob.learner.1791841606@it.test` (LEARNER), `mob.mentor.1791841606@it.test` (MENTOR). PWD learner `Test123!`, mentor `Mentor-Test-123!`.
-- Promouvoir en mentor : `docker exec roadmapmentor-postgres-1 psql -U roadmapmentor -d roadmapmentor -c "update users set role='MENTOR' where email='…'"`. `scripts/create-mentor.ts` ne se connecte pas depuis l'hôte sans proxy exposé (le db-proxy compose n'expose aucun port).
-- E2E locaux qui créent un mentor : exposer un proxy temporaire `docker run -d --rm --name e2e-db-proxy --network <réseau compose> -p 5444:80 -e ALLOW_ADDR_REGEX='.*' ghcr.io/neondatabase/wsproxy:latest`, puis exporter `DATABASE_URL=postgresql://roadmapmentor:roadmapmentor@postgres:5432/roadmapmentor DATABASE_WS_PROXY=localhost:5444/v1 DATABASE_WS_PROXY_INSECURE=true NODE_ENV=development`. `mentor-learner` et `roadmaps-ui` utilisent une route dev-only (404 sur le build Docker, hors CI).
-- Lire un code OTP en dev : `docker logs --since=10s roadmapmentor-app-1 | grep -oE "code to <email>: [0-9]+"`.
-- E2E locaux : `TEST_BASE_URL=http://localhost:5000 python test/e2e/<nom>.e2e.py`. Supprimer `test/e2e/__pycache__` avant `git add`.
-- Windows : tuer un serveur de test via `netstat -ano | grep :5055` puis `taskkill //PID <pid> //F //T`.
-- `roadmapmentor.env` : n'était pas ignoré (seul `.env` l'était) ; `*.env` ajouté au `.gitignore` dans #86. Ne jamais l'ajouter.
-- CI drift Drizzle : tout changement de `shared/schema.ts` doit avoir sa migration + snapshot `migrations/meta/*` synchronisé, sinon `drizzle-kit generate --name ci_drift_check` échoue.
-- Architecture : routes `server/routes/<domaine>.ts`, accès `server/access/`, données `server/data/<agrégat>.ts` (façade `server/storage.ts`), erreurs `server/domain/errors.ts`.
-- Mettre à jour ce fichier à chaque PR ; tester dans le navigateur tout changement visible avant livraison.
+- Le `.env` local contient une vraie `RESEND_API_KEY`. Pour ne pas envoyer de vrais mails : `RESEND_API_KEY= docker compose up -d app`.
+- Le client saute l'OTP pour les e-mails en `.test`. Pour tester l'OTP, utiliser `@example.org`, puis lire le code : `docker logs --since=60s roadmapmentor-app-1 | grep -oE "code to <email> \([^)]*\): [0-9]{6}"`.
+- E2E qui créent un mentor :
+  - lancer le proxy `docker run -d --rm --name e2e-db-proxy --network <réseau compose> -p 5444:80 -e ALLOW_ADDR_REGEX='.*' ghcr.io/neondatabase/wsproxy:latest` ;
+  - puis `DATABASE_URL=postgresql://roadmapmentor:roadmapmentor@postgres:5432/roadmapmentor DATABASE_WS_PROXY=localhost:5444/v1 DATABASE_WS_PROXY_INSECURE=true NODE_ENV=development TEST_BASE_URL=http://localhost:5000` ;
+  - `docker restart roadmapmentor-app-1` entre deux suites (429).
+- `mentor-learner` et `roadmaps-ui` utilisent une route dev-only (404 sur le build Docker, hors CI).
+- `test/e2e/__pycache__/*.pyc` est suivi par git : après les E2E, faire `git checkout -- test/e2e/__pycache__`.
+- Ne jamais committer `roadmapmentor.env` (ignoré via `*.env`).
+- Dérive Drizzle : `DATABASE_URL=postgresql://x:x@localhost:5432/x npx drizzle-kit generate --name ci_drift_check` doit répondre « No schema changes ».
+- Architecture :
+  - routes dans `server/routes/<domaine>.ts` ;
+  - données dans `server/data/<agrégat>.ts` derrière la façade `storage` ;
+  - erreurs via `handleError`.
+- Mettre à jour ce fichier à chaque PR. Tester dans le navigateur tout changement visible.
