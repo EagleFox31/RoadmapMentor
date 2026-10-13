@@ -10,11 +10,21 @@ const budgets = {
   media: { limit: kb("BUDGET_MEDIA_KB", 500), label: "média" },
 };
 const media = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif", ".gif", ".svg"]);
+// Exceptions explicites : chunks tiers chargés à la demande (jamais au premier rendu),
+// impossibles à découper davantage. Chaque entrée garde un plafond propre et sa raison.
+const exceptions = [
+  {
+    pattern: /^pdf-[\w-]+\.js$/,
+    limit: kb("BUDGET_PDFJS_KB", 520),
+    label: "pdf.js, import dynamique à l'ouverture d'un PDF",
+  },
+];
 
 const failures = [];
 for (const name of readdirSync(dir)) {
   const ext = extname(name);
-  const budget = budgets[ext] ?? (media.has(ext) ? budgets.media : null);
+  const budget =
+    exceptions.find((e) => e.pattern.test(name)) ?? budgets[ext] ?? (media.has(ext) ? budgets.media : null);
   if (!budget) continue;
   const size = statSync(join(dir, name)).size;
   if (size > budget.limit) {

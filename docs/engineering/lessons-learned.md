@@ -79,3 +79,11 @@ Generalised lesson: a response post-processor is part of the contract; a new rou
 | Opening a mentor-uploaded document from a link needed authentication, so `authMiddleware` was changed to read `?token=` and the client appended the JWT to the link (never merged) | A plain `<a href>` cannot send `Authorization`; the shortcut put a long-lived, full-account token in URLs (browser history, server logs, Referer). The stored-document route also served any object to any signed-in user | Documents are read through `/api/resources/:id/document` and `/api/resources/:id/pdf` (week access rules); the client fetches with `Authorization` and opens a blob (`client/src/lib/openAuthorizedFile.ts`); the stored link is readable by its uploader only | `test/auth.test.ts`: a query-string token is refused (401); `test/resource-links.test.ts`: uploaded documents are recognized by path on any host |
 
 Generalised lesson: protected files are opened by an authenticated fetch plus a blob URL, never by putting a credential in a link.
+
+## 2026-10-13 — PR #96 red in CI on the bundle budget
+
+| Context | Root cause | Resolution | Prevention |
+| --- | --- | --- | --- |
+| The `integration` job of #96 (pdf.js preview) failed at `npm run check:bundle`: `pdf-*.js` 472 kB > 400 kB | pdf.js is a single vendor module that cannot be split further; it is already loaded through a dynamic import, but the budget applied the initial-chunk limit to every chunk. `check:bundle` was not run before pushing | Declared, justified exception in `scripts/check-bundle-budget.mjs` (`exceptions`: `pdf-*.js`, own 520 kB ceiling, `BUDGET_PDFJS_KB`); every other chunk keeps 400 kB | Run `npm run build && npm run check:bundle` before pushing any change that adds a front-end dependency; a lazy vendor chunk gets an explicit exception entry, never a global budget increase |
+
+Generalised lesson: a budget is a contract; exceed it through a named, bounded exception, not by loosening the global limit.

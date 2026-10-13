@@ -92,6 +92,12 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
     onSuccess: () => queryClient.invalidateQueries({ queryKey: consultationsKey }),
     onError: () => toast({ title: "Impossible de mettre à jour la consultation", variant: "destructive" }),
   });
+  // Opening a resource from the app counts as a consultation; the manual toggle can still undo it.
+  const markOpened = (resource: Resource) => {
+    if (!mentor && !consultedIds.has(resource.id) && !consultationMutation.isPending) {
+      consultationMutation.mutate({ id: resource.id, consulted: true });
+    }
+  };
   const reportMutation = useMutation({
     mutationFn: (id: number) => apiRequest("POST", `/api/resources/${id}/report-unavailable`, {}),
     onSuccess: () => {
@@ -213,7 +219,7 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
                   {resource.label}
                 </h4>
 
-                {/* 3. Pedagogical Context Boxes (Why & What to practice) */}
+                {/* 3. Andragogical Context Boxes (Why & What to practice) */}
                 {(resource.problemToSolve || resource.practicePrompt) && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                     {resource.problemToSolve && (
@@ -303,7 +309,7 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
                         type="button"
                         variant="default"
                         size="sm"
-                        onClick={() => setActivePdf(resource)}
+                        onClick={() => { setActivePdf(resource); markOpened(resource); }}
                         className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium shadow-sm gap-2 h-9 px-3.5"
                         data-testid={`button-preview-pdf-${resource.id}`}
                       >
@@ -317,7 +323,7 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
                         type="button"
                         variant="default"
                         size="sm"
-                        onClick={() => setActiveVideo(resource)}
+                        onClick={() => { setActiveVideo(resource); markOpened(resource); }}
                         className="bg-rose-600 hover:bg-rose-700 text-white font-medium shadow-sm gap-2 h-9 px-3.5"
                         data-testid={`button-play-resource-${resource.id}`}
                       >
@@ -338,6 +344,8 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
                           href={openUrl}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={() => markOpened(resource)}
+                          onAuxClick={(event) => { if (event.button === 1) markOpened(resource); }}
                           aria-label={`Ouvrir ${resource.label} dans un nouvel onglet`}
                         >
                           <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
@@ -355,6 +363,7 @@ export function ResourcesList({ resources, weekId, onEdit, onDelete }: Resources
                         data-testid={`button-open-resource-${resource.id}`}
                         aria-label={`Ouvrir ${resource.label} dans un nouvel onglet`}
                         onClick={() => {
+                          markOpened(resource);
                           openAuthorizedFile(`/api/resources/${resource.id}/document`, internalDoc.filename)
                             .catch(() => toast({ title: "Document indisponible", description: "Accès refusé ou document introuvable.", variant: "destructive" }));
                         }}

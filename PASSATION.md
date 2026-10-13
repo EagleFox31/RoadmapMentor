@@ -10,12 +10,13 @@ Mise en service de l'app en prod pour un premier binôme : Jennifer Aka'a (mento
 - Roadmap de Pavel préchargée en prod : roadmapId=1, 9 étapes, 33 ressources, vérifiée dans le navigateur.
   - Commande `npm run roadmap:import` : `scripts/import-roadmap.ts`, `server/domain/roadmapImport.ts`, `test/roadmap-import.test.ts`, doc `docs/deployment.md` « Roadmap import ».
   - Fichier source hors dépôt : `C:\Users\lawry\Documents\Mentoring\roadmap-shopflow-complete.json`.
-- PR ouvertes, toutes à fusionner (merge commit) :
+- PR fusionnées dans main (merge commit) :
   - **#91** `fix/otp-error-messages` : messages OTP français conservés par `errorEnvelope` (helper `userError`, `server/http/errorCatalog.ts`) ;
   - **#92** `feat/roadmap-import` : commande d'import, walkthrough `docs/walkthrough-roadmap-import.md`, PASSATION ;
   - **#93** `feat/auto-consult-resource` : ouvrir une ressource la marque « consultée » (`client/src/components/resources-list.tsx`, helper `markOpened`) ;
   - **#94** `fix/invite-mentor-email-message` : message explicite quand on invite l'e-mail d'un compte mentor (`server/http/errorCatalog.ts:39`).
-- E-mail d'invitation à l'identité du mail OTP (gabarit commun `server/services/emailLayout.ts`, templates `server/services/emailTemplates.ts`) : PR `feat/branded-invitation-email`.
+- E-mail d'invitation à l'identité du mail OTP (gabarit commun `server/services/emailLayout.ts`, templates `server/services/emailTemplates.ts`) : #95, fusionnée.
+- Aperçu PDF par proxy serveur anti-SSRF (`server/services/pdfProxy.ts`) et rendu pdf.js (`client/src/components/PdfResourceViewer.tsx`) : PR #96 `feat/pdf-preview-proxy`. CI rouge sur le budget de bundle (chunk pdf.js 472 kB > 400 kB) : exception déclarée pour `pdf-*.js` (520 kB) dans `scripts/check-bundle-budget.mjs`.
 - Domaine personnalisé `roadmapmentor.trigenys.com` ajouté sur Render : vérifié, certificat en cours d'émission.
 - Mail OTP relu (rendu sans envoi) : liens basés sur `APP_URL`, expéditeur `roadmapmentor@trigenys.com`.
 
@@ -34,7 +35,7 @@ Mise en service de l'app en prod pour un premier binôme : Jennifer Aka'a (mento
 
 ## Reste à faire
 1. Render → Environment : `APP_URL=https://roadmapmentor.trigenys.com`. Sinon les liens d'invitation et d'e-mail pointent vers onrender.
-2. Fusionner #91, #92, #93 et #94. #92 et la PR suivante modifient tous deux PASSATION.md : résoudre le conflit en gardant ce fichier.
+2. ✅ #91 à #95 fusionnées. Fusionner #96 (`feat/pdf-preview-proxy`).
 3. Jennifer doit cliquer « Valider » au moins sur la semaine 1 en prod : un apprenant ne voit que les semaines validées (`server/routes/weeks.ts:42`).
 4. Inviter Pavel avec **sa** propre adresse. `justsmilewithme242@gmail.com` est déjà le compte mentor n°1 en prod.
 5. Vérifier que `support@trigenys.com` existe : le pied du mail OTP pointe dessus.
@@ -58,6 +59,7 @@ Mise en service de l'app en prod pour un premier binôme : Jennifer Aka'a (mento
 - En local, la semaine 1 de la roadmap n°31 a été validée pour tester avec l'apprenant Darren (userId=29).
 - Le `.env` local contient une vraie `RESEND_API_KEY`. Pour ne pas envoyer de vrais mails : `RESEND_API_KEY= docker compose up -d app`.
 - Le client saute l'OTP pour les e-mails en `.test`. Code OTP local : `docker logs --since=60s roadmapmentor-app-1 | grep -oE "code to <email> \([^)]*\): [0-9]{6}"`.
+- Avant de pousser un changement front : `npm run build && npm run check:bundle`.
 - `test/e2e/__pycache__/*.pyc` est suivi par git : `git checkout -- test/e2e/__pycache__` après les E2E.
 - Dérive Drizzle : `DATABASE_URL=postgresql://x:x@localhost:5432/x npx drizzle-kit generate --name ci_drift_check` doit répondre « No schema changes ».
 - Architecture :

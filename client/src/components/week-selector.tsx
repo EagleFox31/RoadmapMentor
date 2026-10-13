@@ -2,10 +2,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Calendar, Sparkles } from "lucide-react";
 import type { WeekWithDetails } from "@shared/schema";
-import bgEmeraldNodes from "@assets/week-bg-emerald-nodes.jpg";
-import bgCodeMatrix from "@assets/week-bg-code-matrix.jpg";
-import bgDataMesh from "@assets/week-bg-data-mesh.jpg";
-import bgAiNeural from "@assets/week-bg-ai-neural.jpg";
+import bgEmeraldNodes from "@assets/week-bg-emerald-nodes.webp";
+import bgCodeMatrix from "@assets/week-bg-code-matrix.webp";
+import bgDataMesh from "@assets/week-bg-data-mesh.webp";
+import bgAiNeural from "@assets/week-bg-ai-neural.webp";
 
 interface WeekSelectorProps {
   weeks: WeekWithDetails[];
