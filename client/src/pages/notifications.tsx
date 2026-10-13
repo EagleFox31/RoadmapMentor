@@ -303,7 +303,7 @@ export default function NotificationsPage() {
                           : "bg-rose-50 text-rose-800 border-rose-200"
                       } text-[10px] font-semibold border`}
                     >
-                      {notif.status === "sent" ? "Délivré" : notif.status}
+                      {notif.status === "sent" ? "Délivré" : notif.status === "failed" ? "Non délivré" : notif.status}
                     </Badge>
                   </div>
                 </div>
