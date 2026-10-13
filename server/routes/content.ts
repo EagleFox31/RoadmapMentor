@@ -1,10 +1,15 @@
-import { type Express } from "express";
+import express, { type Express } from "express";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
 import { storage } from "../storage";
 import { authMiddleware, requireMentor, requireLearner, type AuthRequest } from "../auth";
 import { insertObjectiveSchema, insertTaskSchema, insertDeliverableSchema, insertResourceSchema, type Week } from "@shared/schema";
 import { handleError } from "../http/errors";
 import { z } from "zod";
 import { canAccessWeek, getObjectiveAccess, getTaskAccess, getDeliverableAccess, getResourceAccess } from "../access/weekAccess";
+import { emailService } from "../services/emailService";
+import { notifyWeekLearners } from "../services/notifyWeekLearners";
+import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
 
 export function registerWeekContentRoutes(app: Express) {
   app.post("/api/weeks/:weekId/objectives", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
@@ -97,7 +102,7 @@ export function registerWeekContentRoutes(app: Express) {
   app.post("/api/objectives/:objectiveId/tasks", authMiddleware, requireMentor, async (req: AuthRequest, res) => {
     try {
       const objectiveId = parseInt(req.params.objectiveId, 10);
-      const { objective, allowed } = await getObjectiveAccess(req, objectiveId);
+      const { objective, week, allowed } = await getObjectiveAccess(req, objectiveId);
       if (!objective || !allowed) {
         return res.status(404).json({ error: "Objective not found" });
       }
@@ -107,6 +112,17 @@ export function registerWeekContentRoutes(app: Express) {
         objectiveId,
       });
       const task = await storage.createTask(taskData);
+      if (week?.isValidatedByMentor) {
+        void notifyWeekLearners(week, (learner) =>
+          emailService.sendNewTaskAssigned(
+            learner.id,
+            learner.email,
+            learner.fullName,
+            week.number,
+            1,
+          ),
+        );
+      }
       res.status(201).json(task);
     } catch (error) {
       handleError(res, error);
@@ -320,4 +336,106 @@ export function registerWeekContentRoutes(app: Express) {
       handleError(res, error);
     }
   });
+
+  // ========== CUSTOM DOCUMENT UPLOAD & SERVING ==========
+
+  function sanitizeFilename(raw: string): string {
+    const base = path.basename(decodeURIComponent(raw || "document.pdf"));
+    const sanitized = base.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 150);
+    return sanitized.length > 0 ? sanitized : "document.pdf";
+  }
+
+  function humanLabelFromFilename(filename: string): string {
+    return filename
+      .replace(/\.[^/.]+$/, "")
+      .replace(/[-_]+/g, " ")
+      .trim()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  // Upload custom document for resources (Mentor only)
+  app.post(
+    "/api/resources/upload-document",
+    authMiddleware,
+    requireMentor,
+    express.raw({
+      type: ["application/pdf", "text/markdown", "text/plain", "application/octet-stream"],
+      limit: 25 * 1024 * 1024, // 25 MB
+    }),
+    async (req: AuthRequest, res) => {
+      try {
+        if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+          return res.status(400).json({ error: "Fichier requis" });
+        }
+
+        const rawFilename = (req.headers["x-filename"] as string) || "document.pdf";
+        const safeFilename = sanitizeFilename(rawFilename);
+        const contentType = (req.headers["content-type"] as string) || "application/pdf";
+
+        // Security check for PDF signature if declared as PDF
+        if (safeFilename.endsWith(".pdf") || contentType.includes("pdf")) {
+          const header = req.body.subarray(0, 5).toString("ascii");
+          if (header !== "%PDF-") {
+            return res.status(415).json({ error: "Signature de fichier PDF invalide" });
+          }
+        }
+
+        const objectId = randomUUID();
+        const objectStorage = new ObjectStorageService();
+        await objectStorage.writeDirectUpload(
+          objectId,
+          req.body,
+          safeFilename.endsWith(".pdf") ? "application/pdf" : contentType,
+          { owner: req.user!.id.toString(), visibility: "private" },
+        );
+
+        const protocol = req.headers["x-forwarded-proto"] || req.protocol;
+        const host = req.get("host");
+        const url = `${protocol}://${host}/api/resources/documents/${objectId}/${safeFilename}`;
+        const label = humanLabelFromFilename(safeFilename);
+
+        res.status(201).json({
+          objectId,
+          filename: safeFilename,
+          url,
+          label,
+          size: req.body.length,
+        });
+      } catch (error) {
+        handleError(res, error);
+      }
+    },
+  );
+
+  // Serve custom resource documents (Authenticated users: mentors & learners)
+  app.get(
+    "/api/resources/documents/:objectId/:filename",
+    authMiddleware,
+    async (req: AuthRequest, res) => {
+      try {
+        const { objectId, filename } = req.params;
+        if (!/^[0-9a-f-]{36}$/i.test(objectId)) {
+          return res.status(400).json({ error: "Invalid document ID" });
+        }
+
+        const safeFilename = sanitizeFilename(filename);
+        const objects = new ObjectStorageService();
+        const objectPath = `/objects/uploads/${objectId}`;
+        const objectFile = await objects.getObjectEntityFile(objectPath);
+
+        const isPdf = safeFilename.endsWith(".pdf");
+        res.setHeader("Content-Disposition", `inline; filename="${safeFilename}"`);
+        res.setHeader("Content-Type", isPdf ? "application/pdf" : "application/octet-stream");
+        res.setHeader("X-Content-Type-Options", "nosniff");
+        res.setHeader("Cache-Control", "private, max-age=3600");
+
+        await objects.downloadObject(objectFile, res);
+      } catch (error) {
+        if (error instanceof ObjectNotFoundError) {
+          return res.status(404).json({ error: "Document introuvable" });
+        }
+        handleError(res, error);
+      }
+    },
+  );
 }

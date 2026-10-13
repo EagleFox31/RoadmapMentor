@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { safeExternalResourceUrl } from "@shared/resourceLinks";
+import { getAuthToken } from "@/lib/auth";
 
 const MAX_PREVIEW_BYTES = 16 * 1024 * 1024;
 
@@ -33,9 +34,14 @@ export function PdfResourceViewer({ title, url, onClose }: {
 
     const load = async () => {
       try {
+        const headers: Record<string, string> = { Accept: "application/pdf" };
+        const token = getAuthToken();
+        if (token && (url.startsWith("/") || url.startsWith(window.location.origin))) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
         const response = await fetch(url, {
           signal: controller.signal,
-          headers: { Accept: "application/pdf" },
+          headers,
         });
         if (!response.ok || !response.body) throw new Error("PDF unavailable");
         const length = Number(response.headers.get("content-length"));

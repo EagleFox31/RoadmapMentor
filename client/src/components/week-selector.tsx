@@ -2,8 +2,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Circle } from "lucide-react";
 import type { WeekWithDetails } from "@shared/schema";
-import dashboardBg from "@assets/istockphoto-640026090-612x612_1763816587120.jpg";
-import progressBg from "@assets/istockphoto-1465286638-612x612_1763816587123.jpg";
+import bgEmeraldNodes from "@assets/week-bg-emerald-nodes.jpg";
+import bgCodeMatrix from "@assets/week-bg-code-matrix.jpg";
+import bgDataMesh from "@assets/week-bg-data-mesh.jpg";
+import bgAiNeural from "@assets/week-bg-ai-neural.jpg";
 
 interface WeekSelectorProps {
   weeks: WeekWithDetails[];
@@ -12,8 +14,8 @@ interface WeekSelectorProps {
   progressByWeek: Record<number, { completed: number; total: number; percentage: number }>;
 }
 
-// Alternate backgrounds between weeks
-const weekBackgrounds = [dashboardBg, progressBg];
+// Alternate high-tech developer backgrounds between weeks
+const weekBackgrounds = [bgEmeraldNodes, bgCodeMatrix, bgDataMesh, bgAiNeural];
 
 export function WeekSelector({ weeks, selectedWeekId, onSelectWeek, progressByWeek }: WeekSelectorProps) {
   return (
@@ -35,25 +37,27 @@ export function WeekSelector({ weeks, selectedWeekId, onSelectWeek, progressByWe
           return (
             <div
               key={week.id}
-              className="relative rounded-2xl overflow-hidden"
-              style={{
-                backgroundImage: `url(${backgroundImage})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
+              className="relative rounded-2xl overflow-hidden group shadow-md transition-all duration-300"
             >
-              {/* Subtle dark overlay for text readability while keeping images visible */}
-              <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/25 to-black/40 backdrop-blur-[2px]" />
+              {/* Image d'arrière-plan haute définition avec zoom subtil au survol */}
+              <div
+                className="absolute inset-0 bg-cover bg-center transition-transform duration-700 ease-out group-hover:scale-105"
+                style={{
+                  backgroundImage: `url(${backgroundImage})`,
+                }}
+              />
+              {/* Voile sombre pour un contraste et une lisibilité parfaits du texte */}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/65 to-slate-900/45 backdrop-blur-[1px]" />
               
               <Card
                 onClick={() => onSelectWeek(week.id)}
                 className={`
-                  relative cursor-pointer transition-all duration-400 hover-elevate parallax-sm bg-transparent
+                  relative cursor-pointer transition-all duration-300 bg-transparent
                   ${isSelected 
-                    ? "border-primary/50 shadow-lg ring-2 ring-primary/20 glow" 
-                    : "border-white/10 shadow-md glow-on-hover"
+                    ? "border-emerald-500/70 shadow-lg ring-2 ring-emerald-500/30" 
+                    : "border-white/10 hover:border-emerald-500/30 shadow-md"
                   }
-                  rounded-2xl p-5 group
+                  rounded-2xl p-5
                 `}
                 data-testid={`card-week-${week.id}`}
               >
