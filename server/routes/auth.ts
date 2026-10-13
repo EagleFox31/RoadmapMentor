@@ -7,6 +7,7 @@ import {
   verifyRegistrationOtpSchema,
   sendLoginOtpSchema,
   verifyLoginOtpSchema,
+  updateProfileSchema,
 } from "@shared/schema";
 import { isDevelopmentEnvironment } from "../security";
 import { handleError } from "../http/errors";
@@ -197,6 +198,43 @@ export function registerAuthRoutes(app: Express, { limiters }: RouteDeps) {
       }
 
       const { password: _, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
+
+  // Rate-limited like login: the current-password check must not become a brute-force oracle.
+  app.put("/api/auth/profile", limiters.auth, authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const { fullName, currentPassword, newPassword } = updateProfileSchema.parse(req.body);
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "Utilisateur non trouvé" });
+      }
+
+      const updates: Partial<{ fullName: string; password: string }> = {};
+
+      if (fullName) {
+        updates.fullName = fullName;
+      }
+
+      if (newPassword) {
+        const isValid = await comparePassword(currentPassword!, user.password);
+        if (!isValid) {
+          return res.status(400).json({ error: "Mot de passe actuel incorrect." });
+        }
+        updates.password = await hashPassword(newPassword);
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ error: "Aucune modification fournie." });
+      }
+
+      const updated = await storage.updateUser(userId, updates);
+      const { password: _, ...userWithoutPassword } = updated;
       res.json(userWithoutPassword);
     } catch (error) {
       handleError(res, error);

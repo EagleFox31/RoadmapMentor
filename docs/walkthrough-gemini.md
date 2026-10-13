@@ -199,6 +199,23 @@ Avant d'entamer les modifications, une analyse complète du projet a révélé l
      - **Carte d'En-tête Unifiée (`<Card />`)** : Enveloppement complet de la navigation retour (`button-back-roadmap`), du badge de contexte, du titre `h1` et de la description dans une carte élégante `rounded-3xl border-slate-200/80 bg-white/95 backdrop-blur-xl p-6 sm:p-8 shadow-xs`.
      - **Sidebar d'accompagnements** : Conversion de l'élément nu `aside` en véritable composant `<Card />` partageant les mêmes arrondis, bordures et ombres subtiles.
      - **Préservation intégrale des identifiants E2E** : `data-testid="button-back-roadmap"` strictement conservé.
+- **Création des Pages Manquantes : Profil (`/profile`) et Notifications (`/notifications`)** :
+  1. *Page Profil Utilisateur ([`client/src/pages/profile.tsx`](../client/src/pages/profile.tsx))* :
+     - Route dédiée `/profile` accessible directement depuis le menu déroulant navbar (*« Mon profil »*).
+     - Carte d'en-tête avec bouton retour, badge d'espace et rôle actif (`Mentor Référent` ou `Apprenant ShopFlow`).
+     - Carte Informations personnelles : formulaire de modification du nom complet (`PUT /api/auth/profile`) avec retour toast immédiat, e-mail en lecture seule avec badge d'authentification.
+     - Carte Sécurité & Mot de passe : modification sécurisée du mot de passe avec validation de l'ancien mot de passe, nouveau mot de passe (min. 8 car.) et confirmation, complétée par un encadré sur la connexion sans mot de passe (OTP).
+     - Carte de statut andragogique : avatar grand format, date d'adhésion formatée en français et raccourcis vers le centre d'alertes.
+  2. *Page Notifications & Flux d'Activité ([`client/src/pages/notifications.tsx`](../client/src/pages/notifications.tsx))* :
+     - Route dédiée `/notifications` accessible depuis le menu déroulant navbar (*« Notifications »*).
+     - Carte d'en-tête banner avec bouton de rafraîchissement en temps réel et lien rapide vers la gestion des alertes e-mail ([`/preferences`](../client/src/pages/preferences.tsx)).
+     - Filtres contextuels : *Toutes*, *Rappels de tâches*, *Jalons & Progression*, *IA & Système*.
+     - Cartes de notifications individuelles : icône thématique (`CheckCircle2`, `Clock`, `Sparkles`, `Award`), sujet, libellé de type, date formatée et statut de délivrance.
+     - Empty state bienveillant et engageant lorsque la boîte est vide (*« Vous êtes à jour ! »*).
+  3. *Endpoints Backend Dédiés* :
+     - `PUT /api/auth/profile` : mise à jour sécurisée du profil utilisateur (nom complet et/ou mot de passe avec vérification de l'ancien mot de passe).
+     - `GET /api/notifications` : récupération de l'historique des notifications de l'utilisateur connecté depuis la table `email_notifications`.
+     - Méthode `updateUser` ajoutée dans `UserStore` et `UserRepository` ([`server/data/users.ts`](../server/data/users.ts)).
 
 ---
 

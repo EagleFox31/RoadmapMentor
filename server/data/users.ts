@@ -11,6 +11,7 @@ export interface UserStore {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getUsersByRole(role: "MENTOR" | "LEARNER"): Promise<User[]>;
+  updateUser(id: number, data: Partial<Pick<User, "fullName" | "password">>): Promise<User>;
 }
 
 export class UserRepository implements UserStore {
@@ -32,5 +33,14 @@ export class UserRepository implements UserStore {
 
   async getUsersByRole(role: "MENTOR" | "LEARNER"): Promise<User[]> {
     return await db.select().from(users).where(eq(users.role, role)).orderBy(users.id);
+  }
+
+  async updateUser(id: number, data: Partial<Pick<User, "fullName" | "password">>): Promise<User> {
+    const [updated] = await db
+      .update(users)
+      .set(data)
+      .where(eq(users.id, id))
+      .returning();
+    return updated;
   }
 }

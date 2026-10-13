@@ -188,7 +188,7 @@ export function TopBar() {
               
               {/* Option 1 : Profil */}
               <DropdownMenuItem
-                onClick={() => setLocation("/roadmap")}
+                onClick={() => setLocation("/profile")}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 cursor-pointer transition-colors"
                 data-testid="menu-item-profile"
               >
@@ -198,7 +198,7 @@ export function TopBar() {
 
               {/* Option 2 : Notifications */}
               <DropdownMenuItem
-                onClick={() => setLocation("/preferences")}
+                onClick={() => setLocation("/notifications")}
                 className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 cursor-pointer transition-colors"
                 data-testid="menu-item-notifications"
               >

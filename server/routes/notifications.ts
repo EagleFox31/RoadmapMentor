@@ -7,6 +7,14 @@ import { handleError } from "../http/errors";
 import type { RouteDeps } from "./deps";
 
 export function registerNotificationRoutes(app: Express, { limiters }: RouteDeps) {
+  // Liste des notifications reçues par l'utilisateur connecté
+  app.get("/api/notifications", authMiddleware, async (req: AuthRequest, res) => {
+    try {
+      res.json(await storage.listEmailNotifications(req.user!.id, 50));
+    } catch (error) {
+      handleError(res, error);
+    }
+  });
   app.post("/api/test/email-notifications", authMiddleware, requireMentor, async (req, res) => {
     try {
       const { testEmailNotifications } = await import("../jobs/emailNotifications");
