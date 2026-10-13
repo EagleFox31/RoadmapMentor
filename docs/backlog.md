@@ -35,6 +35,7 @@ Ce backlog transforme l'analyse du dépôt en travaux ordonnés et vérifiables.
 | RM-013 | P2 | Foundation | L | Découper les monolithes `routes.ts` et `storage.ts` | RM-007 |
 | RM-014 | P2 | Release | M | Réduire le poids du frontend et des médias | — |
 | RM-020 | P1 | Mentoring OS | M | Inviter un apprenant par e-mail avec inscription par lien | RM-002, RM-003, RM-006 |
+| RM-021 | P1 | Mentoring OS | S | Corriger le prix d'un forfait non encore facturé | RM-003 |
 | RM-015 | P2 | Foundation | S | Nettoyer les dépendances et avertissements d'outillage | RM-005 |
 | RM-016 | P2 | Platform | L | Implémenter réellement l'infrastructure cloud Terraform | RM-006, RM-012 |
 | RM-017 | P2 | Release | M | Ajouter observabilité, alertes et procédures d'exploitation | RM-011, RM-016 |
@@ -442,6 +443,39 @@ Depuis RM-003, un mentor ne peut rattacher qu'un apprenant déjà inscrit. Un ap
 - Code dans un module dédié (`server/routes/invitations.ts` + service), pas dans le monolithe `routes.ts` (cf. RM-013).
 - Dépend de la fusion de RM-006 (migrations) : branche à créer après intégration de `feat/rm-006-migrations`.
 
+### RM-021 — Permettre au mentor de corriger un forfait non facturé
+
+> **État — 13/10/2026 :** **Planifié.** Spec : [docs/mentor-pricing.md](mentor-pricing.md). Tranche 1 seulement dans la première PR. Tranches 2 (duplication mois suivant), 3 (remise / VOID), 4 (catalogue tarif) hors périmètre.
+
+**Constat**
+
+Le forfait est un contrat de période append-only : `POST` uniquement, carte UI en lecture seule. Le mentor ne peut pas corriger un prix tapé trop tôt (ex. 30 000 XAF au lieu de 25 000) sans créer un second forfait. La facture copie `basePriceMinor` et ne le recalcule jamais. Une fois une `billing_periods` créée — même `VOID` — l'unicité `billing_period_package_unique` verrouille le forfait.
+
+Ce n'est pas un catalogue de tarifs du mentor. C'est un contrat. On autorise la correction **tant qu'aucune facture n'existe**. Après facture : 409, nouveau forfait ou ajustement (tranches suivantes).
+
+**Travail**
+
+- [ ] Ajouter `updateMentoringPackageSchema` (alias du schéma de création, sans nouvelle table).
+- [ ] `PATCH /api/mentorships/:id/packages/:packageId` : mentor `canManage`, forfait du mentorat, 409 si une période de facturation existe.
+- [ ] Remplacer `scopeItems` en transaction (`updateMentoringPackageWithScope`).
+- [ ] Message FR catalogué `PACKAGE_ALREADY_BILLED`.
+- [ ] UI `/mentoring` : bouton modifier uniquement si non facturé ; `data-testid` nouveaux, existants préservés.
+- [ ] Tests schéma + intégration (accès, 409, idempotence PATCH). Aucune migration.
+
+**Critères d'acceptation**
+
+- [ ] Un mentor corrige le prix d'un forfait **sans** période de facturation ; l'apprenant voit le même montant au `GET`.
+- [ ] Après création d'une facture, le `PATCH` renvoie 409 et ne change ni le forfait ni `baseAmountMinor`.
+- [ ] Un apprenant, un anonyme ou un mentor étranger ne peuvent pas modifier le forfait (matrice 401 / 403 / 404).
+- [ ] `drizzle-kit generate --name ci_drift_check` : aucune dérive.
+- [ ] Aucun `data-testid` existant n'est retiré.
+
+**Conception / ordre**
+
+- Branche `feat/rm-021-package-price-correction` depuis `main` **après** les commits OTP/UI (autre agent).
+- Ne pas recalculer `baseAmountMinor` dans `reconcile`.
+- Ne pas livrer duplication, remises négatives ni catalogue dans cette fiche. Détail des tranches : [mentor-pricing.md](mentor-pricing.md).
+
 ## P2 — Maintenabilité et passage à l'échelle
 
 ### RM-013 — Découper les monolithes backend
@@ -564,6 +598,7 @@ Les modules Terraform actuels décrivent des contrats typés, mais ne créent en
 4. **Bêta fiable** : RM-007, RM-008, RM-009 et RM-010.
 5. **Exploitation multi-instance** : RM-011 et RM-012.
 6. **Industrialisation** : RM-013 à RM-017.
+7. **Forfait commercial (en cours)** : RM-021 tranche 1, puis 2–4 selon [mentor-pricing.md](mentor-pricing.md).
 
 ## Définition de terminé commune
 
