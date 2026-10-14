@@ -1,7 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { escapeHtml } from "../server/services/emailLayout";
-import { buildInvitationEmail, buildOtpEmail } from "../server/services/emailTemplates";
+import {
+  buildCommentNotificationEmail,
+  buildInvitationEmail,
+  buildMilestoneReachedEmail,
+  buildOtpEmail,
+  buildProgressUpdateEmail,
+  buildWeekValidationEmail,
+} from "../server/services/emailTemplates";
 
 const appUrl = "https://roadmapmentor.example.org";
 
@@ -36,4 +43,35 @@ test("invitation e-mail uses the branded layout, the invite link and escapes use
   assert.ok(!html.includes("Ada <Lovelace>"));
   assert.ok(html.includes("ShopFlow — Python → PCAP &amp; GenAI"));
   assert.ok(html.includes("20 octobre 2026"));
+});
+
+test("notification e-mails reuse the OTP layout and escape user text", () => {
+  const comment = buildCommentNotificationEmail({
+    appUrl, to: "mentor@example.org", recipientName: "Ada",
+    commenterName: "Pavel <script>", weekNumber: 2,
+    commentPreview: "<img src=x onerror=alert(1)> besoin d'aide",
+  });
+  assert.ok(comment.html.includes('class="container"'));
+  assert.ok(comment.html.includes('class="badge"'));
+  assert.ok(comment.html.includes(`${appUrl}/preferences`));
+  assert.ok(comment.html.includes("Pavel &lt;script&gt;"));
+  assert.ok(!comment.html.includes("<script>"));
+  assert.ok(comment.html.includes("&lt;img src=x"));
+
+  const progress = buildProgressUpdateEmail({
+    appUrl, to: "mentor@example.org", mentorName: "Ada", learnerName: "Pavel",
+    weekNumber: 1, completionPercentage: 50,
+  });
+  assert.match(progress.subject, /50 %/);
+  assert.ok(progress.html.includes("width:50%"));
+
+  const validated = buildWeekValidationEmail({
+    appUrl, to: "pavel@example.org", learnerName: "Pavel", weekNumber: 1, mentorName: "Jennifer",
+  });
+  assert.ok(validated.html.includes("Jennifer"));
+
+  const milestone = buildMilestoneReachedEmail({
+    appUrl, to: "pavel@example.org", learnerName: "Pavel", milestonePercentage: 100,
+  });
+  assert.ok(milestone.html.includes("100 %"));
 });

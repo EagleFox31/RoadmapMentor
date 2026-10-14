@@ -89,6 +89,7 @@ export function renderBrandedEmail(options: BrandedEmailOptions): string {
           <div class="footer-links">
             <a href="${appUrl}">Accéder à la plateforme</a> •
             <a href="${appUrl}/roadmap">Feuilles de route</a> •
+            <a href="${appUrl}/preferences">Préférences</a> •
             <a href="mailto:support@trigenys.com">Support & Aide</a>
           </div>
 
@@ -112,4 +113,26 @@ export function renderButton(href: string, label: string): string {
           <div style="text-align: center; margin: 28px 0;">
             <a href="${escapeHtml(href)}" style="display: inline-block; background: #059669; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 15px; padding: 14px 28px; border-radius: 12px;">${escapeHtml(label)}</a>
           </div>`;
+}
+
+/** Highlight card reused by OTP (code) and notifications (week, %, quote). */
+export function renderHighlightCard(label: string, valueHtml: string, hint?: string): string {
+  return `
+          <div class="code-card">
+            <div class="code-label">${escapeHtml(label)}</div>
+            <div class="highlight-title">${valueHtml}</div>
+            ${hint ? `<div class="code-validity">${escapeHtml(hint)}</div>` : ""}
+          </div>`;
+}
+
+export function renderProgressBar(percent: number): string {
+  const width = Math.max(0, Math.min(100, Math.round(percent)));
+  return `
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 8px 0 20px 0;">
+            <tr>
+              <td style="background:#ecfdf5;border-radius:999px;height:10px;">
+                <div style="width:${width}%;height:10px;background:#059669;border-radius:999px;"></div>
+              </td>
+            </tr>
+          </table>`;
 }

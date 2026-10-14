@@ -44,3 +44,16 @@ Opérationnel en local, en build de production (CSP active).
 ## Idées d'innovation
 - Cache serveur court par ressource (ETag) pour éviter de retélécharger un document consulté souvent.
 - Chargement progressif des pages au défilement, au-delà de 30 pages.
+
+## Suite : documents téléversés par le mentor (sans jeton dans l'URL)
+- Les documents téléversés étaient ouverts avec `?token=<JWT>` dans l'URL, et `authMiddleware` acceptait ce jeton. Cette modification n'a jamais été fusionnée : elle est abandonnée.
+- `shared/resourceLinks.ts` : `internalDocumentRef()` reconnaît un document interne à son chemin, quel que soit l'hôte. `canPreviewPdf()` l'accepte, même en `http://localhost`.
+- `server/routes/content.ts` :
+  - `GET /api/resources/:id/document` sert le fichier selon les règles d'accès de la semaine ;
+  - `GET /api/resources/:id/pdf` lit les documents internes directement dans le stockage, sans requête HTTP ;
+  - le lien enregistré (`/api/resources/documents/...`) n'est plus lisible que par son auteur.
+- `client/src/lib/openAuthorizedFile.ts` : récupère le fichier avec l'en-tête `Authorization`, puis l'ouvre dans un onglet à partir d'une URL `blob:`. `EvidenceLink` utilise désormais cette même fonction.
+- Tests :
+  - API : apprenant `/document` et `/pdf` → 200, apprenant sur le lien enregistré → 404, mentor auteur → 200, sans en-tête ou avec seulement `?token=` → 401 ;
+  - navigateur (Edge, build de production) : aperçu dessiné, onglet `blob:` ouvert, jeton absent de toutes les URL ;
+  - `npm test` : 152 réussis, 0 échec. `tsc` : OK.

@@ -3,6 +3,10 @@ import { storage } from "./storage";
 import { emailService } from "./services/emailService";
 import { claimJobRun, finishJobRun } from "./services/jobRuns";
 import { resolveSchedulerConfig } from "./services/schedulerConfig";
+import {
+  sendDeadlineReminders,
+  sendWeekPreparationReminders,
+} from "./jobs/emailNotifications";
 
 /**
  * Fonction qui envoie les rappels de tâches aux apprenants
@@ -109,7 +113,22 @@ export function initializeScheduler() {
 
         console.log(`[Scheduler] ${job.label} (${job.name}) ${runKey}`);
         try {
-          const summary = await sendTaskReminders();
+          const parts = [await sendTaskReminders()];
+          try {
+            parts.push(await sendDeadlineReminders(config.timezone));
+          } catch (error) {
+            console.error(`[Scheduler] ${job.name} deadlines:`, error);
+            parts.push("deadlines: FAILED");
+          }
+          if (job.name === "task-reminder-endweek") {
+            try {
+              parts.push(await sendWeekPreparationReminders());
+            } catch (error) {
+              console.error(`[Scheduler] ${job.name} week-prep:`, error);
+              parts.push("week-prep: FAILED");
+            }
+          }
+          const summary = parts.join(" | ");
           await finishJobRun(job.name, runKey, "SUCCEEDED", summary);
           console.log(`[Scheduler] ${job.name} ${runKey}: terminé en ${Date.now() - startedAt} ms`);
         } catch (error) {

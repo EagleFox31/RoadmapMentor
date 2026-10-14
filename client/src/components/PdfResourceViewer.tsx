@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentLoadingTask } from "pdfjs-dist";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { safeExternalResourceUrl } from "@shared/resourceLinks";
+import { internalDocumentRef, safeExternalResourceUrl } from "@shared/resourceLinks";
 import { getAuthToken } from "@/lib/auth";
 
 const MAX_PREVIEW_BYTES = 16 * 1024 * 1024;
@@ -68,7 +68,8 @@ export function PdfResourceViewer({ title, resourceId, url, onClose }: {
   const pagesRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [pageCount, setPageCount] = useState<{ shown: number; total: number } | null>(null);
-  const safe = safeExternalResourceUrl(url);
+  // Uploaded documents have no public original: only the preview is offered.
+  const safe = internalDocumentRef(url) ? null : safeExternalResourceUrl(url);
 
   useEffect(() => {
     setPageCount(null);

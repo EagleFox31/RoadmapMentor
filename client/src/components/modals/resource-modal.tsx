@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { getAuthToken } from "@/lib/auth";
+import { Upload, FileUp, CheckCircle2, Loader2 } from "lucide-react";
 import type { Resource } from "@shared/schema";
 
 interface ResourceModalProps {
@@ -31,6 +34,11 @@ interface ResourceModalProps {
 }
 
 export function ResourceModal({ isOpen, onClose, onSubmit, weekId, resource, isLoading }: ResourceModalProps) {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedFileInfo, setUploadedFileInfo] = useState<{ name: string; size: number } | null>(null);
+
   const [formData, setFormData] = useState({
     label: "",
     url: "",
@@ -43,6 +51,7 @@ export function ResourceModal({ isOpen, onClose, onSubmit, weekId, resource, isL
   });
 
   useEffect(() => {
+    setUploadedFileInfo(null);
     if (resource) {
       setFormData({
         label: resource.label,
@@ -67,6 +76,71 @@ export function ResourceModal({ isOpen, onClose, onSubmit, weekId, resource, isL
       });
     }
   }, [resource, isOpen]);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
+      toast({
+        title: "Format non supporté",
+        description: "Seuls les fichiers PDF sont acceptés pour le moment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+      toast({
+        title: "Fichier trop volumineux",
+        description: "La taille maximale autorisée est de 25 Mo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      const token = getAuthToken();
+      const res = await fetch("/api/resources/upload-document", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/pdf",
+          "x-filename": encodeURIComponent(file.name),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: file,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Échec du téléversement");
+      }
+
+      const data = await res.json();
+      setUploadedFileInfo({ name: file.name, size: file.size });
+      setFormData((prev) => ({
+        ...prev,
+        url: data.url,
+        resourceType: "DOC",
+        label: prev.label || data.label || file.name.replace(/\.[^/.]+$/, ""),
+      }));
+
+      toast({
+        title: "Document téléversé !",
+        description: `${file.name} a été enregistré avec succès.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Erreur de téléversement",
+        description: err.message || "Une erreur est survenue.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      if (event.target) event.target.value = "";
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,6 +169,57 @@ export function ResourceModal({ isOpen, onClose, onSubmit, weekId, resource, isL
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Bloc Téléversement de document PDF */}
+          <div className="rounded-2xl border border-dashed border-emerald-500/40 bg-emerald-950/20 p-4 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileUp className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm font-semibold text-emerald-300">
+                  Document personnalisé (PDF)
+                </span>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={isUploading}
+                onClick={() => fileInputRef.current?.click()}
+                className="border-emerald-500/50 bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 text-xs font-semibold"
+                data-testid="button-upload-pdf-resource"
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    <span>Téléversement...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-3.5 h-3.5 mr-1.5" />
+                    <span>Téléverser un PDF</span>
+                  </>
+                )}
+              </Button>
+            </div>
+            {uploadedFileInfo ? (
+              <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-900/40 px-3 py-1.5 rounded-lg border border-emerald-500/30">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="truncate font-medium">{uploadedFileInfo.name}</span>
+                <span className="text-emerald-300/70 shrink-0">({(uploadedFileInfo.size / 1024 / 1024).toFixed(2)} Mo)</span>
+              </div>
+            ) : (
+              <p className="text-xs text-white/50 leading-relaxed">
+                Chargez un support ou guide personnalisé (ex : bible Git, cours, TP). L'URL et le nom seront configurés automatiquement.
+              </p>
+            )}
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="resourceType" className="text-white text-sm">
               Type de ressource
@@ -139,7 +264,7 @@ export function ResourceModal({ isOpen, onClose, onSubmit, weekId, resource, isL
               value={formData.url}
               onChange={(e) => setFormData({ ...formData, url: e.target.value })}
               required
-              placeholder="https://fastapi.tiangolo.com/..."
+              placeholder="https://fastapi.tiangolo.com/... ou URL générée par l'upload"
               className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
               data-testid="input-resource-url"
             />

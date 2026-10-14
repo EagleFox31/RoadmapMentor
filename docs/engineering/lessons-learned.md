@@ -72,6 +72,14 @@ Generalised lesson: a rule that relies on remembering an order fails twice; turn
 
 Generalised lesson: a response post-processor is part of the contract; a new route must be tested through it, not only at the handler.
 
+## 2026-10-13 — Session token accepted in the query string (near miss)
+
+| Context | Root cause | Resolution | Prevention |
+| --- | --- | --- | --- |
+| Opening a mentor-uploaded document from a link needed authentication, so `authMiddleware` was changed to read `?token=` and the client appended the JWT to the link (never merged) | A plain `<a href>` cannot send `Authorization`; the shortcut put a long-lived, full-account token in URLs (browser history, server logs, Referer). The stored-document route also served any object to any signed-in user | Documents are read through `/api/resources/:id/document` and `/api/resources/:id/pdf` (week access rules); the client fetches with `Authorization` and opens a blob (`client/src/lib/openAuthorizedFile.ts`); the stored link is readable by its uploader only | `test/auth.test.ts`: a query-string token is refused (401); `test/resource-links.test.ts`: uploaded documents are recognized by path on any host |
+
+Generalised lesson: protected files are opened by an authenticated fetch plus a blob URL, never by putting a credential in a link.
+
 ## 2026-10-13 — PR #96 red in CI on the bundle budget
 
 | Context | Root cause | Resolution | Prevention |

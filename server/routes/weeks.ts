@@ -5,6 +5,22 @@ import { authMiddleware, requireMentor, type AuthRequest } from "../auth";
 import { insertWeekSchema, insertRoadmapBulkSchema, type Week } from "@shared/schema";
 import { handleError } from "../http/errors";
 import { canAccessWeek, resolveRoadmapIdForNewWeek, getLearnerIdsForWeek } from "../access/weekAccess";
+import { emailService } from "../services/emailService";
+import { notifyWeekLearners } from "../services/notifyWeekLearners";
+
+function describeWeekChange(weekData: Record<string, unknown>): string {
+  const keys = Object.keys(weekData).filter((key) => weekData[key] !== undefined);
+  if (keys.length === 0) {
+    return "mise à jour";
+  }
+  if (keys.every((key) => key === "title")) {
+    return "titre";
+  }
+  if (keys.some((key) => key === "startDate" || key === "endDate")) {
+    return "dates";
+  }
+  return "contenu";
+}
 
 export function registerWeekRoutes(app: Express) {
   app.get("/api/weeks", authMiddleware, async (req: AuthRequest, res) => {
@@ -206,6 +222,18 @@ export function registerWeekRoutes(app: Express) {
         .partial()
         .parse(req.body);
       const week = await storage.updateWeek(weekId, weekData);
+      if (week?.isValidatedByMentor) {
+        const modificationType = describeWeekChange(weekData);
+        void notifyWeekLearners(week, (learner) =>
+          emailService.sendWeekModified(
+            learner.id,
+            learner.email,
+            learner.fullName,
+            week.number,
+            modificationType,
+          ),
+        );
+      }
       res.json(week);
     } catch (error) {
       handleError(res, error);
@@ -236,6 +264,18 @@ export function registerWeekRoutes(app: Express) {
       }
 
       const week = await storage.validateWeek(weekId);
+      if (week && !existingWeek.isValidatedByMentor) {
+        const mentorName = req.user!.fullName;
+        void notifyWeekLearners(week, (learner) =>
+          emailService.sendWeekValidation(
+            learner.id,
+            learner.email,
+            learner.fullName,
+            week.number,
+            mentorName,
+          ),
+        );
+      }
       res.json(week);
     } catch (error) {
       handleError(res, error);

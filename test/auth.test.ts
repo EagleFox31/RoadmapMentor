@@ -185,3 +185,17 @@ test("authMiddleware answers 500 when the user lookup fails", async () => {
   assert.equal(nextCalled, false);
   assert.equal(state.statusCode, 500);
 });
+
+test("authMiddleware never accepts a session token from the query string", async () => {
+  const { createAuthMiddleware, generateToken } = await import("../server/auth");
+  const token = generateToken({ id: 7, email: "a@b.c", role: "LEARNER" } as any);
+  const req = { headers: {}, query: { token } } as unknown as AuthRequest;
+  const { response, state } = createResponse();
+  let nextCalled = false;
+  createAuthMiddleware(async () => ({ id: 7, email: "a@b.c", role: "LEARNER", password: "hash" }))(
+    req, response, (() => { nextCalled = true; }) as NextFunction);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(nextCalled, false);
+  assert.equal(state.statusCode, 401);
+});

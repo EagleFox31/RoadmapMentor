@@ -81,7 +81,7 @@ export function ScreenshotUploader({ onUploadComplete, currentUrl, taskId }: Scr
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="inline-flex items-center gap-2">
       <input
         type="file"
         id={inputId}
@@ -91,32 +91,32 @@ export function ScreenshotUploader({ onUploadComplete, currentUrl, taskId }: Scr
         className="hidden"
         disabled={isUploading}
       />
-      <label htmlFor={inputId}>
+      <label htmlFor={inputId} className="cursor-pointer">
         <Button
           type="button"
           size="sm"
           variant="outline"
           disabled={isUploading}
-          className="cursor-pointer"
+          className="cursor-pointer h-7 px-2.5 text-xs font-medium rounded-full border border-dashed border-border/80 hover:border-emerald-500/70 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center gap-1.5 shadow-2xs group"
           data-testid="button-upload-screenshot"
           asChild
         >
           <span>
             {isUploading ? (
               <>
-                <Upload className="w-4 h-4 mr-2 animate-spin" />
-                Upload en cours...
+                <Upload className="w-3.5 h-3.5 mr-1 animate-spin text-emerald-500" />
+                Upload...
               </>
             ) : (
               <>
-                <Upload className="w-4 h-4 mr-2" />
-                {currentUrl ? "Remplacer" : "Joindre"} capture
+                <Upload className="w-3.5 h-3.5 mr-1 text-muted-foreground group-hover:text-emerald-500 transition-colors" />
+                {currentUrl ? "Remplacer" : "Preuve"}
               </>
             )}
           </span>
         </Button>
       </label>
-      {error && <span className="text-destructive text-xs">{error}</span>}
+      {error && <span className="text-destructive text-xs font-medium">{error}</span>}
     </div>
   );
 }

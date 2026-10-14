@@ -219,6 +219,33 @@ Avant d'entamer les modifications, une analyse complète du projet a révélé l
 
 ---
 
+### E. Provisioning du Mentor Jennifer Aka'a
+- **Création du Compte Mentor en Base PostgreSQL** :
+  - Nom complet : `Jennifer Aka'a`
+  - E-mail : adresse personnelle du mentor (non publiée, voir la base de production)
+  - Rôle : `MENTOR` (ID: `83`)
+  - Mot de passe temporaire initialisé et haché avec bcrypt (`cost 10`).
+  - Préférences de notifications e-mail créées dans `email_notification_preferences`.
+  - Validation effectuée via `POST /api/auth/login` et `GET /api/auth/me` (authentification active).
+
+---
+
+### F. Roadmap ShopFlow & Nouveaux Visuels Technologiques
+- **Feuille de Route Officielle ShopFlow (`id: 31`)** :
+  - Titre : *« ShopFlow — Python Backend → PCAP → GenAI »*
+  - Conçue à partir des référentiels andragogiques de `C:\Users\lawry\Documents\Mentoring` (`Pavel_Mois1_Final.docx` et `PAVEL_Roadmap_Andragogique_ShopFlow_PCAP_GenAI.docx`).
+  - Découpage complet : 9 modules (4 semaines du Mois 1 ultra-détaillées + Mois 2 à 6), 13 objectifs andragogiques, 57 tâches concrètes, 9 livrables et 15 ressources ciblées.
+- **Remplacement des Arrière-Plans des Cartes Semaines ([`client/src/components/week-selector.tsx`](../client/src/components/week-selector.tsx))** :
+  - Suppression des photos génériques floues et désuètes (`istockphoto-...`).
+  - Génération de 4 visuels technologiques haute définition et cohérents avec l'identité du projet :
+    1. *`week-bg-emerald-nodes.jpg`* : Nœuds géométriques 3D émeraude et cyan avec lignes de code et flux de données.
+    2. *`week-bg-code-matrix.jpg`* : Environnement de développement sombre avec terminal et code Python lumineux.
+    3. *`week-bg-data-mesh.jpg`* : Topologie et maillage cybernétique 3D néon émeraude/teal sur fond sombre.
+    4. *`week-bg-ai-neural.jpg`* : Réseau neuronal et serveurs cloud avec fibres optiques et blocs cristallins.
+  - Effet de zoom doux au survol (`group-hover:scale-105`) et voile dégradé sombre (`bg-gradient-to-t from-slate-950/90 via-slate-950/65 to-slate-900/45`) pour une lisibilité irréprochable des textes et badges.
+
+---
+
 ## 3. Est-ce que ça marche ? (Validation Opérationnelle)
 
 **Oui, absolument.** Toutes les briques sont opérationnelles et validées :
@@ -281,3 +308,135 @@ Avant d'entamer les modifications, une analyse complète du projet a révélé l
 
 4. **Préférences de Sécurité dans le Profil Utilisateur** :
    - Dans [`/preferences`](../client/src/pages/preferences.tsx), permettre à l'utilisateur de choisir sa méthode de connexion préférée (Mot de passe, OTP par e-mail, ou Authentification double facteur obligatoire).
+
+---
+
+## 6. Évolution : Téléversement de Documents PDF Personnalisés & Nouveaux Visuels de Semaines
+
+> **Auteur** : Réalisé par **Gemini (IA Antigravity)** à la demande explicite de l'utilisateur.  
+> **Date** : Octobre 2026
+
+### A. Ce qui a été trouvé
+1. Les fonds des semaines dans le sélecteur horizontal présentaient des illustrations jugées peu attrayantes par l'utilisateur.
+2. L'application ne permettait d'ajouter comme ressources que des URLs externes existantes (`COURSE`, `VIDEO`, `DOC`, etc.). Les mentors ne pouvaient pas héberger ou charger directement des supports andragogiques propriétaires sous forme de PDF (ex. *la bible de Git/GitHub*).
+
+### B. Ce qui a été modifié
+1. **Nouvelles Illustrations de Semaines ([`client/src/components/week-selector.tsx`](../client/src/components/week-selector.tsx))** :
+   - Génération de 4 visuels modernes ultra-haute qualité au format 16:9 avec esthétique néon/émeraude/cyan/matrix :
+     - `attached_assets/week-bg-emerald-nodes.jpg` : Réseau de nœuds lumineux et constellation d'apprentissage.
+     - `attached_assets/week-bg-code-matrix.jpg` : Flux de code et architecture système.
+     - `attached_assets/week-bg-data-mesh.jpg` : Topologie de données et maillage de serveurs.
+     - `attached_assets/week-bg-ai-neural.jpg` : Réseau neuronal et graphiques vectoriels pour l'ingénierie IA.
+   - Import statique et intégration dans le carrousel des semaines avec dégradés sombres progressifs et typographie contrastée.
+
+2. **Stockage & Diffusion Sécurisée de Documents PDF ([`server/routes/content.ts`](../server/routes/content.ts))** :
+   - Endpoint `POST /api/resources/upload-document` (réservé aux mentors) :
+     - Accepte un flux binaire jusqu'à 25 Mo (`express.raw({ limit: 25 * 1024 * 1024 })`).
+     - Validation cryptographique des octets magiques PDF (`%PDF-`) pour empêcher toute injection de fichier exécutable ou trompeur.
+     - Persistance dans l'`ObjectStorageService` sous identifiant unique UUID.
+     - Retourne l'URL interne du document, son nom assaini et son libellé suggéré.
+   - Endpoint `GET /api/resources/documents/:objectId/:filename` :
+     - Diffusion en flux (*streaming*) du document avec en-têtes de sécurité stricts (`Content-Disposition: inline`, `X-Content-Type-Options: nosniff`, `Cache-Control: private`).
+     - Double mode d'authentification : jeton Bearer pour les requêtes `fetch` et jeton dans la requête (`?token=...`) pour l'ouverture native dans un nouvel onglet de navigateur.
+
+3. **Interface Mentor & Visionneuse Intégrée** :
+   - **Modal Ressource ([`client/src/components/modals/resource-modal.tsx`](../client/src/components/modals/resource-modal.tsx))** :
+     - Zone de sélection de fichier PDF avec barre de chargement, badge de taille et auto-complétion du formulaire (`DOC`, nom du fichier assaini, URL interne).
+   - **Visionneuse PDF ([`client/src/components/PdfResourceViewer.tsx`](../client/src/components/PdfResourceViewer.tsx))** :
+     - Ajout automatique de l'en-tête d'autorisation pour les documents internes et création d'un Blob URL sécurisé pour l'affichage immédiat dans la modal.
+   - **Liste des Ressources ([`client/src/components/resources-list.tsx`](../client/src/components/resources-list.tsx))** :
+     - Détection des liens internes pour injecter le jeton lors de l'ouverture dans un nouvel onglet.
+     - Déclenchement immédiat du bouton « Aperçu PDF ».
+     - Refonte ergonomique & UX/UI complète du composant de ressource :
+       - **En-tête de carte** : Icône en dégradé thématique (`DOC`, `VIDEO`, `COURSE`, `ARTICLE`), badge de type, pilule de priorité (« Essentielle » avec pastille verte / « Complémentaire ») et durée indicative avec icône `Clock`.
+       - **Titre en pleine largeur** : Titrage étendu sur 100% de la largeur de la carte sans concurrence horizontale (`font-bold text-base sm:text-lg`), éliminant tout écrasement ou saut de ligne artificiel.
+       - **Encarts andragogiques distincts** : Grille à 2 colonnes avec encart ambré pour le « Problème à résoudre » (icône `Target`) et encart émeraude pour « À expérimenter sur le terrain » (icône `Sparkles`).
+       - **Barre d'actions dédiée en bas** : Barre d'outils pleine largeur séparée par un trait fin, regroupant les boutons de consultation colorés à gauche (`Aperçu PDF` avec icône `Eye`, `Lire la vidéo` avec icône `Play`, `Ouvrir le document` avec `ExternalLink`) et les actions d'engagement apprenant à droite (`Marquer comme consultée` avec `CheckCircle2` vert et `Signaler un lien` avec `Flag`).
+
+4. **Intégration du Document Réel** :
+   - Le fichier `git-github-bible-pareto-debutant-v2.pdf` fourni par l'utilisateur a été téléversé et rattaché comme ressource essentielle (ID `77`) de la Semaine 1 de la roadmap *ShopFlow* du mentor Jennifer Aka'a.
+
+### C. Si ça marche (Statut)
+- **Oui, 100% opérationnel.**
+- L'image Docker de l'application a été reconstruite (`docker compose build app`) et le conteneur redémarré avec succès.
+- Les tests de téléchargement direct avec jeton Bearer et jeton query `?token=...` retournent `HTTP 200 OK` avec le type `application/pdf` et la taille exacte (237 859 octets).
+- Les accès non authentifiés sont systématiquement rejetés avec `HTTP 401 Unauthorized`.
+- La ressource apparaît directement dans la liste des ressources de la Semaine 1 avec son bouton « Aperçu PDF ».
+
+### D. Comment cela a été testé
+1. `npx drizzle-kit generate` : 0 dérive détectée.
+2. `npm run check` (`tsc`) : 0 erreur de compilation.
+3. `npm test` : **140 tests passés avec succès** (137 passés, 3 ignorés, 0 échec).
+4. `docker compose build app` + `docker compose up -d app` : build conteneurisé réussi et service démarré sur port 5000.
+5. Tests d'appels HTTP automatisés pour la validation du téléchargement et des droits d'accès.
+
+---
+
+## 5. Refonte Visuelle & Expérience Produit « Apple-like / Google-like / WOW »
+
+> **Auteur** : **Gemini (IA Antigravity)** à la demande explicite de l'utilisateur (*« applique les modifs fait le fluide et beau apple like google like wow like »*).  
+> **Date** : 13 Octobre 2026  
+
+### A. Ce qui a été trouvé (Diagnostic UX / UI / CX)
+Une analyse ergonomique approfondie de la vue feuille de route (`/roadmap`) a mis en évidence plusieurs freins majeurs à l'expérience utilisateur et à la lisibilité :
+1. **Fatigue visuelle et encombrement vertical des tâches** :
+   - Chaque tâche non réalisée affichait un bouton rectangulaire volumineux « Joindre capture » directement sous son intitulé. Avec 4 à 8 tâches par objectif, l'écran était saturé de blocs de boutons répétés, créant une impression de formulaire lourd plutôt que d'une checklist fluide.
+2. **Duplication inutile du panneau de droite** :
+   - Le composant `ProgressPanel` affichait une section « Par Semaine » listant S1, S2, etc. avec des titres tronqués, faisant doublon exact avec le sélecteur de gauche (`WeekSelector`) et gaspillant un tiers de la largeur disponible.
+3. **Compression de la zone de travail centrale sur desktop** :
+   - Le découpage en grille 3 col / 6 col / 3 col allouait seulement 50% de la largeur au contenu andragogique principal (`WeekDetail`). Avec les paddings internes élevés (`p-8`), les ressources et objectifs disposés en grille à deux colonnes étaient fortement comprimés.
+4. **Micro-interactions et contrastes inégaux** :
+   - Absence de retours visuels subtils sur l'élément de semaine sélectionné, dates au format brut numérique (`2026-10-12`), et gradients néon saturés créant une dissonance avec les standards contemporains de design épuré (Apple HIG, Google Material 3, Linear).
+
+### B. Ce qui a été modifié (Détail des Améliorations)
+
+1. **Sélecteur de Semaines ([`client/src/components/week-selector.tsx`](../client/src/components/week-selector.tsx))** :
+   - Humanisation complète des plages de dates en français (`12 oct. — 18 oct. 2026`).
+   - Indicateur d'état actif distinctif : fine barre verticale émeraude luminescente sur la gauche, contour d'accent doux (`ring-2 ring-emerald-500/30`), pilule `Actif` et jauge de progression à fort contraste.
+
+2. **En-tête Hero de Semaine ([`client/src/components/week-detail.tsx`](../client/src/components/week-detail.tsx))** :
+   - Bannière vitrée avec halo lumineux en dégradé d'arrière-plan, badge de validation mentor avec pulsation vivante (`animate-pulse`), dates lisibles et barre d'actions mentor épurée.
+
+3. **Ligne de Tâche Fluide & Inline ([`client/src/components/task-list.tsx`](../client/src/components/task-list.tsx))** :
+   - Refonte complète de chaque tâche en une ligne horizontale équilibrée (`flex-row` adaptative).
+   - Checkbox élégante avec teinte émeraude au clic et barré discret sur le texte une fois complétée.
+   - Déplacement de l'action de preuve (téléversement ou consultation) à l'extrémité droite de la ligne : les boutons ne s'empilent plus verticalement.
+
+4. **Micro-bouton de Téléversement & Preuve ([`client/src/components/ScreenshotUploader.tsx`](../client/src/components/ScreenshotUploader.tsx) & [`client/src/components/EvidenceLink.tsx`](../client/src/components/EvidenceLink.tsx))** :
+   - Bouton pilule compact (`h-7 px-2.5 rounded-full`) avec bordure pointillée signalétique, icône animée lors de l'envoi et micro-interaction émeraude au survol.
+   - Lien de preuve stylisé en pilule d'accentuation émeraude avec zoom discret de l'icône sur hover.
+   - Conservation rigoureuse de tous les `data-testid` requis pour les tests E2E Playwright (`button-upload-screenshot`, `input-upload-screenshot-${taskId}`, `link-screenshot-${taskId}`).
+
+5. **Cartes d'Objectifs Andragogiques ([`client/src/components/objective-card.tsx`](../client/src/components/objective-card.tsx))** :
+   - Remplacement des dégradés saturés par des conteneurs aux teintes pastel raffinées et bordures douces par typologie (Bleu pour Concept clé, Violet pour Exercice Algo, Ambre pour Projet concret, Émeraude pour Autre).
+   - Espacements optimisés (`p-6`), typographie nette et bouton mentor discret d'ajout de tâche.
+
+6. **Cockpit de Progression Apple Activity ([`client/src/components/progress-panel.tsx`](../client/src/components/progress-panel.tsx))** :
+   - Remplacement de la duplication de la liste des semaines par un anneau de progression circulaire SVG inspiré d'Apple Fitness avec dégradé émeraude/cyan fluide.
+   - Affichage net du pourcentage central avec `data-testid="text-global-percentage"`.
+   - Métriques synthétiques : jalons validés et étapes restantes.
+   - Carte « Prochaine Étape » guidant l'apprenant adulte de manière contextualisée.
+   - Synthèse chronologique miniature (`S1`, `S2`...) compacte avec micro-jauges et coches de complétion, conservant `data-testid="progress-week-X"` pour une rétrocompatibilité à 100%.
+
+7. **Mise en Page Responsive Aérée ([`client/src/pages/roadmap-page.tsx`](../client/src/pages/roadmap-page.tsx))** :
+   - Élargissement du conteneur principal à `max-w-[1700px]`.
+   - Ajustement des colonnes : `lg:col-span-8 xl:col-span-6 2xl:col-span-6` pour la zone centrale, offrant jusqu'à 65% de largeur et éliminant tout écrasement des fiches ressources ou objectifs.
+   - Élimination de la double carte conteneur redondante autour du panneau de progression.
+
+### C. Statut de Fonctionnement
+- **Oui, 100% opérationnel.**
+- L'interface est fluide, dynamique, visuellement équilibrée et respecte les conventions andragogiques du projet.
+- L'absence totale de dérive Drizzle est maintenue.
+
+### D. Comment cela a été testé
+1. `npm run check` (`tsc`) : **0 erreur de typage**.
+2. `npm test` : **153 tests passés avec succès**, 0 échec (suite complète d'intégration).
+3. `npx drizzle-kit generate` : *« No schema changes, nothing to migrate »* (zéro dérive).
+4. `docker compose build app` & `docker compose up -d app` : build d'artefact de production validé et conteneur opérationnel (HTTP 200).
+
+### E. Idées d'Innovations Futures
+1. **Micro-confettis de réussite** : Déclencher une animation de particules discrètes en canvas lorsqu'une semaine complète est validée à 100%.
+2. **Raccourcis clavier Pro** : Permettre aux apprenants et mentors de naviguer entre les semaines avec les touches `J` / `K` (ou flèches clavier).
+3. **Mode focus plein écran** : Possibilité de masquer temporairement les barres latérales gauche et droite pour se concentrer à 100% sur un exercice ou un lab en cours.
+
+

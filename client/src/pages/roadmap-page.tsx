@@ -583,31 +583,31 @@ export default function RoadmapPage() {
     <div className="min-h-screen w-full bg-background">
       <TopBar />
 
-      <main className="container max-w-[1600px] mx-auto px-4 sm:px-8 py-6 sm:py-12 pt-24 sm:pt-28">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <aside className="lg:col-span-3 lg:sticky lg:top-28 lg:self-start space-y-6">
+      <main className="container max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 pt-24 sm:pt-28">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8">
+          <aside className="lg:col-span-4 xl:col-span-3 2xl:col-span-3 lg:sticky lg:top-24 lg:self-start space-y-5">
             <RoadmapSwitcher roadmaps={roadmaps} activeId={active?.id ?? null} onChange={setActiveId} />
             {isMentor() && (
-              <>
+              <div className="space-y-2.5">
                 <Button
                   onClick={() => setAiModalOpen(true)}
-                  className="w-full bg-gradient-to-br from-emerald-600 to-teal-600 text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl hover-elevate transition-all duration-300 glow"
+                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3 px-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm"
                   data-testid="button-ai-generate"
                 >
-                  <Sparkles className="w-5 h-5 mr-2" />
+                  <Sparkles className="w-4 h-4" />
                   Générer avec l'IA
                 </Button>
                 <Button
                   onClick={() => openModal("week")}
-                  className="w-full bg-gradient-to-br from-primary to-accent text-white font-semibold py-4 rounded-2xl shadow-lg hover:shadow-xl hover-elevate transition-all duration-300 glow"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 px-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2 text-sm"
                   data-testid="button-add-week"
                 >
-                  <Plus className="w-5 h-5 mr-2" />
+                  <Plus className="w-4 h-4" />
                   Nouvelle Semaine
                 </Button>
-              </>
+              </div>
             )}
-            <div className="glass-card rounded-3xl overflow-hidden">
+            <div className="glass-card rounded-3xl overflow-hidden border border-border/70 shadow-sm">
               <WeekSelector
                 weeks={weeks}
                 selectedWeekId={selectedWeekId}
@@ -617,8 +617,8 @@ export default function RoadmapPage() {
             </div>
           </aside>
 
-          <section className="lg:col-span-6">
-            <div className="glass-card rounded-3xl p-4 sm:p-8">
+          <section className="lg:col-span-8 xl:col-span-6 2xl:col-span-6">
+            <div className="glass-card rounded-3xl p-4 sm:p-6 lg:p-8 border border-border/70 shadow-sm">
               <WeekDetail
                 week={selectedWeek}
                 onToggleTask={(taskId, screenshotUrl) => toggleTaskMutation.mutate({ taskId, screenshotUrl })}
@@ -648,10 +648,8 @@ export default function RoadmapPage() {
             </div>
           </section>
 
-          <aside className="lg:col-span-3 lg:sticky lg:top-28 lg:self-start">
-            <div className="glass-card rounded-3xl p-4 sm:p-6">
-              <ProgressPanel stats={globalStats} />
-            </div>
+          <aside className="lg:col-span-12 xl:col-span-3 2xl:col-span-3 xl:sticky xl:top-24 xl:self-start">
+            <ProgressPanel stats={globalStats} />
           </aside>
         </div>
       </main>

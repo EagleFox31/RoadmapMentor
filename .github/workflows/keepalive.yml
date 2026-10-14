@@ -1,7 +1,8 @@
 name: Keep-alive
 
-# Le plan gratuit Render met le service en veille après inactivité : un appel périodique
-# à /health/ready le garde éveillé. URL surchargeable via la variable de dépôt HEALTHCHECK_URL.
+# Filet GitHub uniquement. Le waker réel est le Worker Cloudflare
+# infra/keepalive-worker (cron */10 → /health/live). GitHub ne tient pas
+# un rythme de 10 minutes. URL surchargeable via HEALTHCHECK_URL.
 on:
   schedule:
     - cron: "*/10 * * * *"
@@ -16,5 +17,5 @@ jobs:
     steps:
       - name: Ping health endpoint
         env:
-          URL: ${{ vars.HEALTHCHECK_URL || 'https://roadmapmentor.onrender.com/health/ready' }}
+          URL: ${{ vars.HEALTHCHECK_URL || 'https://roadmapmentor.onrender.com/health/live' }}
         run: curl --fail --silent --show-error --max-time 90 --retry 3 --retry-delay 10 --retry-all-errors "$URL"
