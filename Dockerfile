@@ -6,6 +6,8 @@ RUN npm ci
 FROM deps AS build
 WORKDIR /app
 COPY . .
+# Identifiant du build client (ex. SHA du commit) ; vide = généré par vite.config.ts.
+ARG APP_BUILD_ID=
 RUN npm run build && npx esbuild scripts/db-migrate.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/db-migrate.js
 
 FROM node:24-bookworm-slim AS runtime
