@@ -11,6 +11,7 @@ import { registerRoutes } from "./routes";
 import { initializeScheduler } from "./scheduler";
 import { accessLog, errorEnvelope, errorFields, logEvent, requestId, requestIdOf } from "./http/observability";
 import { applySecurityHeaders, JSON_BODY_LIMIT } from "./http/hardening";
+import { appBuildHeader, registerAppBuildRoute } from "./http/appBuild";
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -34,6 +35,8 @@ applySecurityHeaders(app);
 app.use(requestId);
 app.use(errorEnvelope);
 app.use(accessLog);
+app.use("/api", appBuildHeader);
+registerAppBuildRoute(app);
 app.use(express.json({
   limit: JSON_BODY_LIMIT,
   verify: (req, _res, buf) => {

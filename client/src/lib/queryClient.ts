@@ -1,5 +1,6 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getAuthToken, removeAuthToken } from "@/lib/auth";
+import { noteServerBuild } from "@/lib/appBuild";
 
 // Erreur d'API : `message` reste "<statut>: <texte>" (parsé par plusieurs pages), le reste est exposé en champs.
 export class ApiError extends Error {
@@ -55,6 +56,7 @@ function endSessionOnUnauthorized(res: Response) {
 }
 
 async function throwIfResNotOk(res: Response) {
+  noteServerBuild(res);
   endSessionOnUnauthorized(res);
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;

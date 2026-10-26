@@ -87,3 +87,11 @@ Generalised lesson: protected files are opened by an authenticated fetch plus a 
 | The `integration` job of #96 (pdf.js preview) failed at `npm run check:bundle`: `pdf-*.js` 472 kB > 400 kB | pdf.js is a single vendor module that cannot be split further; it is already loaded through a dynamic import, but the budget applied the initial-chunk limit to every chunk. `check:bundle` was not run before pushing | Declared, justified exception in `scripts/check-bundle-budget.mjs` (`exceptions`: `pdf-*.js`, own 520 kB ceiling, `BUDGET_PDFJS_KB`); every other chunk keeps 400 kB | Run `npm run build && npm run check:bundle` before pushing any change that adds a front-end dependency; a lazy vendor chunk gets an explicit exception entry, never a global budget increase |
 
 Generalised lesson: a budget is a contract; exceed it through a named, bounded exception, not by loosening the global limit.
+
+## 2026-10-14 — Open tab kept running the previous build after a deploy
+
+| Context | Root cause | Resolution | Prevention |
+| --- | --- | --- | --- |
+| A learner opened a resource and it was never marked as consulted: the server received no `PUT /consultation` at all | The tab had been loaded before the container was rebuilt and still ran the old JS (without automatic marking). The session stayed valid, so nothing told the user; `staleTime: Infinity` and no window-focus refetch meant the tab never contacted the new server on return | Each build carries an id (`<meta name="app-build">`, `APP_BUILD_ID` or random); the server sends it as `X-App-Build` on every `/api` response and on `GET /api/app-build`; the client shows a top banner with a visible 30 s countdown ("Mettre à jour maintenant" / "Plus tard", one 10 min deferral), paused while the tab is hidden or a dialog, draft, upload or mutation is in progress; never a silent reload; `vite:preloadError` reloads once | `test/app-build.test.ts` (id parsing, stale decision, header on `/api`); browser scenario with a simulated clock: countdown, pause on draft and hidden tab, deferral, reload onto the new build, no reload loop |
+
+Generalised lesson: after a deploy, check whether open clients run the code you think they run before debugging the feature; a valid session says nothing about the version of the client.
